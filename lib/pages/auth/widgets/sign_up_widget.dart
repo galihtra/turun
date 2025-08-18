@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:turun/resources/styles_app.dart';
 import 'package:turun/resources/values_app.dart';
 
-import '../../../base_widgets/button/custom_button.dart';
-import '../../../base_widgets/text_field/custom_password_textfield.dart';
-import '../../../base_widgets/text_field/custom_textfield.dart';
-
 class SignUpWidget extends StatefulWidget {
   const SignUpWidget({Key? key}) : super(key: key);
 
@@ -14,130 +10,184 @@ class SignUpWidget extends StatefulWidget {
 }
 
 class SignUpWidgetState extends State<SignUpWidget> {
-  final TextEditingController _firstNameController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _confirm = TextEditingController();
 
-  final TextEditingController _emailController = TextEditingController();
+  final _nameNode = FocusNode();
+  final _emailNode = FocusNode();
+  final _passNode = FocusNode();
+  final _confirmNode = FocusNode();
 
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
-  GlobalKey<FormState>? _formKey;
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _password.dispose();
+    _confirm.dispose();
+    _nameNode.dispose();
+    _emailNode.dispose();
+    _passNode.dispose();
+    _confirmNode.dispose();
+    super.dispose();
+  }
 
-  final FocusNode _fNameFocus = FocusNode();
-  final FocusNode _lNameFocus = FocusNode();
-  final FocusNode _emailFocus = FocusNode();
-  final FocusNode _phoneFocus = FocusNode();
-  final FocusNode _passwordFocus = FocusNode();
-  final FocusNode _confirmPasswordFocus = FocusNode();
+  InputDecoration _dec(String hint, {Widget? suffix}) => InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: const Color(0xFFF1F6FF),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22),
+          borderSide: BorderSide.none,
+        ),
+        suffixIcon: suffix,
+      );
 
-  bool isEmailVerified = false;
-
-  addUser() async {
-    if (_formKey!.currentState!.validate()) {
-      _formKey!.currentState!.save();
-      isEmailVerified = true;
-    } else {
-      isEmailVerified = false;
+  void _submit() {
+    if (_formKey.currentState?.validate() ?? false) {
+      // TODO: sign up
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Creating account...')),
+      );
     }
   }
 
   @override
-  void initState() {
-    super.initState();
-
-    _formKey = GlobalKey<FormState>();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: AppSizes.s10),
-      children: [
-        Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(
-                    left: AppSizes.s15, right: AppSizes.s15),
+    return Padding(
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppSizes.s20, vertical: 6),
+      child: Form(
+        key: _formKey,
+        child: ListView(
+          children: [
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _name,
+              focusNode: _nameNode,
+              textInputAction: TextInputAction.next,
+              keyboardType: TextInputType.name,
+              decoration: _dec('Name'),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Name required' : null,
+              onFieldSubmitted: (_) => _emailNode.requestFocus(),
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _email,
+              focusNode: _emailNode,
+              textInputAction: TextInputAction.next,
+              keyboardType: TextInputType.emailAddress,
+              decoration: _dec('Email'),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Email required' : null,
+              onFieldSubmitted: (_) => _passNode.requestFocus(),
+            ),
+            const SizedBox(height: 14),
+            _Password(hint: 'Password', controller: _password, focusNode: _passNode, onSubmitted: (_) => _confirmNode.requestFocus()),
+            const SizedBox(height: 14),
+            _Password(hint: 'Password Confirmation', controller: _confirm, focusNode: _confirmNode, onSubmitted: (_) => _submit()),
+            const SizedBox(height: 18),
+
+            // Button
+            Container(
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF2F6BFF), Color(0xFF0F4CFF)],
+                ),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: _submit,
+                  child: Center(
+                    child: Text('Sign Up',
+                        style: AppStyles.title2SemiBold
+                            .copyWith(color: Colors.white)),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton(
+                onPressed: () {},
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                        child: CustomTextField(
-                      hintText: 'Name',
-                      textInputType: TextInputType.name,
-                      focusNode: _fNameFocus,
-                      nextNode: _lNameFocus,
-                      isPhoneNumber: false,
-                      capitalization: TextCapitalization.words,
-                      controller: _firstNameController,
-                    )),
+                    Text('Skip for Now',
+                        style: AppStyles.label2SemiBold
+                            .copyWith(color: Theme.of(context).primaryColor)),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward,
+                        size: 16, color: Theme.of(context).primaryColor),
                   ],
                 ),
               ),
-              Container(
-                margin: const EdgeInsets.only(
-                    left: AppSizes.s15, right: AppSizes.s15, top: AppSizes.s10),
-                child: CustomTextField(
-                  hintText: 'Email',
-                  focusNode: _emailFocus,
-                  nextNode: _phoneFocus,
-                  textInputType: TextInputType.emailAddress,
-                  controller: _emailController,
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.only(
-                    left: AppSizes.s15, right: AppSizes.s15, top: AppSizes.s10),
-                child: CustomPasswordTextField(
-                  hintTxt: 'Password',
-                  controller: _passwordController,
-                  focusNode: _passwordFocus,
-                  nextNode: _confirmPasswordFocus,
-                  textInputAction: TextInputAction.next,
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.only(
-                    left: AppSizes.s15, right: AppSizes.s15, top: AppSizes.s10),
-                child: CustomPasswordTextField(
-                  hintTxt: 'Password Confirmation',
-                  controller: _confirmPasswordController,
-                  focusNode: _confirmPasswordFocus,
-                  textInputAction: TextInputAction.done,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.only(
-              left: AppSizes.s20,
-              right: AppSizes.s20,
-              bottom: AppSizes.s20,
-              top: AppSizes.s20),
-          child: CustomButton(onTap: addUser, buttonText: 'Sign Up'),
-        ),
-        Center(
-            child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            TextButton(
-              onPressed: () {},
-              child: Text(
-                'Skip for Now',
-                style: AppStyles.label2SemiBold
-              ),
             ),
-            Icon(
-              Icons.arrow_forward,
-              size: 15,
-              color: Theme.of(context).primaryColor,
-            )
           ],
-        )),
-      ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Password extends StatefulWidget {
+  final String hint;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String>? onSubmitted;
+  const _Password({
+    Key? key,
+    required this.hint,
+    required this.controller,
+    required this.focusNode,
+    this.onSubmitted,
+  }) : super(key: key);
+
+  @override
+  State<_Password> createState() => _PasswordState();
+}
+
+class _PasswordState extends State<_Password> {
+  bool _obscure = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: widget.controller,
+      focusNode: widget.focusNode,
+      textInputAction: TextInputAction.next,
+      obscureText: _obscure,
+      decoration: InputDecoration(
+        hintText: widget.hint,
+        filled: true,
+        fillColor: const Color(0xFFF1F6FF),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22),
+          borderSide: BorderSide.none,
+        ),
+        suffixIcon: IconButton(
+          onPressed: () => setState(() => _obscure = !_obscure),
+          icon: Icon(
+              _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+        ),
+      ),
+      validator: (v) =>
+          (v == null || v.isEmpty) ? 'Required' : null,
+      onFieldSubmitted: widget.onSubmitted,
     );
   }
 }

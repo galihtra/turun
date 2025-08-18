@@ -5,7 +5,6 @@ import 'package:turun/resources/assets_app.dart';
 import 'package:turun/resources/styles_app.dart';
 import 'package:turun/resources/values_app.dart';
 
-
 class AuthPage extends StatefulWidget {
   final int initialPage;
   const AuthPage({Key? key, this.initialPage = 0}) : super(key: key);
@@ -15,112 +14,174 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
-  bool isLoginPage = true;
+  late final PageController _pageController;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialPage;
+    _pageController = PageController(initialPage: widget.initialPage);
+  }
+
+  void _goTo(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
+    setState(() => _currentIndex = index);
+  }
+
   @override
   Widget build(BuildContext context) {
-    PageController pageController =
-        PageController(initialPage: widget.initialPage);
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Stack(
-        clipBehavior: Clip.none,
         children: [
-          Image.asset(
-            AppImages.background,
-            fit: BoxFit.fill,
-            height: MediaQuery.of(context).size.height,
-            width: MediaQuery.of(context).size.width,
+          // Background running track
+          Positioned.fill(
+            child: Image.asset(
+              AppImages.background,
+              fit: BoxFit.fill,
+            ),
           ),
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: AppSizes.s30),
-                Image.asset(AppImages.logo, height: 150, width: 200),
-                Padding(
-                  padding: const EdgeInsets.all(AppSizes.s20),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Positioned(
-                        bottom: 0,
-                        right: AppSizes.s5,
-                        left: 0,
-                        child: Container(
-                          width: MediaQuery.of(context).size.width,
-                          height: 1,
-                          // color: ColorResources.getGainsBoro(context),
+
+          // White rounded sheet
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              height: size.height * 0.78,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(36),
+                  topRight: Radius.circular(36),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 18),
+
+                    // Logo + brand
+                    Column(
+                      children: [
+                        Image.asset(AppImages.logo, height: 62, width: 62),
+                        const SizedBox(height: 10),
+                        Text(
+                          'tuRun',
                         ),
-                      ),
-                      Row(
+                        const SizedBox(height: 6),
+                        Text(
+                          'Track, Unlocked, Run!',
+                          style: AppStyles.body2Regular
+                              .copyWith(color: Colors.black54),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 22),
+
+                    // Tabs
+                    Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Stack(
                         children: [
-                          InkWell(
-                            onTap: () => pageController.animateToPage(0,
-                                duration: const Duration(seconds: 1),
-                                curve: Curves.easeInOut),
-                            child: Column(
-                              children: [
-                                Text('Sigin',
-                                    style: isLoginPage
-                                        ? AppStyles.body3SemiBold // 12
-                                        : AppStyles.body3Regular),
-                                Container(
-                                    height: 1,
-                                    width: 40,
-                                    margin: const EdgeInsets.only(top: 8),
-                                    color: isLoginPage
-                                        ? Theme.of(context).primaryColor
-                                        : Colors.transparent),
-                              ],
+                          // bottom divider
+                          Positioned.fill(
+                            bottom: 0,
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: Container(
+                                height: 1,
+                                color: Colors.black12,
+                              ),
                             ),
                           ),
-                          const SizedBox(
-                              width: AppSizes.s25),
-                          InkWell(
-                            onTap: () => pageController.animateToPage(1,
-                                duration: const Duration(seconds: 1),
-                                curve: Curves.easeInOut),
-                            child: Column(
-                              children: [
-                                Text('Signup',
-                                    style: !isLoginPage
-                                        ? AppStyles.body3SemiBold 
-                                        : AppStyles.body3Regular),
-                                Container(
-                                    height: 1,
-                                    width: 50,
-                                    margin: const EdgeInsets.only(top: 8),
-                                    color: !isLoginPage
-                                        ? Theme.of(context).primaryColor
-                                        : Colors.transparent),
-                              ],
-                            ),
+                          Row(
+                            children: [
+                              _AuthTab(
+                                title: 'Sign In',
+                                active: _currentIndex == 0,
+                                onTap: () => _goTo(0),
+                              ),
+                              const SizedBox(width: 28),
+                              _AuthTab(
+                                title: 'SignUp',
+                                active: _currentIndex == 1,
+                                onTap: () => _goTo(1),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Pages
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        physics: const BouncingScrollPhysics(),
+                        onPageChanged: (i) => setState(() {
+                          _currentIndex = i;
+                        }),
+                        children: const [
+                          SignInWidget(),
+                          SignUpWidget(),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                Expanded(
-                  child: PageView.builder(
-                    itemCount: 2,
-                    controller: pageController,
-                    itemBuilder: (context, index) {
-                      if (isLoginPage) {
-                        return const SignInWidget();
-                      } else {
-                        return const SignUpWidget();
-                      }
-                    },
-                    onPageChanged: (index) {
-                      setState(() {
-                        isLoginPage = !isLoginPage;
-                      });
-                    },
-                  ),
-                ),
-              ],
+              ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuthTab extends StatelessWidget {
+  final String title;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _AuthTab({
+    Key? key,
+    required this.title,
+    required this.active,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final underlineWidth = (title.length * 9).toDouble();
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            style: active
+                ? AppStyles.body3SemiBold
+                : AppStyles.body3Regular.copyWith(color: Colors.black54),
+          ),
+          const SizedBox(height: 8),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: 2,
+            width: active ? underlineWidth : 0,
+            color: Theme.of(context).primaryColor,
           ),
         ],
       ),
