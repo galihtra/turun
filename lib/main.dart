@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:turun/pages/auth/auth_page.dart';
 
-import 'auth/auth_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

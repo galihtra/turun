@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:turun/pages/home/home_page.dart';
+import 'package:turun/pages/home/start_page.dart';
 
-import '../home/home_page.dart';
-import '../home/start_page.dart';
 
-class AuthPage extends StatefulWidget {
-  const AuthPage({super.key});
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
 
   @override
-  State<AuthPage> createState() => _AuthPageState();
+  State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
-class _AuthPageState extends State<AuthPage> {
+class _AuthWrapperState extends State<AuthWrapper> {
   User? _user;
   @override
   void initState() {
