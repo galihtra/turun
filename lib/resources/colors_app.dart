@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 
 mixin AppColors {
+
+  // Color Gradient
+  static const LinearGradient blueGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFF2979FF), Color(0xFF232EA5)],
+  );
+
+  static const Color blueLight = Color(0xFFF1F6FF);
+  static const Color blueDark = Color(0xFF232EA5);
   static const Color unselected = Color(0xFFFBFBFB);
   static const Color titleExpansion = Color(0xFF52575D);
   static const Color shimmerBase = Color(0xFFF9F8F8);

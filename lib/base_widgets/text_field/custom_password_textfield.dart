@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-
-
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:turun/resources/colors_app.dart';
 
 class CustomPasswordTextField extends StatefulWidget {
   final TextEditingController? controller;
@@ -8,15 +8,19 @@ class CustomPasswordTextField extends StatefulWidget {
   final FocusNode? focusNode;
   final FocusNode? nextNode;
   final TextInputAction? textInputAction;
+  final TextStyle? textStyle;
+   final Color? fillColor;
 
-  const CustomPasswordTextField(
-      {Key? key,
-      this.controller,
-      this.hintTxt,
-      this.focusNode,
-      this.nextNode,
-      this.textInputAction})
-      : super(key: key);
+  const CustomPasswordTextField({
+    Key? key,
+    this.controller,
+    this.hintTxt,
+    this.focusNode,
+    this.nextNode,
+    this.textInputAction,
+    this.fillColor,
+    this.textStyle,
+  }) : super(key: key);
 
   @override
   CustomPasswordTextFieldState createState() => CustomPasswordTextFieldState();
@@ -38,50 +42,53 @@ class CustomPasswordTextFieldState extends State<CustomPasswordTextField> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Theme.of(context).highlightColor,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(22.r), 
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 1,
-              blurRadius: 7,
-              offset: const Offset(0, 1)) // changes position of shadow
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(6),
-        child: TextFormField(
-          cursorColor: Theme.of(context).primaryColor,
-          controller: widget.controller,
-          obscureText: _obscureText,
-          focusNode: widget.focusNode,
-          textInputAction: widget.textInputAction ?? TextInputAction.next,
-          onFieldSubmitted: (v) {
-            setState(() {
-              widget.textInputAction == TextInputAction.done
-                  ? FocusScope.of(context).consumeKeyboardToken()
-                  : FocusScope.of(context).requestFocus(widget.nextNode);
-            });
-          },
-          validator: (value) {
-            return null;
-          },
-          decoration: InputDecoration(
-              suffixIcon: IconButton(
-                  icon: Icon(
-                      _obscureText ? Icons.visibility_off : Icons.visibility),
-                  onPressed: _toggle),
-              hintText: widget.hintTxt ?? '',
-              contentPadding:
-                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 15),
-              isDense: true,
-              filled: true,
-              fillColor: Theme.of(context).highlightColor,
-              focusedBorder: OutlineInputBorder(
-                  borderSide:
-                      BorderSide(color: Theme.of(context).primaryColor)),
-              // hintStyle:
-              //     titilliumRegular.copyWith(color: Theme.of(context).hintColor),
-              border: InputBorder.none),
+      child: TextFormField(
+        cursorColor: Theme.of(context).primaryColor,
+        controller: widget.controller,
+        obscureText: _obscureText,
+        focusNode: widget.focusNode,
+        textInputAction: widget.textInputAction ?? TextInputAction.next,
+        onFieldSubmitted: (v) {
+          setState(() {
+            widget.textInputAction == TextInputAction.done
+                ? FocusScope.of(context).consumeKeyboardToken()
+                : FocusScope.of(context).requestFocus(widget.nextNode);
+          });
+        },
+        validator: (value) {
+          return null;
+        },
+        style: widget.textStyle ?? TextStyle(fontSize: 14.sp),
+        decoration: InputDecoration(
+          hintText: widget.hintTxt ?? '',
+          contentPadding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 18.w),
+          isDense: true,
+          filled: true,
+          fillColor: widget.fillColor,
+          focusedBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: AppColors.blueDark),
+            borderRadius: BorderRadius.circular(22.r),
+          ),
+          border: OutlineInputBorder(
+            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(22.r),
+          ),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            ),
+            onPressed: _toggle,
+          ),
         ),
       ),
     );

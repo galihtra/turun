@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:turun/base_widgets/button/gradient_button.dart';
 import 'package:turun/resources/styles_app.dart';
 import 'package:turun/resources/values_app.dart';
 
@@ -94,28 +95,9 @@ class SignUpWidgetState extends State<SignUpWidget> {
             const SizedBox(height: 18),
 
             // Button
-            Container(
-              height: 56,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF2F6BFF), Color(0xFF0F4CFF)],
-                ),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(24),
-                  onTap: _submit,
-                  child: Center(
-                    child: Text('Sign Up',
-                        style: AppStyles.title2SemiBold
-                            .copyWith(color: Colors.white)),
-                  ),
-                ),
-              ),
+            GradientButton(
+              text: 'Register',
+              onTap: _submit,
             ),
 
             const SizedBox(height: 12),

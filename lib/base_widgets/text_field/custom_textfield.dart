@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:turun/resources/colors_app.dart';
 
+// Extension for Email Validation
 extension EmailValidator on String {
   bool isValidEmail() {
     return RegExp(
@@ -25,6 +28,8 @@ class CustomTextField extends StatelessWidget {
   final bool isBorder;
   final TextAlign? textAlign;
   final bool isEnable;
+  final bool obscureText;
+  final TextStyle? textStyle;
 
   const CustomTextField({
     Key? key,
@@ -43,77 +48,76 @@ class CustomTextField extends StatelessWidget {
     this.isBorder = false,
     this.textAlign,
     this.isEnable = true,
+    this.obscureText = false,
+    this.textStyle,
   }) : super(key: key);
 
   @override
-  Widget build(context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        border: isBorder
-            ? Border.all(width: .8, color: Theme.of(context).hintColor)
-            : null,
-        color: Theme.of(context).highlightColor,
-        borderRadius: isPhoneNumber
-            ? const BorderRadius.only(
-                topRight: Radius.circular(6), bottomRight: Radius.circular(6))
-            : BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 3,
-              offset: const Offset(0, 1)) // changes position of shadow
-        ],
-      ),
-      child: TextFormField(
-        textAlign: textAlign != null
-            ? textAlign!
-            : isBorder
-                ? TextAlign.center
-                : TextAlign.start,
-        controller: controller,
-        maxLines: maxLine ?? 1,
-        textCapitalization: capitalization,
-        maxLength: isPhoneNumber ? 15 : null,
-        focusNode: focusNode,
-        keyboardType: textInputType ?? TextInputType.text,
-        //keyboardType: TextInputType.number,
-        enabled: isEnable,
-        initialValue: null,
-        textInputAction: textInputAction ?? TextInputAction.next,
-        onFieldSubmitted: (v) {
-          FocusScope.of(context).requestFocus(nextNode);
-        },
-        //autovalidate: true,
-        inputFormatters: [
-          isPhoneNumber
-              ? FilteringTextInputFormatter.digitsOnly
-              : FilteringTextInputFormatter.singleLineFormatter
-        ],
-        validator: (input) {
-          if (input!.isEmpty) {
-            if (isValidator) {
-              return validatorMessage ?? "";
-            }
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      focusNode: focusNode,
+      maxLines: maxLine ?? 1,
+      textAlign: textAlign ?? TextAlign.start,
+      textCapitalization: capitalization,
+      enabled: isEnable,
+      maxLength: isPhoneNumber ? 15 : null,
+      keyboardType: textInputType ?? TextInputType.text,
+      textInputAction: textInputAction ?? TextInputAction.next,
+      onFieldSubmitted: (v) {
+        FocusScope.of(context).requestFocus(nextNode);
+      },
+      inputFormatters: [
+        if (isPhoneNumber)
+          FilteringTextInputFormatter.digitsOnly
+        else
+          FilteringTextInputFormatter.singleLineFormatter
+      ],
+      validator: (input) {
+        if (input!.isEmpty) {
+          if (isValidator) {
+            return validatorMessage ?? "This field is required.";
           }
-          return null;
-        },
-        decoration: InputDecoration(
-          hintText: hintText ?? '',
-          filled: fillColor != null,
-          fillColor: fillColor,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 12.0, horizontal: 15),
-          isDense: true,
-          counterText: '',
-          focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Theme.of(context).primaryColor)),
-          // hintStyle:
-          //     titilliumRegular.copyWith(color: Theme.of(context).hintColor),
-          errorStyle: const TextStyle(height: 1.5),
-          border: InputBorder.none,
+        }
+        if (isPhoneNumber && input.length != 10) {
+          return 'Please enter a valid phone number.';
+        }
+        if (isValidator && hintText == "Email" && !input.isValidEmail()) {
+          return 'Please enter a valid email address.';
+        }
+        return null;
+      },
+      obscureText: obscureText,
+      style: textStyle ?? TextStyle(fontSize: 14.sp),
+      decoration: InputDecoration(
+        hintText: hintText ?? '',
+        filled: fillColor != null,
+        fillColor: fillColor ?? Colors.transparent,
+        contentPadding: EdgeInsets.symmetric(
+          vertical: 16.0.h,
+          horizontal: 18.w,
         ),
+        isDense: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22.r),
+          borderSide: BorderSide.none,
+        ),
+        counterText: '',
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22.r),
+          borderSide: const BorderSide(color: AppColors.blueDark),
+        ),
+        errorStyle: TextStyle(height: 1.5.h),
+        suffixIcon: obscureText
+            ? IconButton(
+                icon: Icon(obscureText
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined),
+                onPressed: () {
+                  // Handle visibility toggle
+                },
+              )
+            : null,
       ),
     );
   }
