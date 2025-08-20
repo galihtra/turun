@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:turun/pages/auth/widgets/auth_tab_widget.dart';
 import 'package:turun/pages/auth/widgets/sign_in_widget.dart';
 import 'package:turun/pages/auth/widgets/sign_up_widget.dart';
 import 'package:turun/resources/assets_app.dart';
 import 'package:turun/resources/styles_app.dart';
-import 'package:turun/resources/values_app.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class AuthPage extends StatefulWidget {
   final int initialPage;
-  const AuthPage({Key? key, this.initialPage = 0}) : super(key: key);
+  const AuthPage({super.key, this.initialPage = 0});
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -41,42 +42,46 @@ class _AuthPageState extends State<AuthPage> {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // Background running track
           Positioned.fill(
-            child: Image.asset(
-              AppImages.background,
-              fit: BoxFit.fill,
+            child: Stack(
+              children: [
+                Image.asset(
+                  AppImages.background,
+                  fit: BoxFit.cover,
+                ),
+              ],
             ),
           ),
-
-          // White rounded sheet
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
               height: size.height * 0.78,
               width: double.infinity,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(36),
-                  topRight: Radius.circular(36),
+                  topLeft: Radius.circular(36.r),
+                  topRight: Radius.circular(36.r),
                 ),
               ),
               child: SafeArea(
                 top: false,
                 child: Column(
                   children: [
-                    const SizedBox(height: 18),
-
-                    // Logo + brand
+                    SizedBox(height: 18.h),
                     Column(
                       children: [
-                        Image.asset(AppImages.logo, height: 62, width: 62),
-                        const SizedBox(height: 10),
-                        Text(
-                          'tuRun',
+                        Image.asset(
+                          AppImages.logo,
+                          height: 62.h,
+                          width: 62.w,
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: 8.h),
+                        Text(
+                          'TuRun',
+                          style: AppStyles.titleLogo,
+                        ),
+                        SizedBox(height: 6.h),
                         Text(
                           'Track, Unlocked, Run!',
                           style: AppStyles.body2Regular
@@ -84,13 +89,9 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                       ],
                     ),
-
-                    const SizedBox(height: 22),
-
-                    // Tabs
+                    SizedBox(height: 22.h),
                     Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 24.0),
+                      padding: EdgeInsets.symmetric(horizontal: 24.w),
                       child: Stack(
                         children: [
                           // bottom divider
@@ -106,13 +107,13 @@ class _AuthPageState extends State<AuthPage> {
                           ),
                           Row(
                             children: [
-                              _AuthTab(
+                              AuthTab(
                                 title: 'Sign In',
                                 active: _currentIndex == 0,
                                 onTap: () => _goTo(0),
                               ),
                               const SizedBox(width: 28),
-                              _AuthTab(
+                              AuthTab(
                                 title: 'SignUp',
                                 active: _currentIndex == 1,
                                 onTap: () => _goTo(1),
@@ -122,9 +123,7 @@ class _AuthPageState extends State<AuthPage> {
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 12),
-
+                    SizedBox(height: 12.h),
                     // Pages
                     Expanded(
                       child: PageView(
@@ -143,45 +142,6 @@ class _AuthPageState extends State<AuthPage> {
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AuthTab extends StatelessWidget {
-  final String title;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _AuthTab({
-    Key? key,
-    required this.title,
-    required this.active,
-    required this.onTap,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final underlineWidth = (title.length * 9).toDouble();
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            style: active
-                ? AppStyles.body3SemiBold
-                : AppStyles.body3Regular.copyWith(color: Colors.black54),
-          ),
-          const SizedBox(height: 8),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 2,
-            width: active ? underlineWidth : 0,
-            color: Theme.of(context).primaryColor,
           ),
         ],
       ),

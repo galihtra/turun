@@ -5,6 +5,14 @@ import 'colors_app.dart';
 import 'values_app.dart';
 
 class AppStyles {
+
+  // Title Logo
+  static final TextStyle titleLogo = GoogleFonts.museoModerno(
+    fontWeight: WeightsApp.bold,
+    fontSize: AppFontSizes.s24,
+    color: AppColors.blueLogo,
+  );
+
   // HEADING 1
    static final TextStyle heading1Regular = GoogleFonts.roboto(
     fontWeight: WeightsApp.regular,

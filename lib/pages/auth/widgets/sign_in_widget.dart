@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:turun/base_widgets/text/gradient_text.dart';
 import 'package:turun/base_widgets/text_field/custom_password_textfield.dart';
+import 'package:turun/resources/assets_app.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
 import 'package:turun/base_widgets/button/gradient_button.dart';
@@ -9,7 +11,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../base_widgets/text_field/custom_textfield.dart';
 
 class SignInWidget extends StatefulWidget {
-  const SignInWidget({Key? key}) : super(key: key);
+  const SignInWidget({super.key});
 
   @override
   SignInWidgetState createState() => SignInWidgetState();
@@ -34,7 +36,6 @@ class SignInWidgetState extends State<SignInWidget> {
 
   void _login() {
     if (_formKey.currentState?.validate() ?? false) {
-      // TODO: sambungkan ke logic auth
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Signing in...')),
       );
@@ -67,6 +68,8 @@ class SignInWidgetState extends State<SignInWidget> {
               hintTxt: 'Password',
               focusNode: _passNode,
               textInputAction: TextInputAction.done,
+              isValidator: true,
+              validatorMessage: "Password is required.",
               textStyle: AppStyles.label2Regular,
               fillColor: AppColors.blueLight,
             ),
@@ -74,12 +77,6 @@ class SignInWidgetState extends State<SignInWidget> {
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: () {},
-                // style: TextButton.styleFrom(padding: EdgeInsets.all(8.w)),
-                // child: Text(
-                //   'Forgot Password?',
-                //   style: AppStyles.body2Regular
-                //       .copyWith(color: Theme.of(context).primaryColor),
-                // ),
                 child: GradientText(
                   "Forgot Password?",
                   gradient: AppColors.blueGradient,
@@ -96,22 +93,34 @@ class SignInWidgetState extends State<SignInWidget> {
             Row(
               children: [
                 const Expanded(
-                    child: Divider(thickness: 1, color: Color(0xFFE8ECF2))),
+                  child: Divider(
+                    thickness: 1,
+                    color: AppColors.whiteLight,
+                  ),
+                ),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12.w),
-                  child:
-                      Text('Or continue with', style: AppStyles.body3Regular),
+                  child: Text(
+                    'Or continue with',
+                    style: AppStyles.body2Regular.copyWith(
+                      color: AppColors.deepBlue,
+                    ),
+                  ),
                 ),
                 const Expanded(
-                    child: Divider(thickness: 1, color: Color(0xFFE8ECF2))),
+                  child: Divider(
+                    thickness: 1,
+                    color: AppColors.whiteLight,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16.h),
             // Google button round
             Center(
               child: InkWell(
                 borderRadius: BorderRadius.circular(18.r),
-                onTap: () {}, // TODO: Google sign-in
+                onTap: () {},
                 child: Container(
                   height: 56,
                   width: 56,
@@ -127,7 +136,11 @@ class SignInWidgetState extends State<SignInWidget> {
                     ],
                   ),
                   alignment: Alignment.center,
-                  child: Text('G'),
+                  child: SvgPicture.asset(
+                    AppIcons.google,
+                    width: 20.w,
+                    height: 20.w,
+                  ),
                 ),
               ),
             ),
