@@ -33,9 +33,10 @@ dependencies:
     sdk: flutter
   flutter_dotenv: ^5.2.1
   flutter_screenutil: ^5.9.3
-  flutter_svg: 
+  flutter_svg: null
   google_fonts: ^6.3.0
   google_sign_in: null
+  provider: ^6.1.5+1
   supabase_flutter: ^2.9.1
 
 dev_dependencies:

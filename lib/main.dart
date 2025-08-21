@@ -1,7 +1,10 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:turun/pages/auth/auth_page.dart';
+import 'package:turun/data/services/auth_service.dart';
+import 'package:turun/data/wrapper/auth_wrapper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 void main() async {
@@ -18,19 +21,24 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ScreenUtilInit(
-      designSize: const Size(375, 812), 
-      minTextAdapt: true,
-      builder: (context, child) {
-        return MaterialApp(
-          title: 'Flutter Demo',
-          theme: ThemeData(
-            useMaterial3: true,
-          ),
-          home: child,
-        );
-      },
-      child: const AuthPage(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthService()),
+      ],
+      child: ScreenUtilInit(
+        designSize: const Size(375, 812),
+        minTextAdapt: true,
+        builder: (context, child) {
+          return MaterialApp(
+            title: 'TuRun',
+            theme: ThemeData(
+              useMaterial3: true,
+            ),
+            home: child,
+          );
+        },
+        child: const AuthWrapper(),
+      ),
     );
   }
 }
