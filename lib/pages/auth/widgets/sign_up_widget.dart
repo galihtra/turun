@@ -217,7 +217,7 @@ class SignUpWidgetState extends State<SignUpWidget> {
                   child: SvgPicture.asset(
                     AppIcons.google,
                     width: 20.w,
-                    height: 20.w,
+                    height: 20.h,
                   ),
                 ),
               ),
