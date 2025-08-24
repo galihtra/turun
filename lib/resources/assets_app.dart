@@ -10,4 +10,13 @@ class AppImages {
 
 class AppIcons {
   static const String google = '$ICON_PATH/ic_google.svg';
+  static const String home = '$ICON_PATH/ic_home.svg';
+  static const String homeActive = '$ICON_PATH/ic_home_active.svg';
+  static const String profile = '$ICON_PATH/ic_profile.svg';
+  static const String profileActive = '$ICON_PATH/ic_profile_active.svg';
+  static const String history = '$ICON_PATH/ic_history.svg';
+  static const String historyActive = '$ICON_PATH/ic_history_active.svg';
+  static const String territory = '$ICON_PATH/ic_territory.svg';
+  static const String territoryActive = '$ICON_PATH/ic_territory_active.svg';
+  static const String peopleRunning = '$ICON_PATH/ic_people_running.svg';
 }
