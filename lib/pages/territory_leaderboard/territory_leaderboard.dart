@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:turun/pages/territory_leaderboard/widgets/territory_leaderboard_bottom_sheet.dart';
+import 'package:turun/pages/territory_leaderboard/widgets/territory_leaderboard_content.dart';
 
 class TerritoryLeaderboardPage extends StatefulWidget {
   @override
@@ -9,6 +9,8 @@ class TerritoryLeaderboardPage extends StatefulWidget {
 
 class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
   GoogleMapController? mapController;
+  final DraggableScrollableController _draggableController = DraggableScrollableController();
+  bool _isSheetOpen = false;
 
   final CameraPosition _kGooglePlex = CameraPosition(
     target: LatLng(1.18376, 104.01703),
@@ -19,13 +21,41 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
     mapController = controller;
   }
 
-  void _showLeaderboard() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => TerritoryLeaderboardBottomSheet(),
-    );
+  void _toggleSheet() {
+    if (_isSheetOpen) {
+      _draggableController.animateTo(
+        0.15,
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    } else {
+      _draggableController.animateTo(
+        0.7,
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+    setState(() {
+      _isSheetOpen = !_isSheetOpen;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _draggableController.addListener(() {
+      if (_draggableController.size > 0.2 && !_isSheetOpen) {
+        setState(() => _isSheetOpen = true);
+      } else if (_draggableController.size <= 0.2 && _isSheetOpen) {
+        setState(() => _isSheetOpen = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _draggableController.dispose();
+    super.dispose();
   }
 
   @override
@@ -37,42 +67,39 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
             onMapCreated: _onMapCreated,
             initialCameraPosition: _kGooglePlex,
           ),
-          Positioned(
-            bottom: 16,
-            left: 16,
-            right: 16,
-            child: GestureDetector(
-              onTap: _showLeaderboard,
-              child: Container(
-                padding: EdgeInsets.all(12),
+          
+          // Draggable Sheet dengan margin bottom yang lebih besar
+          DraggableScrollableSheet(
+            controller: _draggableController,
+            initialChildSize: 0.15,
+            minChildSize: 0.15,
+            maxChildSize: 0.7,
+            snap: true,
+            snapSizes: [0.15, 0.7],
+            builder: (context, scrollController) {
+              return Container(
+                margin: EdgeInsets.only(bottom: 80), // Tambahkan margin bottom yang besar
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black26,
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
+                      blurRadius: 10,
+                      offset: Offset(0, -2),
                     ),
                   ],
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.leaderboard, color: Colors.blue),
-                    SizedBox(width: 10),
-                    Text(
-                      "Lihat Leaderboard",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Spacer(),
-                    Icon(Icons.keyboard_arrow_up, color: Colors.grey),
-                  ],
+                child: TerritoryLeaderboardContent(
+                  scrollController: scrollController,
+                  isExpanded: _isSheetOpen,
+                  onToggle: _toggleSheet,
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ],
       ),
