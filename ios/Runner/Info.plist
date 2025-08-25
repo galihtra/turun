@@ -16,6 +16,8 @@
 	<string>turun</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>GMSApiKey</key>
+	<string>AIzaSyCwKZBR34ZCyH75mwUxNOKGXf7ZUWuIA-c</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>

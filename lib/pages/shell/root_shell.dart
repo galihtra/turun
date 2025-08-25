@@ -15,11 +15,11 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   int _index = 0;
-  final _pages = const [
-    HomePage(),
+  final _pages = [
+    const HomePage(),
     TerritoryLeaderboard(),
-    HistoryPage(),
-    ProfilePage(),
+    const HistoryPage(),
+    const ProfilePage(),
   ];
   void _onChanged(int i) => setState(() => _index = i);
   @override
