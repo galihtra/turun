@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:turun/pages/territory_leaderboard/widgets/territory_leaderboard_bottom_sheet.dart';
 
-class TerritoryLeaderboard extends StatefulWidget {
+class TerritoryLeaderboardPage extends StatefulWidget {
   @override
-  _TerritoryLeaderboardState createState() => _TerritoryLeaderboardState();
+  _TerritoryLeaderboardPageState createState() => _TerritoryLeaderboardPageState();
 }
 
-class _TerritoryLeaderboardState extends State<TerritoryLeaderboard> {
+class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
   GoogleMapController? mapController;
 
   final CameraPosition _kGooglePlex = CameraPosition(
@@ -18,12 +19,62 @@ class _TerritoryLeaderboardState extends State<TerritoryLeaderboard> {
     mapController = controller;
   }
 
+  void _showLeaderboard() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => TerritoryLeaderboardBottomSheet(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: GoogleMap(
-        onMapCreated: _onMapCreated,
-        initialCameraPosition: _kGooglePlex,
+      body: Stack(
+        children: [
+          GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: _kGooglePlex,
+          ),
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: GestureDetector(
+              onTap: _showLeaderboard,
+              child: Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.leaderboard, color: Colors.blue),
+                    SizedBox(width: 10),
+                    Text(
+                      "Lihat Leaderboard",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Spacer(),
+                    Icon(Icons.keyboard_arrow_up, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

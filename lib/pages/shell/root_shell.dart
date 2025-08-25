@@ -17,7 +17,7 @@ class _RootShellState extends State<RootShell> {
   int _index = 0;
   final _pages = [
     const HomePage(),
-    TerritoryLeaderboard(),
+    TerritoryLeaderboardPage(),
     const HistoryPage(),
     const ProfilePage(),
   ];
