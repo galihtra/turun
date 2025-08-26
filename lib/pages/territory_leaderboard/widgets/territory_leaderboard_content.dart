@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:turun/resources/colors_app.dart';
+import 'package:turun/resources/styles_app.dart';
 import 'package:turun/resources/values_app.dart';
 
 class TerritoryLeaderboardContent extends StatelessWidget {
@@ -43,43 +45,61 @@ class TerritoryLeaderboardContent extends StatelessWidget {
               ),
 
               // Header
+              // Header
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Row(
+                    // Leaderboard Row - diubah menjadi Column untuk rata tengah sempurna
+                    Column(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(Icons.emoji_events, color: Colors.amber),
-                        SizedBox(width: 8),
-                        Text(
-                          "Leaderboard",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text("Leaderboard",
+                                style: AppStyles.title1SemiBold),
+                            AppGaps.kGap4,
+                            const Icon(Icons.emoji_events,
+                                color: AppColors.yellow),
+                          ],
                         ),
                       ],
                     ),
+
                     AppGaps.kGap10,
-                    Row(
+
+                    // Location Row - diubah menjadi Column untuk rata tengah sempurna
+                    Column(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(Icons.location_on, size: 16, color: Colors.red),
-                        SizedBox(width: 4),
-                        Text(
-                          "Batam, Riau Islands",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.location_on,
+                                size: 16, color: Colors.red),
+                            SizedBox(width: 4),
+                            Text(
+                              "Batam, Riau Islands",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              AppGaps.kGap10, 
+              AppGaps.kGap16,
             ],
           ),
         ),
@@ -164,8 +184,8 @@ class TerritoryLeaderboardContent extends StatelessWidget {
         children: [
           // Rank Number dengan latar belakang bulat
           Container(
-            width: 30,
-            height: 30,
+            width: 26,
+            height: 26,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: medalColor ?? _getRankColor(rank),
@@ -175,7 +195,7 @@ class TerritoryLeaderboardContent extends StatelessWidget {
               "$rank",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
+                fontSize: 12,
                 color: Colors.white,
               ),
             ),
@@ -209,12 +229,11 @@ class TerritoryLeaderboardContent extends StatelessWidget {
                   name,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 14,
                     color: isCurrentUser ? Color(0xFF2196F3) : Colors.black,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                
                 Text(
                   "Total Runs: $runs",
                   style: TextStyle(
@@ -225,7 +244,7 @@ class TerritoryLeaderboardContent extends StatelessWidget {
               ],
             ),
           ),
-
+          AppGaps.kGap10,
           // Area
           Text(
             area,
