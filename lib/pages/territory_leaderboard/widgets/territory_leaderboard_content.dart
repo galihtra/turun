@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/values_app.dart';
 
 class TerritoryLeaderboardContent extends StatelessWidget {
@@ -95,7 +94,7 @@ class TerritoryLeaderboardContent extends StatelessWidget {
                 runs: 10,
                 area: "450 Km²",
                 isCurrentUser: false,
-                medalColor: Colors.amber,
+                medalColor: Color(0xFFFFD700), // Emas untuk peringkat 1
               ),
               _buildLeaderboardItem(
                 rank: 2,
@@ -103,7 +102,7 @@ class TerritoryLeaderboardContent extends StatelessWidget {
                 runs: 4,
                 area: "340 Km²",
                 isCurrentUser: false,
-                medalColor: Colors.grey[400]!,
+                medalColor: Color(0xFFC0C0C0), // Perak untuk peringkat 2
               ),
               _buildLeaderboardItem(
                 rank: 3,
@@ -111,7 +110,7 @@ class TerritoryLeaderboardContent extends StatelessWidget {
                 runs: 5,
                 area: "300 Km²",
                 isCurrentUser: false,
-                medalColor: Colors.orange[300]!,
+                medalColor: Color(0xFFCD7F32), // Perunggu untuk peringkat 3
               ),
               _buildLeaderboardItem(
                 rank: 4,
@@ -165,8 +164,8 @@ class TerritoryLeaderboardContent extends StatelessWidget {
         children: [
           // Rank Number dengan latar belakang bulat
           Container(
-            width: 36,
-            height: 36,
+            width: 30,
+            height: 30,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: medalColor ?? _getRankColor(rank),
@@ -182,7 +181,24 @@ class TerritoryLeaderboardContent extends StatelessWidget {
             ),
           ),
 
-          SizedBox(width: 16),
+          SizedBox(width: 12),
+
+          // Profile Icon (Avatar)
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.person,
+              color: Colors.grey[600],
+              size: 24,
+            ),
+          ),
+
+          SizedBox(width: 12),
 
           // Name and Runs
           Expanded(
@@ -198,7 +214,7 @@ class TerritoryLeaderboardContent extends StatelessWidget {
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: 4),
+                
                 Text(
                   "Total Runs: $runs",
                   style: TextStyle(
@@ -305,13 +321,13 @@ class TerritoryLeaderboardContent extends StatelessWidget {
   Color _getRankColor(int rank) {
     switch (rank) {
       case 1:
-        return Colors.amber;
+        return Color(0xFFFFD700); // Emas solid
       case 2:
-        return Colors.green;
+        return Color(0xFFC0C0C0); // Perak solid
       case 3:
-        return AppColors.blueLogo;
+        return Color(0xFFCD7F32); // Perunggu solid
       default:
-        return Colors.grey[400]!;
+        return Color(0xFF2196F3); // Biru untuk peringkat lainnya
     }
   }
 }
