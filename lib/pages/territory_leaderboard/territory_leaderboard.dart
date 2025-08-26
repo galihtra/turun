@@ -4,13 +4,17 @@ import 'package:turun/pages/territory_leaderboard/widgets/territory_leaderboard_
 
 class TerritoryLeaderboardPage extends StatefulWidget {
   @override
-  _TerritoryLeaderboardPageState createState() => _TerritoryLeaderboardPageState();
+  _TerritoryLeaderboardPageState createState() =>
+      _TerritoryLeaderboardPageState();
 }
 
 class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
   GoogleMapController? mapController;
-  final DraggableScrollableController _draggableController = DraggableScrollableController();
-  bool _isSheetOpen = false;
+  final DraggableScrollableController _draggableController =
+      DraggableScrollableController();
+  bool _isSheetOpen = true;
+  int _currentPage = 1;
+  final int _totalPages = 5;
 
   final CameraPosition _kGooglePlex = CameraPosition(
     target: LatLng(1.18376, 104.01703),
@@ -19,6 +23,13 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
 
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
+  }
+
+  void _handlePageChange(int newPage) {
+    setState(() {
+      _currentPage = newPage;
+    });
+    // Di sini Anda bisa menambahkan logika untuk mengambil data halaman baru
   }
 
   void _toggleSheet() {
@@ -67,39 +78,44 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
             onMapCreated: _onMapCreated,
             initialCameraPosition: _kGooglePlex,
           ),
-          
-          // Draggable Sheet dengan margin bottom yang lebih besar
-          DraggableScrollableSheet(
-            controller: _draggableController,
-            initialChildSize: 0.15,
-            minChildSize: 0.15,
-            maxChildSize: 0.7,
-            snap: true,
-            snapSizes: [0.15, 0.7],
-            builder: (context, scrollController) {
-              return Container(
-                margin: EdgeInsets.only(bottom: 80), // Tambahkan margin bottom yang besar
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 10,
-                      offset: Offset(0, -2),
+          SafeArea(
+            top: true,
+            bottom: false,
+            child: DraggableScrollableSheet(
+              controller: _draggableController,
+              initialChildSize: 0.35,
+              minChildSize: 0.35,
+              maxChildSize: 1,
+              snap: true,
+              snapSizes: [0.35, 1],
+              builder: (context, scrollController) {
+                return Container(
+                  margin: EdgeInsets.only(bottom: 80),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
                     ),
-                  ],
-                ),
-                child: TerritoryLeaderboardContent(
-                  scrollController: scrollController,
-                  isExpanded: _isSheetOpen,
-                  onToggle: _toggleSheet,
-                ),
-              );
-            },
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                        offset: Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: TerritoryLeaderboardContent(
+                    scrollController: scrollController,
+                    isExpanded: _isSheetOpen,
+                    onToggle: _toggleSheet,
+                    currentPage: _currentPage,
+                    totalPages: _totalPages,
+                    onPageChanged: _handlePageChange,
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),

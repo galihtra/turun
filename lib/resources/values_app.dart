@@ -1,4 +1,5 @@
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:gap/gap.dart';
 
 class AppFontSizes {
   static const double s10 = 10.0;
@@ -11,6 +12,36 @@ class AppFontSizes {
   static const double s32 = 32.0;
   static const double s36 = 36.0;
   static const double s40 = 40.0;
+}
+
+class AppGaps {
+// Gaps
+  static const kGap0 = Gap(0);
+  static const kGap5 = Gap(5);
+  static const kGap4 = Gap(4);
+  static const kGap6 = Gap(6);
+  static const kGap8 = Gap(8);
+  static const kGap10 = Gap(10);
+  static const kGap12 = Gap(12);
+  static const kGap14 = Gap(14);
+  static const kGap15 = Gap(15);
+  static const kGap16 = Gap(16);
+  static const kGap17 = Gap(17);
+  static const kGap18 = Gap(18);
+  static const kGap19 = Gap(19);
+  static const kGap20 = Gap(20);
+  static const kGap21 = Gap(21);
+  static const kGap22 = Gap(22);
+  static const kGap23 = Gap(23);
+  static const kGap24 = Gap(24);
+  static const kGap25 = Gap(25);
+  static const kGap26 = Gap(26);
+  static const kGap30 = Gap(30);
+  static const kGap35 = Gap(35);
+  static const kGap40 = Gap(40);
+  static const kGap50 = Gap(50);
+  static const kGap60 = Gap(60);
+  static const kGap100 = Gap(100);
 }
 
 class AppDimens {
@@ -247,7 +278,7 @@ class AppDimens {
   static double get h350 => 350.0.h;
   static double get h400 => 400.0.h;
   static double get h440 => 440.0.h;
-  
+
 // Radius
   static double get r0 => 0.r;
   static double get r1 => 1.0.r;
