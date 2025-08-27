@@ -65,6 +65,7 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
             top: true,
             bottom: false,
             child: DraggableScrollableSheet(
+
               controller: _draggableController,
               initialChildSize: 0.35,
               minChildSize: 0.35,
@@ -89,6 +90,7 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
                     ],
                   ),
                   child: TerritoryLeaderboardContent(
+                    
                     scrollController: scrollController,
                     isExpanded: _isSheetOpen,
                     currentPage: _currentPage,

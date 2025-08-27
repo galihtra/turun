@@ -148,7 +148,7 @@ class AppStyles {
 
    static final TextStyle label1SemiBold = GoogleFonts.roboto(
     fontWeight: WeightsApp.semiBold,
-    fontSize: AppFontSizes.s20,
+    fontSize: AppFontSizes.s16,
     color: AppColors.black,
   );
   // END LABEL 1
