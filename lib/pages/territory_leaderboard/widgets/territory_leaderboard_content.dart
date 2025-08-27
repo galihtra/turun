@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:turun/pages/territory_leaderboard/runner_profile_page.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
 import 'package:turun/resources/values_app.dart';
@@ -263,10 +264,55 @@ class _TerritoryLeaderboardContentState
             ),
           ),
         ),
-
-        // Detail content yang expandable
         if (isExpanded) _buildDetailContent(name: name),
       ],
+    );
+  }
+
+  Widget _buildProfileButton({required String name}) {
+    return GestureDetector(
+      onTap: () => _navigateToRunnerProfile(name),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppDimens.w12,
+          vertical: AppDimens.h6,
+        ),
+        decoration: BoxDecoration(
+          gradient: AppColors.blueGradient,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.blueLogo.withOpacity(0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_outline, color: Colors.white, size: AppSizes.s16),
+            SizedBox(width: AppDimens.w4),
+            Text(
+              "Profile",
+              style: AppStyles.label2SemiBold.copyWith(
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToRunnerProfile(String name) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RunnerProfilePage(
+          runnerName: name,
+        ),
+      ),
     );
   }
 
@@ -293,14 +339,26 @@ class _TerritoryLeaderboardContentState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // User Info
-          Text(name,
-              style:
-                  AppStyles.body1SemiBold.copyWith(color: AppColors.deepBlue)),
-          SizedBox(height: AppDimens.h4),
-          Text(
-            "27 July 2025",
-            style:
-                AppStyles.body2Medium.copyWith(color: AppColors.grey.shade600),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name,
+                        style: AppStyles.body1SemiBold
+                            .copyWith(color: AppColors.deepBlue)),
+                    SizedBox(height: AppDimens.h4),
+                    Text("27 July 2025",
+                        style: AppStyles.body2Medium
+                            .copyWith(color: AppColors.grey.shade600)),
+                  ],
+                ),
+              ),
+              SizedBox(width: AppDimens.w8),
+              _buildProfileButton(name: name),
+            ],
           ),
           SizedBox(height: AppDimens.h10),
           _buildCapturedArea(),
@@ -317,7 +375,7 @@ class _TerritoryLeaderboardContentState
 
   Widget _buildCapturedArea() {
     return Container(
-      width: double.infinity, // Tambahkan ini untuk full width
+      width: double.infinity,
       padding: const EdgeInsets.all(AppPaddings.p16),
       decoration: BoxDecoration(
         color: AppColors.yellow.shade50,
