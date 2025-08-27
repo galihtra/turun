@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 mixin AppColors {
-
   // Color Gradient
   static const LinearGradient blueGradient = LinearGradient(
     begin: Alignment.topCenter,
@@ -9,8 +8,10 @@ mixin AppColors {
     colors: [Color(0xFF2979FF), Color(0xFF232EA5)],
   );
 
+  static const Color backgroundColor = Color(0xFFFAFCFE);
   static const Color blueLight = Color(0xFFF1F6FF);
   static const Color deepBlue = Color(0xFF142357);
+  static const Color deepBlueOpacity = Color(0x80142357);
   static const Color blueLogo = Color(0xFF2870F4);
   static const Color blueDark = Color(0xFF232EA5);
   static const Color whiteLight = Color(0xFFE5E5E5);

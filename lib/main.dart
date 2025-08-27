@@ -7,6 +7,7 @@ import 'package:turun/data/services/auth_service.dart';
 import 'package:turun/data/wrapper/auth_wrapper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/pages/shell/root_shell.dart';
+import 'package:turun/resources/colors_app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +35,7 @@ class MyApp extends StatelessWidget {
             title: 'TuRun',
             theme: ThemeData(
               useMaterial3: true,
+              scaffoldBackgroundColor: AppColors.backgroundColor,
             ),
             home: child,
           );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:turun/pages/territory_leaderboard/widgets/territory_leaderboard_content.dart';
+import 'package:turun/resources/values_app.dart';
 
 class TerritoryLeaderboardPage extends StatefulWidget {
   @override
@@ -16,7 +17,7 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
   int _currentPage = 1;
   final int _totalPages = 5;
 
-  final CameraPosition _kGooglePlex = CameraPosition(
+  final CameraPosition _kGooglePlex = const CameraPosition(
     target: LatLng(1.18376, 104.01703),
     zoom: 14.4746,
   );
@@ -29,27 +30,9 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
     setState(() {
       _currentPage = newPage;
     });
-    // Di sini Anda bisa menambahkan logika untuk mengambil data halaman baru
   }
 
-  void _toggleSheet() {
-    if (_isSheetOpen) {
-      _draggableController.animateTo(
-        0.15,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    } else {
-      _draggableController.animateTo(
-        0.7,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-    setState(() {
-      _isSheetOpen = !_isSheetOpen;
-    });
-  }
+  
 
   @override
   void initState() {
@@ -87,28 +70,27 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
               minChildSize: 0.35,
               maxChildSize: 1,
               snap: true,
-              snapSizes: [0.35, 1],
+              snapSizes: const [0.35, 1],
               builder: (context, scrollController) {
                 return Container(
-                  margin: EdgeInsets.only(bottom: 80),
+                  margin: const EdgeInsets.only(bottom: AppSizes.s80),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
+                      topLeft: Radius.circular(AppDimens.r20),
+                      topRight: Radius.circular(AppDimens.r20),
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black26,
-                        blurRadius: 10,
-                        offset: Offset(0, -2),
+                        blurRadius: AppDimens.r10,
+                        offset: const Offset(0, -2),
                       ),
                     ],
                   ),
                   child: TerritoryLeaderboardContent(
                     scrollController: scrollController,
                     isExpanded: _isSheetOpen,
-                    onToggle: _toggleSheet,
                     currentPage: _currentPage,
                     totalPages: _totalPages,
                     onPageChanged: _handlePageChange,
