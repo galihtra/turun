@@ -6,6 +6,7 @@ const String ICON_PATH = 'assets/icons';
 class AppImages {
   static const String logo = '$IMAGE_PATH/logo.png';
   static const String background = '$IMAGE_PATH/background.jpg';
+  static const String exMapsLandmark = '$IMAGE_PATH/example_maps_landmark.png';
 }
 
 class AppIcons {
@@ -19,4 +20,8 @@ class AppIcons {
   static const String territory = '$ICON_PATH/ic_territory.svg';
   static const String territoryActive = '$ICON_PATH/ic_territory_active.svg';
   static const String peopleRunning = '$ICON_PATH/ic_people_running.svg';
+  static const String totalRun = '$ICON_PATH/ic_total_run.svg';
+  static const String totalDuration = '$ICON_PATH/ic_total_duration.svg';
+  static const String totalDistance = '$ICON_PATH/ic_total_distance.svg';
+  static const String totalArea = '$ICON_PATH/ic_total_area.svg';
 }

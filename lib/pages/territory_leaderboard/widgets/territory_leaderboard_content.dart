@@ -291,8 +291,12 @@ class _TerritoryLeaderboardContentState
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person_outline, color: Colors.white, size: AppSizes.s16),
-            SizedBox(width: AppDimens.w4),
+            const Icon(
+              Icons.person_outline,
+              color: Colors.white,
+              size: AppSizes.s16,
+            ),
+            AppGaps.kGap4,
             Text(
               "Profile",
               style: AppStyles.label2SemiBold.copyWith(
