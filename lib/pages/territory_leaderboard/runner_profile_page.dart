@@ -40,9 +40,9 @@ class RunnerProfilePage extends StatelessWidget {
                   const Icon(
                     Icons.person_outline,
                     color: AppColors.deepBlue,
-                    size: 50, // Menggunakan nilai langsung sebagai fallback
+                    size: 50,
                   ),
-                  const SizedBox(height: 8), // Fallback untuk AppGaps.kGap8
+                  const SizedBox(height: 8),
                   Text(
                     runnerName,
                     style: AppStyles.title3SemiBold.copyWith(
@@ -52,7 +52,7 @@ class RunnerProfilePage extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 24), // Fallback untuk AppGaps.kGap24
+            const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
@@ -62,7 +62,7 @@ class RunnerProfilePage extends StatelessWidget {
                     value: "10",
                   ),
                 ),
-                const SizedBox(width: 12), // Fallback untuk AppGaps.kGap12
+                const SizedBox(width: 12),
                 Expanded(
                   child: _buildStatCard(
                     icon: AppIcons.totalArea,
@@ -72,7 +72,7 @@ class RunnerProfilePage extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12), // Fallback untuk AppGaps.kGap12
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -82,7 +82,7 @@ class RunnerProfilePage extends StatelessWidget {
                     value: "24 km",
                   ),
                 ),
-                const SizedBox(width: 12), // Fallback untuk AppGaps.kGap12
+                const SizedBox(width: 12),
                 Expanded(
                   child: _buildStatCard(
                     icon: AppIcons.totalDuration,
@@ -92,25 +92,20 @@ class RunnerProfilePage extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 24), // Fallback untuk AppGaps.kGap24
+            const SizedBox(height: 24),
             Text(
               "Running History",
               style:
                   AppStyles.title2SemiBold.copyWith(color: AppColors.deepBlue),
             ),
-            const SizedBox(height: 16), // Fallback untuk AppGaps.kGap16
-            ListView.separated(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: 6,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => _buildRunHistoryItem(
-                title: "Morning Run",
-                date: "27 July 2025 08:00 AM",
-                distance: "0.5 km",
-                duration: "03:10",
-                avgPace: "06:20",
-              ),
+            const SizedBox(height: 16),
+            _buildRunHistoryItem(
+              title: "Morning Run",
+              date: "27 July 2025 08:00 AM",
+              distance: "0.5 km",
+              duration: "03:10",
+              avgPace: "06:20",
+              landmarkImage: AppImages.exMapsLandmark,
             ),
           ],
         ),
@@ -136,10 +131,10 @@ class RunnerProfilePage extends StatelessWidget {
             children: [
               SvgPicture.asset(
                 icon,
-                height: 24, // Fallback untuk AppDimens.h24
-                width: 24,  // Fallback untuk AppDimens.w24
+                height: 24,
+                width: 24,
               ),
-              const SizedBox(width: 8), // Fallback untuk AppGaps.kGap8
+              const SizedBox(width: 8),
               Text(
                 title,
                 style: AppStyles.body3Medium
@@ -161,22 +156,23 @@ class RunnerProfilePage extends StatelessWidget {
   }
 
   Widget _buildRunHistoryItem({
-    String title = "Morning Run",
-    String date = "27 July 2025 08:00 AM",
-    String distance = "0.5 km",
-    String duration = "03:10",
-    String avgPace = "06:20",
-    String landmarkImage = AppImages.exMapsLandmark,
+    required String title,
+    required String date,
+    required String distance,
+    required String duration,
+    required String avgPace,
+    required String landmarkImage,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16), // Fallback untuk AppPaddings.p16
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(12), // Fallback untuk AppDimens.r12
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -186,37 +182,61 @@ class RunnerProfilePage extends StatelessWidget {
         children: [
           Row(
             children: [
-              Image.asset(
-                landmarkImage,
-                height: 30, // Fallback untuk AppDimens.h30
-                width: 30,  // Fallback untuk AppDimens.w30
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: AppStyles.body2Medium.copyWith(
-                    color: AppColors.deepBlue,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Container(
+                height: 100,
+                width: 90,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey[200],
+                ),
+                child: Image.asset(
+                  landmarkImage,
+                  fit: BoxFit.cover,
                 ),
               ),
-              const Icon(Icons.directions_run, 
-                  size: 16, color: AppColors.deepBlue),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            date,
-            style: AppStyles.body3Medium.copyWith(color: AppColors.grey),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _RunDetailItem(title: "Distance", value: distance),
-              _RunDetailItem(title: "Duration", value: duration),
-              _RunDetailItem(title: "Avg pace", value: avgPace),
+              AppGaps.kGap12,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          title,
+                          style: AppStyles.body2SemiBold.copyWith(
+                            color: AppColors.deepBlue,
+                          ),
+                        ),
+                        AppGaps.kGap8,
+                        Text(
+                          "0.02 km²",
+                          style: AppStyles.body1SemiBold.copyWith(
+                            color: AppColors.deepBlue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    AppGaps.kGap12,
+                    Text(
+                      date,
+                      style: AppStyles.body3SemiBold.copyWith(
+                        color: AppColors.deepBlue,
+                      ),
+                    ),
+                    AppGaps.kGap12,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _RunDetailItem(title: "Distance", value: distance),
+                        _RunDetailItem(title: "Duration", value: duration),
+                        _RunDetailItem(title: "Avg pace", value: avgPace),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -230,10 +250,9 @@ class _RunDetailItem extends StatelessWidget {
   final String value;
 
   const _RunDetailItem({
-    Key? key,
     required this.title,
     required this.value,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -241,12 +260,14 @@ class _RunDetailItem extends StatelessWidget {
       children: [
         Text(
           title,
-          style: AppStyles.body2SemiBold.copyWith(color: AppColors.grey),
+          style: AppStyles.body3Medium.copyWith(
+            color: AppColors.grey,
+          ),
         ),
-        const SizedBox(height: 4),
+        AppGaps.kGap4,
         Text(
           value,
-          style: AppStyles.body3SemiBold.copyWith(
+          style: AppStyles.body1SemiBold.copyWith(
             color: AppColors.deepBlue,
             fontWeight: FontWeight.bold,
           ),
