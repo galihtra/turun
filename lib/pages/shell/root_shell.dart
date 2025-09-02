@@ -3,6 +3,7 @@ import 'package:turun/components/bottom_navigation/bottom_nav_bar.dart';
 import 'package:turun/pages/history/history_page.dart';
 import 'package:turun/pages/home/home_page.dart';
 import 'package:turun/pages/profile/profile_page.dart';
+import 'package:turun/pages/running/running_page.dart';
 import 'package:turun/pages/territory_leaderboard/territory_leaderboard_page.dart';
 import 'package:turun/resources/values_app.dart';
 import '../../../../resources/colors_app.dart';
@@ -34,10 +35,10 @@ class _RootShellState extends State<RootShell> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: GestureDetector(
         onTap: () {
-          // Navigator.push(
-          //   context,
-          //   MaterialPageRoute(builder: (_) => const StartPage()),
-          // );
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const RunningPage()),
+          );
         },
         child: Container(
           width: AppDimens.w70,
