@@ -37,7 +37,7 @@ class _RootShellState extends State<RootShell> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const RunningPage()),
+            MaterialPageRoute(builder: (_) => const RunningPage ()),
           );
         },
         child: Container(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:turun/resources/values_app.dart';
 
 class RunningPage extends StatefulWidget {
   const RunningPage({super.key});
@@ -20,7 +21,7 @@ class _RunningPageState extends State<RunningPage> {
     mapController = controller;
   }
 
-  int _selectedMode = 0; // 0 = Game, 1 = Solo
+  int _selectedMode = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +29,6 @@ class _RunningPageState extends State<RunningPage> {
       body: Stack(
         alignment: Alignment.center,
         children: [
-          /// Background Google Map
           GoogleMap(
             onMapCreated: _onMapCreated,
             initialCameraPosition: _kGooglePlex,
@@ -36,17 +36,15 @@ class _RunningPageState extends State<RunningPage> {
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
           ),
-
-          /// Toggle Game / Solo
           Positioned(
             top: 60,
             left: MediaQuery.of(context).size.width * 0.2,
             right: MediaQuery.of(context).size.width * 0.2,
             child: Container(
-              height: 45,
+              height: AppDimens.h45,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(AppDimens.r30),
               ),
               child: Row(
                 children: [
@@ -58,7 +56,7 @@ class _RunningPageState extends State<RunningPage> {
                           color: _selectedMode == 0
                               ? Colors.blue
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(AppDimens.r30),
                         ),
                         child: Center(
                           child: Row(
@@ -68,8 +66,8 @@ class _RunningPageState extends State<RunningPage> {
                                   color: _selectedMode == 0
                                       ? Colors.white
                                       : Colors.black54,
-                                  size: 18),
-                              const SizedBox(width: 5),
+                                  size: AppSizes.s18),
+                              AppGaps.kGap5,
                               Text(
                                 "Game",
                                 style: TextStyle(
@@ -113,8 +111,6 @@ class _RunningPageState extends State<RunningPage> {
               ),
             ),
           ),
-
-          /// Tombol START (tengah bawah)
           Positioned(
             bottom: 40,
             child: ElevatedButton(
@@ -122,30 +118,28 @@ class _RunningPageState extends State<RunningPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(AppDimens.r30),
                 ),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                    EdgeInsets.symmetric(horizontal: AppDimens.w40, vertical: AppDimens.h15),
               ),
               child: const Row(
                 children: [
                   Text(
                     "START",
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: AppSizes.s18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(width: 8),
+                  AppGaps.kGap8,
                   Icon(Icons.play_arrow, color: Colors.white),
                 ],
               ),
             ),
           ),
-
-          /// Tombol Globe (kiri bawah)
-          Positioned(
+          const Positioned(
             bottom: 50,
             left: 20,
             child: CircleAvatar(
@@ -153,9 +147,7 @@ class _RunningPageState extends State<RunningPage> {
               child: Icon(Icons.public, color: Colors.black87),
             ),
           ),
-
-          /// Tombol Lokasi (kanan bawah)
-          Positioned(
+          const Positioned(
             bottom: 50,
             right: 20,
             child: CircleAvatar(
