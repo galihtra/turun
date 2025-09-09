@@ -32,6 +32,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_dotenv: ^5.2.1
+  flutter_launcher_icons: ^0.14.4
   flutter_screenutil: ^5.9.3
   flutter_svg: null
   gap: ^3.0.1
@@ -45,6 +46,11 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   flutter_test:
     sdk: flutter
+
+flutter_launcher_icons:
+  image_path: "assets/images/logo.png"
+  android: "launcher_icon"
+  ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
