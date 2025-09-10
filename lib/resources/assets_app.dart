@@ -2,11 +2,16 @@
 
 const String IMAGE_PATH = 'assets/images';
 const String ICON_PATH = 'assets/icons';
+const String LOTTIE_PATH = 'assets/lotties';
 
 class AppImages {
   static const String logo = '$IMAGE_PATH/logo.png';
   static const String background = '$IMAGE_PATH/background.jpg';
   static const String exMapsLandmark = '$IMAGE_PATH/example_maps_landmark.png';
+}
+
+class AppLotties {
+  static const String rocket = '$LOTTIE_PATH/rocket.json';
 }
 
 class AppIcons {
@@ -24,4 +29,6 @@ class AppIcons {
   static const String totalDuration = '$ICON_PATH/ic_total_duration.svg';
   static const String totalDistance = '$ICON_PATH/ic_total_distance.svg';
   static const String totalArea = '$ICON_PATH/ic_total_area.svg';
+  static const String drinkWater = '$ICON_PATH/ic_drink_water.svg';
+  static const String steps = '$ICON_PATH/ic_steps.svg';
 }

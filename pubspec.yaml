@@ -28,6 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  circular_seek_bar: ^1.1.1
   cupertino_icons: ^1.0.8
   flutter:
     sdk: flutter
@@ -39,6 +40,7 @@ dependencies:
   google_fonts: ^6.3.0
   google_maps_flutter: null
   google_sign_in: null
+  lottie: 
   provider: ^6.1.5+1
   supabase_flutter: ^2.9.1
 
@@ -65,6 +67,7 @@ flutter:
     - .env
     - assets/images/
     - assets/icons/
+    - assets/lotties/
   #   - images/a_dot_ham.jpeg
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
