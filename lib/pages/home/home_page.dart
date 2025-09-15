@@ -1,3 +1,4 @@
+import 'package:circular_seek_bar/circular_seek_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -5,7 +6,6 @@ import 'package:turun/base_widgets/button/custom_badge_button.dart';
 import 'package:turun/resources/assets_app.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/values_app.dart';
-import 'package:circular_seek_bar/circular_seek_bar.dart';
 
 import '../../resources/styles_app.dart';
 
@@ -211,25 +211,50 @@ class _HomePageState extends State<HomePage> {
                                   AppDimens.r30,
                                 ),
                                 child: LinearProgressIndicator(
-                                  value: 1000 / 3500, // 1000 steps / 3500 steps
+                                  value: 1000 / 3500,
                                   color: AppColors.green,
                                   backgroundColor:
                                       AppColors.green.withOpacity(0.2),
-                                  minHeight:
-                                      8, 
-                              ),
+                                  minHeight: 8,
                                 ),
+                              ),
                               AppGaps.kGap6,
                               Text(
                                 "1000/3500",
-                                    style: AppStyles.body2Regular.copyWith(
-                                      color: AppColors.green,
-                                    ),
+                                style: AppStyles.body2Regular.copyWith(
+                                  color: AppColors.green,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      )
+                      ),
+                      AppGaps.kGap16,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Latest Activity",
+                            style: AppStyles.title1SemiBold.copyWith(
+                              color: AppColors.deepBlue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const CustomBadgeButton(
+                            buttonText: "See all",
+                            iconData: Icons.arrow_forward_ios,
+                          ),
+                        ],
+                      ),
+                      AppGaps.kGap8,
+                      // _buildRunHistoryItem(
+                      //   title: "Morning Run",
+                      //   date: "27 July 2025 08:00 AM",
+                      //   distance: "0.5 km",
+                      //   duration: "03:10",
+                      //   avgPace: "06:20",
+                      //   landmarkImage: AppImages.exMapsLandmark,
+                      // ),
                     ],
                   ),
                 ),
