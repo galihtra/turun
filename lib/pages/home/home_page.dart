@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/base_widgets/button/custom_badge_button.dart';
+import 'package:turun/pages/territory_leaderboard/widgets/run_history_item.dart';
 import 'package:turun/resources/assets_app.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/values_app.dart';
 
 import '../../resources/styles_app.dart';
+import '../water_reminder/water_reminder_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -153,22 +155,33 @@ class _HomePageState extends State<HomePage> {
                                 ],
                               ),
                               AppGaps.kGap16,
-                              Row(
-                                children: [
-                                  SvgPicture.asset(
-                                    AppIcons.drinkWater,
-                                    width: 18,
-                                    height: 18,
-                                  ),
-                                  AppGaps.kGap8,
-                                  Text(
-                                    "Drink Water",
-                                    style: AppStyles.label1SemiBold.copyWith(
-                                      color: AppColors.deepBlue,
-                                      fontSize: 16,
+                              InkWell(
+                                onTap: () {
+                                  // Navigate to WaterReminderPage
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            WaterReminderPage()),
+                                  );
+                                },
+                                child: Row(
+                                  children: [
+                                    SvgPicture.asset(
+                                      AppIcons.drinkWater,
+                                      width: 18,
+                                      height: 18,
                                     ),
-                                  ),
-                                ],
+                                    AppGaps.kGap8,
+                                    Text(
+                                      "Drink Water",
+                                      style: AppStyles.label1SemiBold.copyWith(
+                                        color: AppColors.deepBlue,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               AppGaps.kGap8,
                               ClipRRect(
@@ -235,7 +248,7 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           Text(
                             "Latest Activity",
-                            style: AppStyles.title1SemiBold.copyWith(
+                            style: AppStyles.title2SemiBold.copyWith(
                               color: AppColors.deepBlue,
                               fontWeight: FontWeight.bold,
                             ),
@@ -246,15 +259,15 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
-                      AppGaps.kGap8,
-                      // _buildRunHistoryItem(
-                      //   title: "Morning Run",
-                      //   date: "27 July 2025 08:00 AM",
-                      //   distance: "0.5 km",
-                      //   duration: "03:10",
-                      //   avgPace: "06:20",
-                      //   landmarkImage: AppImages.exMapsLandmark,
-                      // ),
+                      AppGaps.kGap16,
+                      const RunHistoryItem(
+                        title: "Morning Run",
+                        date: "27 July 2025 08:00 AM",
+                        distance: "0.5 km",
+                        duration: "03:10",
+                        avgPace: "06:20",
+                        landmarkImage: AppImages.exMapsLandmark,
+                      ),
                     ],
                   ),
                 ),

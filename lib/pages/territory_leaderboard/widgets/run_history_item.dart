@@ -37,6 +37,9 @@ class RunHistoryItem extends StatelessWidget {
           ),
         ],
       ),
+      constraints: BoxConstraints(
+        minWidth: 250, 
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -22,8 +22,8 @@ class CustomBadgeButton extends StatelessWidget {
       },
       style: TextButton.styleFrom(
         padding: EdgeInsets.symmetric(
-          horizontal: AppDimens.w20,
-          vertical: AppDimens.h6,
+          horizontal: AppDimens.w16,
+          vertical: AppDimens.h2,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimens.r30),
