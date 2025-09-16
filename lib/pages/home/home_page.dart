@@ -4,12 +4,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/base_widgets/button/custom_badge_button.dart';
 import 'package:turun/pages/territory_leaderboard/widgets/run_history_item.dart';
+import 'package:turun/pages/today_activities/activity_today_tab_page.dart';
 import 'package:turun/resources/assets_app.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/values_app.dart';
 
 import '../../resources/styles_app.dart';
-import '../water_reminder/water_reminder_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -148,40 +148,38 @@ class _HomePageState extends State<HomePage> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const CustomBadgeButton(
+                                  CustomBadgeButton(
                                     buttonText: "Detail",
                                     iconData: Icons.arrow_forward_ios,
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              ActivityTodayTabPage(),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ],
                               ),
                               AppGaps.kGap16,
-                              InkWell(
-                                onTap: () {
-                                  // Navigate to WaterReminderPage
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            WaterReminderPage()),
-                                  );
-                                },
-                                child: Row(
-                                  children: [
-                                    SvgPicture.asset(
-                                      AppIcons.drinkWater,
-                                      width: 18,
-                                      height: 18,
+                              Row(
+                                children: [
+                                  SvgPicture.asset(
+                                    AppIcons.drinkWater,
+                                    width: 18,
+                                    height: 18,
+                                  ),
+                                  AppGaps.kGap8,
+                                  Text(
+                                    "Drink Water",
+                                    style: AppStyles.label1SemiBold.copyWith(
+                                      color: AppColors.deepBlue,
+                                      fontSize: 16,
                                     ),
-                                    AppGaps.kGap8,
-                                    Text(
-                                      "Drink Water",
-                                      style: AppStyles.label1SemiBold.copyWith(
-                                        color: AppColors.deepBlue,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                               AppGaps.kGap8,
                               ClipRRect(

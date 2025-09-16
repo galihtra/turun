@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WaterReminderPage extends StatefulWidget {
+  const WaterReminderPage({super.key});
+
   @override
   _WaterReminderPageState createState() => _WaterReminderPageState();
 }
@@ -57,7 +59,6 @@ class _WaterReminderPageState extends State<WaterReminderPage> {
     await _prefs.setInt('waterIntake', _waterIntake);
   }
 
-  // Reset water intake
   _resetIntake() async {
     setState(() {
       _waterIntake = 0;
@@ -65,7 +66,6 @@ class _WaterReminderPageState extends State<WaterReminderPage> {
     await _prefs.setInt('waterIntake', 0);
     await _prefs.setString('lastResetDate', DateTime.now().toString());
     
-    // Show confirmation
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Water intake reset to 0'),
@@ -77,20 +77,9 @@ class _WaterReminderPageState extends State<WaterReminderPage> {
   @override
   Widget build(BuildContext context) {
     double progress = _waterIntake / _targetIntake;
-    progress = progress > 1.0 ? 1.0 : progress; // Ensure progress doesn't exceed 1.0
+    progress = progress > 1.0 ? 1.0 : progress; 
     
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Water Reminder'),
-        backgroundColor: Colors.blue[700],
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _resetIntake,
-            tooltip: 'Reset intake',
-          ),
-        ],
-      ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
