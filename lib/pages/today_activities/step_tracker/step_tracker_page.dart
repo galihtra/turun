@@ -366,17 +366,197 @@ class _StepTrackerState extends State<StepTrackerPage> {
                               horizontal: 30,
                               vertical: 15,
                             )),
-                        child: const Text("Grant Permission", style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),),
+                        child: const Text(
+                          "Grant Permission",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
-                      SizedBox(height: 20,),
-                      // TextButton(onPressed:  (), child: child)
+                      SizedBox(
+                        height: 20,
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          await openAppSettings();
+                        },
+                        child: Text(
+                          "Open Settings",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.blue[700],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 )
-              : Container(),
+              : SingleChildScrollView(
+                  padding: EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(30),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.blue[400]!,
+                              Colors.blue[600]!,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blue.withOpacity(0.2),
+                              blurRadius: 10,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  height: 200,
+                                  width: 200,
+                                  child: CircularProgressIndicator(
+                                    value: progress.clamp(0.0, 1.0),
+                                    strokeWidth: 12,
+                                    backgroundColor:
+                                        Colors.white.withOpacity(0.3),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                ),
+                                Column(
+                                  children: [
+                                    Icon(
+                                      size: 50,
+                                      color: Colors.white,
+                                      _status == 'walking'
+                                          ? Icons.directions_walk
+                                          : Icons.accessibility_new,
+                                    ),
+                                    SizedBox(
+                                      height: 10,
+                                    ),
+                                    Text(
+                                      "$_steps",
+                                      style: TextStyle(
+                                        fontSize: 40,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    Text(
+                                      "of $_dailyGoal Steps",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.white.withOpacity(0.8),
+                                      ),
+                                    )
+                                  ],
+                                )
+                              ],
+                            ),
+                            SizedBox(
+                              height: 20,
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 20,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _status == "walking"
+                                    ? Colors.green
+                                    : Colors.white.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                _status == 'walking' ? 'Walking' : 'Stopped',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(
+                        height: 30,
+                      ),
+                      Container(
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: Offset(0, 5))
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Weekly Activity",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(
+                              height: 20,
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: _weeklyData.map((data) {
+                                final height = (data['steps'] / _dailyGoal * 100).clamp(0.0, 100.0);
+                                final isToday = DateFormat('yyyy-MM-dd').format(data['date']) == DateFormat('yyyy-MM-dd').format(DateTime.now());
+                                return Column(
+                                  children: [
+                                    Text(
+                                      data['day'],
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      height: 5,
+                                    ),
+                                    Container(
+                                      width: 30,
+                                      height: data['steps'] / 100,
+                                      color: Colors.blue[300],
+                                    ),
+                                    SizedBox(
+                                      height: 5,
+                                    ),
+                                    Text(
+                                      "${data['steps']} steps",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
     );
   }
 }
