@@ -17,6 +17,7 @@ mixin AppColors {
   static const Color deepBlueOpacity = Color(0x80142357);
   static const Color blueLogo = Color(0xFF2870F4);
   static const Color blueDark = Color(0xFF232EA5);
+  static const Color blueThird = Color(0xFF19368F);
   static const Color whiteLight = Color(0xFFE5E5E5);
   static const Color unselected = Color(0xFFFBFBFB);
   static const Color titleExpansion = Color(0xFF52575D);

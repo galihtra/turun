@@ -40,8 +40,12 @@ dependencies:
   google_fonts: ^6.3.0
   google_maps_flutter: null
   google_sign_in: null
-  lottie: 
+  intl: ^0.20.2
+  lottie: null
+  pedometer: ^4.1.1
+  permission_handler: ^12.0.1
   provider: ^6.1.5+1
+  shared_preferences: ^2.5.3
   supabase_flutter: ^2.9.1
 
 dev_dependencies:

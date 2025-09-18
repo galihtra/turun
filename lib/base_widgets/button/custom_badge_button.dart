@@ -7,23 +7,23 @@ import '../../resources/values_app.dart';
 class CustomBadgeButton extends StatelessWidget {
   final String buttonText;
   final IconData iconData;
+  final VoidCallback? onPressed;
 
   const CustomBadgeButton({
     super.key,
     required this.buttonText,
     required this.iconData,
+    this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextButton(
-      onPressed: () {
-        
-      },
+      onPressed: onPressed,
       style: TextButton.styleFrom(
         padding: EdgeInsets.symmetric(
-          horizontal: AppDimens.w20,
-          vertical: AppDimens.h6,
+          horizontal: AppDimens.w16,
+          vertical: AppDimens.h2,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimens.r30),

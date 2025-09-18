@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:turun/resources/assets_app.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
-import 'package:turun/resources/values_app.dart';
+import 'widgets/run_history_item.dart';
 
 class RunnerProfilePage extends StatelessWidget {
   final String runnerName;
@@ -99,7 +99,7 @@ class RunnerProfilePage extends StatelessWidget {
                   AppStyles.title2SemiBold.copyWith(color: AppColors.deepBlue),
             ),
             const SizedBox(height: 16),
-            _buildRunHistoryItem(
+            const RunHistoryItem(
               title: "Morning Run",
               date: "27 July 2025 08:00 AM",
               distance: "0.5 km",
@@ -152,127 +152,6 @@ class RunnerProfilePage extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildRunHistoryItem({
-    required String title,
-    required String date,
-    required String distance,
-    required String duration,
-    required String avgPace,
-    required String landmarkImage,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                height: 100,
-                width: 90,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.grey[200],
-                ),
-                child: Image.asset(
-                  landmarkImage,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              AppGaps.kGap12,
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          title,
-                          style: AppStyles.body2SemiBold.copyWith(
-                            color: AppColors.deepBlue,
-                          ),
-                        ),
-                        AppGaps.kGap8,
-                        Text(
-                          "0.02 km²",
-                          style: AppStyles.body1SemiBold.copyWith(
-                            color: AppColors.deepBlue,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    AppGaps.kGap12,
-                    Text(
-                      date,
-                      style: AppStyles.body3SemiBold.copyWith(
-                        color: AppColors.deepBlue,
-                      ),
-                    ),
-                    AppGaps.kGap12,
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _RunDetailItem(title: "Distance", value: distance),
-                        _RunDetailItem(title: "Duration", value: duration),
-                        _RunDetailItem(title: "Avg pace", value: avgPace),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RunDetailItem extends StatelessWidget {
-  final String title;
-  final String value;
-
-  const _RunDetailItem({
-    required this.title,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          title,
-          style: AppStyles.body3Medium.copyWith(
-            color: AppColors.grey,
-          ),
-        ),
-        AppGaps.kGap4,
-        Text(
-          value,
-          style: AppStyles.body1SemiBold.copyWith(
-            color: AppColors.deepBlue,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
     );
   }
 }
