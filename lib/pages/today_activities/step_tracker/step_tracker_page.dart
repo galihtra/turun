@@ -300,6 +300,8 @@ class _StepTrackerState extends State<StepTrackerPage> {
   @override
   Widget build(BuildContext context) {
     final progress = _dailyGoal > 0 ? _steps / _dailyGoal : 0.0;
+    print("Steps: $_steps, Goal: $_dailyGoal, Progress: $progress");
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Step Counter"),
@@ -491,6 +493,32 @@ class _StepTrackerState extends State<StepTrackerPage> {
                       SizedBox(
                         height: 30,
                       ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildStatCard(
+                            icon: Icons.local_fire_department,
+                            value: _calories.toStringAsFixed(1),
+                            unit: 'cal',
+                            color: Colors.orange,
+                          ),
+                          _buildStatCard(
+                            icon: Icons.straighten,
+                            value: _distance.toStringAsFixed(2),
+                            unit: 'km',
+                            color: Colors.purple,
+                          ),
+                          _buildStatCard(
+                            icon: Icons.timer,
+                            value: (_steps * 0.008).toStringAsFixed(0),
+                            unit: 'min',
+                            color: Colors.teal,
+                          ),
+                        ],
+                      ),
+                      SizedBox(
+                        height: 30,
+                      ),
                       Container(
                         padding: EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -520,31 +548,42 @@ class _StepTrackerState extends State<StepTrackerPage> {
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: _weeklyData.map((data) {
-                                final height = (data['steps'] / _dailyGoal * 100).clamp(0.0, 100.0);
-                                final isToday = DateFormat('yyyy-MM-dd').format(data['date']) == DateFormat('yyyy-MM-dd').format(DateTime.now());
+                                final height =
+                                    (data['steps'] / _dailyGoal * 100)
+                                        .clamp(10.0, 100.0);
+                                final isToday = DateFormat('yyyy-MM-dd')
+                                        .format(data['date']) ==
+                                    DateFormat('yyyy-MM-dd').format(
+                                      DateTime.now(),
+                                    );
                                 return Column(
                                   children: [
-                                    Text(
-                                      data['day'],
-                                      style: TextStyle(
-                                        fontSize: 14,
+                                    Container(
+                                      width: 35,
+                                      height: height.toDouble(),
+                                      decoration: BoxDecoration(
+                                        gradient: isToday
+                                            ? LinearGradient(
+                                                colors: [
+                                                  Colors.blue[400]!,
+                                                  Colors.blue[600]!,
+                                                ],
+                                              )
+                                            : null,
+                                        color:
+                                            !isToday ? Colors.grey[300] : null,
+                                        borderRadius: BorderRadius.circular(5),
                                       ),
                                     ),
                                     SizedBox(
                                       height: 5,
                                     ),
-                                    Container(
-                                      width: 30,
-                                      height: data['steps'] / 100,
-                                      color: Colors.blue[300],
-                                    ),
-                                    SizedBox(
-                                      height: 5,
-                                    ),
                                     Text(
-                                      "${data['steps']} steps",
+                                      data['day'],
                                       style: TextStyle(
                                         fontSize: 12,
+                                        fontWeight:
+                                            isToday ? FontWeight.bold : null,
                                       ),
                                     ),
                                   ],
@@ -557,6 +596,57 @@ class _StepTrackerState extends State<StepTrackerPage> {
                     ],
                   ),
                 ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String value,
+    required String unit,
+    required Color color,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(15),
+      width: MediaQuery.of(context).size.width * 0.25,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(
+              0.1,
+            ),
+            spreadRadius: 1,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 30,
+          ),
+          SizedBox(
+            height: 30,
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            unit,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
