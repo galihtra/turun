@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/base_widgets/button/custom_badge_button.dart';
 import 'package:turun/pages/territory_leaderboard/widgets/run_history_item.dart';
-import 'package:turun/pages/today_activities/activity_today_tab_page.dart';
 import 'package:turun/resources/assets_app.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/values_app.dart';
@@ -20,8 +19,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final SupabaseClient supabase = Supabase.instance.client;
-
-  final ValueNotifier<double> _valueNotifier = ValueNotifier(0.2);
 
   double _progress = 90;
 
@@ -152,13 +149,13 @@ class _HomePageState extends State<HomePage> {
                                     buttonText: "Detail",
                                     iconData: Icons.arrow_forward_ios,
                                     onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              ActivityTodayTabPage(),
-                                        ),
-                                      );
+                                      // Navigator.push(
+                                      //   context,
+                                      //   MaterialPageRoute(
+                                      //     builder: (context) =>
+                                      //         ActivityTodayTabPage(),
+                                      //   ),
+                                      // );
                                     },
                                   ),
                                 ],
