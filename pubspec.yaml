@@ -28,23 +28,35 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  circular_seek_bar: ^1.1.1
   cupertino_icons: ^1.0.8
   flutter:
     sdk: flutter
   flutter_dotenv: ^5.2.1
+  flutter_launcher_icons: ^0.14.4
   flutter_screenutil: ^5.9.3
   flutter_svg: null
   gap: ^3.0.1
   google_fonts: ^6.3.0
   google_maps_flutter: null
   google_sign_in: null
+  intl: ^0.20.2
+  lottie: null
+  pedometer: ^4.1.1
+  permission_handler: ^12.0.1
   provider: ^6.1.5+1
+  shared_preferences: ^2.5.3
   supabase_flutter: ^2.9.1
 
 dev_dependencies:
   flutter_lints: ^4.0.0
   flutter_test:
     sdk: flutter
+
+flutter_launcher_icons:
+  image_path: "assets/images/logo.png"
+  android: "launcher_icon"
+  ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -59,6 +71,7 @@ flutter:
     - .env
     - assets/images/
     - assets/icons/
+    - assets/lotties/
   #   - images/a_dot_ham.jpeg
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
