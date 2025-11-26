@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/data/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:turun/pages/shell/root_shell.dart';
+import 'package:turun/data/wrapper/auth_wrapper.dart';
 import 'package:turun/resources/colors_app.dart';
 
 void main() async {
@@ -39,7 +39,7 @@ class MyApp extends StatelessWidget {
             home: child,
           );
         },
-        child: const RootShell(),
+        child: const AuthWrapper(),
       ),
     );
   }
