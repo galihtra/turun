@@ -7,6 +7,7 @@ import 'package:turun/data/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/data/wrapper/auth_wrapper.dart';
 import 'package:turun/resources/colors_app.dart';
+                                                                      
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +24,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
+      providers: [  
         ChangeNotifierProvider(create: (_) => AuthService()),
       ],
       child: ScreenUtilInit(

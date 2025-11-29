@@ -1,4 +1,3 @@
-import 'package:circular_seek_bar/circular_seek_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -60,63 +59,6 @@ class _HomePageState extends State<HomePage> {
                         iconData: Icons.arrow_forward_ios,
                       ),
                       AppGaps.kGap24,
-                      CircularSeekBar(
-                        width: double.infinity,
-                        height: 250,
-                        barWidth: 25,
-                        progress: _progress,
-                        startAngle: 45,
-                        sweepAngle: 270,
-                        strokeCap: StrokeCap.butt,
-                        outerThumbStrokeWidth: 30,
-                        progressColor: Colors.blue,
-                        trackColor: AppColors.blueSecondary,
-                        animation: true,
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Distance',
-                                style: AppStyles.label3SemiBold.copyWith(
-                                  color: AppColors.grey.shade500,
-                                ),
-                              ),
-                              Text(
-                                '0.2 Km',
-                                style: AppStyles.title2SemiBold.copyWith(
-                                  color: AppColors.blueDark,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                '/20 Km',
-                                style: AppStyles.title3Regular
-                                    .copyWith(color: AppColors.blueDark),
-                              ),
-                              AppGaps.kGap10,
-                              Text(
-                                'Area',
-                                style: AppStyles.label3SemiBold.copyWith(
-                                  color: AppColors.grey.shade500,
-                                ),
-                              ),
-                              Text(
-                                '0.5 Km²',
-                                style: AppStyles.title2SemiBold.copyWith(
-                                  color: AppColors.blueDark,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                '/2 Km²',
-                                style: AppStyles.label3Regular
-                                    .copyWith(color: AppColors.blueDark),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
