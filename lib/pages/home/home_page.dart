@@ -19,8 +19,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final SupabaseClient supabase = Supabase.instance.client;
 
-  double _progress = 90;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

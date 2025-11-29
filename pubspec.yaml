@@ -37,6 +37,7 @@ dependencies:
   flutter_screenutil: ^5.9.3
   flutter_svg: null
   gap: ^3.0.1
+  geolocator: ^14.0.2
   google_fonts: ^6.3.0
   google_maps_flutter: null
   google_sign_in: null
