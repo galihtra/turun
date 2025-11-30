@@ -8,6 +8,8 @@ import 'package:turun/data/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/data/wrapper/auth_wrapper.dart';
 import 'package:turun/resources/colors_app.dart';
+
+import 'data/providers/user/user_provider.dart';
                                                                       
 
 void main() async {
@@ -27,6 +29,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [  
         ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => RunningProvider()),
       ],
       child: ScreenUtilInit(
