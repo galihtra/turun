@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../resources/colors_app.dart';
 import '../../resources/styles_app.dart';
@@ -68,7 +69,11 @@ class ProfileHeader extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         TextButton(
-          onPressed: () {},
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Edit Profile coming soon!')),
+            );
+          },
           style: TextButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
             backgroundColor: Colors.transparent,
@@ -217,37 +222,232 @@ class ActionButtons extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildActionButton(context, Icons.settings_outlined, 'Settings',
-            const Color(0xFF4A90E2)),
         _buildActionButton(
-            context, Icons.share_outlined, 'Share', const Color(0xFF4A90E2)),
+          context,
+          Icons.settings_outlined,
+          'Settings',
+          const Color(0xFF4A90E2),
+          () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Settings coming soon!')),
+            );
+          },
+        ),
         _buildActionButton(
-            context, Icons.logout, 'Logout', const Color(0xFF4A90E2)),
+          context,
+          Icons.share_outlined,
+          'Share',
+          const Color(0xFF4A90E2),
+          () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Share coming soon!')),
+            );
+          },
+        ),
+        _buildActionButton(
+          context,
+          Icons.logout,
+          'Logout',
+          Colors.red.shade400,
+          () => _showLogoutDialog(context),
+        ),
       ],
     );
   }
 
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.logout,
+                  color: Colors.red.shade400,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Logout',
+                style: AppStyles.title3SemiBold.copyWith(
+                  color: AppColors.deepBlue,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to logout?',
+            style: AppStyles.body2Regular.copyWith(
+              color: AppColors.grey.shade700,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: Text(
+                'Cancel',
+                style: AppStyles.body2SemiBold.copyWith(
+                  color: AppColors.grey.shade600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await _handleLogout(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade400,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Logout',
+                style: AppStyles.body2SemiBold.copyWith(
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Center(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(
+                  'Logging out...',
+                  style: AppStyles.body2Medium.copyWith(
+                    color: AppColors.deepBlue,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      // Logout from Supabase
+      await Supabase.instance.client.auth.signOut();
+
+      if (context.mounted) {
+        Navigator.of(context).pop(); // Close loading
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text(
+                  'Logged out successfully',
+                  style: AppStyles.body2Medium.copyWith(color: Colors.white),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.of(context).pop(); // Close loading
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Failed to logout: ${e.toString()}',
+                    style: AppStyles.body2Medium.copyWith(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildActionButton(
-      BuildContext context, IconData icon, String label, Color color) {
-    return Column(
-      children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
+    BuildContext context,
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color, size: 28),
           ),
-          child: Icon(icon, color: color, size: 28),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: AppStyles.label3SemiBold.copyWith(
-            color: const Color(0xFF1A2B3C),
-          ),
-        )
-      ],
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: AppStyles.label3SemiBold.copyWith(
+              color: const Color(0xFF1A2B3C),
+            ),
+          )
+        ],
+      ),
     );
   }
 }
@@ -318,7 +518,7 @@ class StatsGrid extends StatelessWidget {
               Text(
                 value,
                 style: AppStyles.title1SemiBold.copyWith(
-                  fontWeight: FontWeight.w700, // biar sama seperti style awal
+                  fontWeight: FontWeight.w700,
                   color: const Color(0xFF1A2B3C),
                   height: 1,
                 ),
@@ -374,7 +574,11 @@ class WeightTrackingCard extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Add weight coming soon!')),
+                  );
+                },
                 style: TextButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -447,18 +651,8 @@ class WeightChartPainter extends CustomPainter {
 
     final path = Path();
     final points = [
-      0.6,
-      0.65,
-      0.55,
-      0.7,
-      0.6,
-      0.5,
-      0.55,
-      0.45,
-      0.4,
-      0.35,
-      0.3,
-      0.2
+      0.6, 0.65, 0.55, 0.7, 0.6, 0.5,
+      0.55, 0.45, 0.4, 0.35, 0.3, 0.2
     ];
 
     path.moveTo(0, size.height * points[0]);

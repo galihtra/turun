@@ -1,4 +1,4 @@
-package com.example.turun
+package com.tehobenk.turun
 
 import io.flutter.embedding.android.FlutterActivity
 

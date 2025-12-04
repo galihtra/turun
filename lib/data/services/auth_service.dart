@@ -1,18 +1,9 @@
-// lib/services/auth_service.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
-  
-  static const _webClientId = '392657528338-l6jkm0kah6lm5qsquslpggku02b87ric.apps.googleusercontent.com';
-  
-  late final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: const ['email', 'profile', 'openid'],
-    serverClientId: _webClientId,
-  );
 
   bool _isLoading = false;
   String? _error;
@@ -20,7 +11,6 @@ class AuthService with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // Auto-reset error setelah beberapa waktu
   void _autoResetError() {
     Future.delayed(const Duration(seconds: 5), () {
       if (_error != null) {
@@ -43,7 +33,7 @@ class AuthService with ChangeNotifier {
     _error = error;
     _isLoading = false;
     notifyListeners();
-    _autoResetError(); // Auto-reset setelah 5 detik
+    _autoResetError();
   }
 
   String _getUserFriendlyError(String errorMessage) {
@@ -66,13 +56,12 @@ class AuthService with ChangeNotifier {
     } else if (errorMessage.contains('Network error')) {
       return 'Network connection issue. Please check your internet connection.';
     }
-    
     return 'An error occurred. Please try again.';
   }
 
   // Email sign in
   Future<bool> signInWithEmail(String email, String password) async {
-    _resetError(); // Reset error sebelum operasi baru
+    _resetError();
     _setLoading(true);
 
     try {
@@ -93,8 +82,9 @@ class AuthService with ChangeNotifier {
   }
 
   // Email sign up
-  Future<bool> signUpWithEmail(String email, String password, String fullName) async {
-    _resetError(); // Reset error sebelum operasi baru
+  Future<bool> signUpWithEmail(
+      String email, String password, String fullName) async {
+    _resetError();
     _setLoading(true);
 
     try {
@@ -103,7 +93,7 @@ class AuthService with ChangeNotifier {
         password: password.trim(),
         data: {'full_name': fullName.trim()},
       );
-      
+
       _setLoading(false);
       return response.user != null;
     } on AuthException catch (e) {
@@ -116,53 +106,42 @@ class AuthService with ChangeNotifier {
     }
   }
 
-  // Google sign in
+  // Google sign in - Using Supabase OAuth
+// Google sign in - Using Supabase OAuth
   Future<bool> signInWithGoogle() async {
-    _resetError(); // Reset error sebelum operasi baru
+    _resetError();
     _setLoading(true);
 
     try {
-      if (kIsWeb) {
-        await _supabase.auth.signInWithOAuth(OAuthProvider.google);
-        return true;
-      }
+      debugPrint('🔵 ===== SUPABASE OAUTH START =====');
 
-      await _googleSignIn.signOut();
-      final acct = await _googleSignIn.signIn();
-      if (acct == null) {
+      // Force Google account picker
+      final bool result = await _supabase.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo:
+            kIsWeb ? null : 'io.supabase.tehobenk.turun://login-callback',
+        queryParams: {
+          'prompt': 'select_account', 
+        },
+      );
+      if (!result) {
+        debugPrint('❌ OAuth returned false');
         _setLoading(false);
         return false;
       }
-
-      final auth = await acct.authentication;
-      final idToken = auth.idToken;
-      final accessToken = auth.accessToken;
-
-      if (idToken == null) {
-        throw Exception('Google ID Token is null');
-      }
-
-      await _supabase.auth.signInWithIdToken(
-        provider: OAuthProvider.google,
-        idToken: idToken,
-        accessToken: accessToken,
-      );
-
-      _setLoading(false);
+      debugPrint('✅ OAuth initiated - Opening Google account picker');
       return true;
-    } on AuthException catch (e) {
-      final userFriendlyError = _getUserFriendlyError(e.message);
-      _setError(userFriendlyError);
-      return false;
     } catch (e) {
+      debugPrint('❌ OAUTH ERROR: $e');
       _setError('Failed to sign in with Google. Please try again.');
+      _setLoading(false);
       return false;
     }
-  }
+  } 
 
   // Reset password
   Future<bool> resetPassword(String email) async {
-    _resetError(); // Reset error sebelum operasi baru
+    _resetError();
     _setLoading(true);
 
     try {
@@ -182,17 +161,16 @@ class AuthService with ChangeNotifier {
   // Sign out
   Future<void> signOut() async {
     try {
+      debugPrint('🔵 Signing out...');
       await _supabase.auth.signOut();
-      if (!kIsWeb) {
-        await _googleSignIn.signOut();
-      }
-      _resetError(); // Reset error saat logout
+      debugPrint('✅ Signed out successfully');
+      _resetError();
     } catch (e) {
+      debugPrint('❌ Sign out error: $e');
       _setError('Failed to sign out. Please try again.');
     }
   }
 
-  // Manual reset error - bisa dipanggil dari widget
   void clearError() {
     _resetError();
   }
