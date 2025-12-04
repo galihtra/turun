@@ -7,6 +7,7 @@ const String LOTTIE_PATH = 'assets/lotties';
 class AppImages {
   static const String logo = '$IMAGE_PATH/logo.png';
   static const String background = '$IMAGE_PATH/background.jpg';
+  static const String check = '$IMAGE_PATH/check.png';
   static const String exMapsLandmark = '$IMAGE_PATH/example_maps_landmark.png';
 }
 

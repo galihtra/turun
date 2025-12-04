@@ -33,9 +33,11 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_dotenv: ^5.2.1
+  flutter_easyloading: ^3.0.5
   flutter_launcher_icons: ^0.14.4
   flutter_screenutil: ^5.9.3
   flutter_svg: null
+  fluttertoast: ^9.0.0
   gap: ^3.0.1
   geolocator: ^14.0.2
   google_fonts: ^6.3.0

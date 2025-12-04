@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/pages/auth/auth_page.dart';
 import 'package:turun/pages/shell/root_shell.dart';
 import '../../pages/auth/onboarding/onboarding_page.dart';
+import '../../app/app_logger.dart';
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
@@ -12,7 +13,7 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-  final SupabaseClient supabase = Supabase.instance.client;
+  final SupabaseClient _supabase = Supabase.instance.client;
   
   User? _user;
   bool _isLoading = true;
@@ -21,31 +22,33 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   void initState() {
     super.initState();
+    AppLogger.info(LogLabel.auth, 'AuthWrapper initialized');
     _initAuth();
     _setupAuthListener();
   }
 
   void _setupAuthListener() {
-    // Listen to auth state changes (for OAuth redirect)
-    supabase.auth.onAuthStateChange.listen((event) async {
-      debugPrint('🔵 Auth event: ${event.event}');
+    _supabase.auth.onAuthStateChange.listen((event) async {
+      if (!mounted) return;
+
+      AppLogger.debug(LogLabel.auth, 'Auth event: ${event.event}');
       
       final user = event.session?.user;
 
       if (user != null && _user?.id != user.id) {
-        debugPrint('✅ New user logged in: ${user.email}');
-        // New user logged in, check onboarding status
+        AppLogger.info(LogLabel.auth, 'New user logged in: ${user.email}');
         await _checkOnboardingStatus(user.id);
       } else if (user == null && _user != null) {
-        debugPrint('🔵 User logged out');
-        // User logged out
-        setState(() {
-          _user = null;
-          _hasCompletedOnboarding = false;
-        });
+        AppLogger.info(LogLabel.auth, 'User logged out');
+        if (mounted) {
+          setState(() {
+            _user = null;
+            _hasCompletedOnboarding = false;
+          });
+        }
       }
 
-      if (mounted) {
+      if (mounted && _user?.id != user?.id) {
         setState(() {
           _user = user;
         });
@@ -54,17 +57,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _initAuth() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    final user = supabase.auth.currentUser;
+    final user = _supabase.auth.currentUser;
 
     if (user != null) {
-      debugPrint('🔵 Current user found: ${user.email}');
+      AppLogger.info(LogLabel.auth, 'Current user found: ${user.email}');
       await _checkOnboardingStatus(user.id);
     } else {
-      debugPrint('🔵 No current user');
+      AppLogger.debug(LogLabel.auth, 'No current user');
     }
 
     if (mounted) {
@@ -76,24 +75,26 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   void _onOnboardingComplete() {
-    debugPrint('✅ Onboarding completed!');
-    setState(() {
-      _hasCompletedOnboarding = true;
-    });
+    AppLogger.success(LogLabel.auth, 'Onboarding completed!');
+    if (mounted) {
+      setState(() {
+        _hasCompletedOnboarding = true;
+      });
+    }
   }
 
   Future<void> _checkOnboardingStatus(String userId) async {
     try {
-      debugPrint('🔵 Checking onboarding status for: $userId');
+      AppLogger.debug(LogLabel.auth, 'Checking onboarding status for: $userId');
       
-      final response = await supabase
+      final response = await _supabase
           .from('users')
           .select('has_completed_onboarding')
           .eq('id', userId)
           .maybeSingle();
 
       if (response == null) {
-        debugPrint('⚠️ User not found in database, needs onboarding');
+        AppLogger.warning(LogLabel.auth, 'User not found in database, needs onboarding');
         if (mounted) {
           setState(() {
             _hasCompletedOnboarding = false;
@@ -103,7 +104,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       }
 
       final hasCompleted = response['has_completed_onboarding'] as bool? ?? false;
-      debugPrint('✅ Onboarding status: $hasCompleted');
+      AppLogger.info(LogLabel.auth, 'Onboarding status: $hasCompleted');
 
       if (mounted) {
         setState(() {
@@ -111,7 +112,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         });
       }
     } catch (e) {
-      debugPrint('❌ Error checking onboarding: $e');
+      AppLogger.error(LogLabel.auth, 'Error checking onboarding', e);
       if (mounted) {
         setState(() {
           _hasCompletedOnboarding = false;

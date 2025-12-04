@@ -1,39 +1,37 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../app/finite_state.dart';
+import '../../app/app_logger.dart';
 
 class AuthService with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  bool _isLoading = false;
+  MyState _state = MyState.initial;
   String? _error;
 
-  bool get isLoading => _isLoading;
+  MyState get state => _state;
   String? get error => _error;
+  bool get isLoading => _state.isLoading;
 
-  void _autoResetError() {
-    Future.delayed(const Duration(seconds: 5), () {
-      if (_error != null) {
-        _resetError();
-      }
-    });
+  void _setState(MyState newState) {
+    _state = newState;
+    notifyListeners();
+    AppLogger.debug(LogLabel.auth, 'State changed to: $newState');
   }
 
-  void _resetError() {
+  void _setError(String errorMessage) {
+    _error = _getUserFriendlyError(errorMessage);
+    _setState(MyState.failed);
+    AppLogger.error(LogLabel.auth, 'Error occurred: $_error');
+  }
+
+  void clearError() {
     _error = null;
-    notifyListeners();
-  }
-
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
-  }
-
-  void _setError(String error) {
-    _error = error;
-    _isLoading = false;
-    notifyListeners();
-    _autoResetError();
+    if (_state.isFailed) {
+      _setState(MyState.initial);
+    }
+    AppLogger.debug(LogLabel.auth, 'Error cleared');
   }
 
   String _getUserFriendlyError(String errorMessage) {
@@ -61,21 +59,30 @@ class AuthService with ChangeNotifier {
 
   // Email sign in
   Future<bool> signInWithEmail(String email, String password) async {
-    _resetError();
-    _setLoading(true);
+    if (_state.isLoading) {
+      AppLogger.warning(LogLabel.auth, 'Sign in already in progress');
+      return false;
+    }
+
+    clearError();
+    _setState(MyState.loading);
+    AppLogger.info(LogLabel.auth, 'Starting email sign in for: $email');
 
     try {
       await _supabase.auth.signInWithPassword(
         email: email.trim(),
         password: password.trim(),
       );
-      _setLoading(false);
+      
+      AppLogger.success(LogLabel.auth, 'Email sign in successful');
+      _setState(MyState.loaded);
       return true;
     } on AuthException catch (e) {
-      final userFriendlyError = _getUserFriendlyError(e.message);
-      _setError(userFriendlyError);
+      AppLogger.error(LogLabel.auth, 'Auth exception during sign in', e);
+      _setError(e.message);
       return false;
     } catch (e) {
+      AppLogger.error(LogLabel.auth, 'Unexpected error during sign in', e);
       _setError('An unexpected error occurred. Please try again.');
       return false;
     }
@@ -84,8 +91,14 @@ class AuthService with ChangeNotifier {
   // Email sign up
   Future<bool> signUpWithEmail(
       String email, String password, String fullName) async {
-    _resetError();
-    _setLoading(true);
+    if (_state.isLoading) {
+      AppLogger.warning(LogLabel.auth, 'Sign up already in progress');
+      return false;
+    }
+
+    clearError();
+    _setState(MyState.loading);
+    AppLogger.info(LogLabel.auth, 'Starting email sign up for: $email');
 
     try {
       final response = await _supabase.auth.signUp(
@@ -94,84 +107,112 @@ class AuthService with ChangeNotifier {
         data: {'full_name': fullName.trim()},
       );
 
-      _setLoading(false);
+      AppLogger.success(LogLabel.auth, 'Email sign up successful');
+      _setState(MyState.loaded);
       return response.user != null;
     } on AuthException catch (e) {
-      final userFriendlyError = _getUserFriendlyError(e.message);
-      _setError(userFriendlyError);
+      AppLogger.error(LogLabel.auth, 'Auth exception during sign up', e);
+      _setError(e.message);
       return false;
     } catch (e) {
+      AppLogger.error(LogLabel.auth, 'Unexpected error during sign up', e);
       _setError('An unexpected error occurred. Please try again.');
       return false;
     }
   }
 
-  // Google sign in - Using Supabase OAuth
-// Google sign in - Using Supabase OAuth
+  // Google sign in
   Future<bool> signInWithGoogle() async {
-    _resetError();
-    _setLoading(true);
+    if (_state.isLoading) {
+      AppLogger.warning(LogLabel.google, 'Google sign in already in progress');
+      return false;
+    }
+
+    clearError();
+    _setState(MyState.loading);
+    AppLogger.info(LogLabel.google, 'Starting Google OAuth...');
 
     try {
-      debugPrint('🔵 ===== SUPABASE OAUTH START =====');
-
-      // Force Google account picker
       final bool result = await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo:
             kIsWeb ? null : 'io.supabase.tehobenk.turun://login-callback',
         queryParams: {
-          'prompt': 'select_account', 
+          'prompt': 'select_account',
         },
       );
+
       if (!result) {
-        debugPrint('❌ OAuth returned false');
-        _setLoading(false);
+        AppLogger.error(LogLabel.google, 'OAuth returned false');
+        _setError('Failed to initiate Google sign-in');
         return false;
       }
-      debugPrint('✅ OAuth initiated - Opening Google account picker');
+
+      AppLogger.success(LogLabel.google, 'OAuth initiated successfully');
+      // State akan diupdate oleh auth listener di AuthWrapper
       return true;
     } catch (e) {
-      debugPrint('❌ OAUTH ERROR: $e');
+      AppLogger.error(LogLabel.google, 'Google OAuth error', e);
       _setError('Failed to sign in with Google. Please try again.');
-      _setLoading(false);
       return false;
     }
-  } 
+  }
 
   // Reset password
   Future<bool> resetPassword(String email) async {
-    _resetError();
-    _setLoading(true);
+    if (_state.isLoading) {
+      AppLogger.warning(LogLabel.auth, 'Reset password already in progress');
+      return false;
+    }
+
+    clearError();
+    _setState(MyState.loading);
+    AppLogger.info(LogLabel.auth, 'Sending password reset email to: $email');
 
     try {
       await _supabase.auth.resetPasswordForEmail(email.trim());
-      _setLoading(false);
+      AppLogger.success(LogLabel.auth, 'Password reset email sent');
+      _setState(MyState.loaded);
       return true;
     } on AuthException catch (e) {
-      final userFriendlyError = _getUserFriendlyError(e.message);
-      _setError(userFriendlyError);
+      AppLogger.error(LogLabel.auth, 'Auth exception during password reset', e);
+      _setError(e.message);
       return false;
     } catch (e) {
+      AppLogger.error(LogLabel.auth, 'Unexpected error during password reset', e);
       _setError('Failed to send password reset email. Please try again.');
       return false;
     }
   }
 
   // Sign out
-  Future<void> signOut() async {
+  Future<bool> signOut() async {
+    if (_state.isLoading) {
+      AppLogger.warning(LogLabel.auth, 'Sign out already in progress');
+      return false;
+    }
+
+    _setState(MyState.loading);
+    AppLogger.info(LogLabel.auth, 'Signing out...');
+
     try {
-      debugPrint('🔵 Signing out...');
       await _supabase.auth.signOut();
-      debugPrint('✅ Signed out successfully');
-      _resetError();
+      AppLogger.success(LogLabel.auth, 'Signed out successfully');
+      
+      _setState(MyState.loaded);
+      clearError();
+      return true;
     } catch (e) {
-      debugPrint('❌ Sign out error: $e');
+      AppLogger.error(LogLabel.auth, 'Sign out error', e);
       _setError('Failed to sign out. Please try again.');
+      return false;
     }
   }
 
-  void clearError() {
-    _resetError();
+  @override
+  void dispose() {
+    _state = MyState.initial;
+    _error = null;
+    super.dispose();
   }
 }
