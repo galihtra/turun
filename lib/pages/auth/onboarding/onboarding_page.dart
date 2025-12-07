@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
+import 'package:turun/resources/values_app.dart';
 
 import '../../../data/providers/user/user_provider.dart';
 import 'stepper/onboarding_step1_page.dart';
@@ -70,7 +71,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       await Future.delayed(const Duration(milliseconds: 500));
 
       if (widget.onComplete != null) {
-        widget.onComplete!(); 
+        widget.onComplete!();
       }
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -94,18 +95,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
           children: [
             // Header
             Padding(
-              padding: EdgeInsets.all(20.w),
+              padding: const EdgeInsets.only(
+                top: AppPaddings.p20,
+                left: AppPaddings.p20,
+                right: AppPaddings.p20
+              ),
               child: Column(
                 children: [
-                  SizedBox(height: 20.h),
-                  Text(
-                    'Complete Your Profile',
-                    style: AppStyles.title1SemiBold.copyWith(
-                      color: AppColors.deepBlue,
-                    ),
-                  ),
-                  SizedBox(height: 24.h),
-
                   // Step Indicator
                   Row(
                     children: [
@@ -113,7 +109,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       _buildStepLine(_currentStep >= 1),
                       _buildStepIndicator(2, 'Your Specs', _currentStep >= 1),
                       _buildStepLine(_currentStep >= 2),
-                      _buildStepIndicator(3, 'Interest', _currentStep >= 2),
+                      _buildStepIndicator(3, 'Your Goals', _currentStep >= 2),
                     ],
                   ),
                 ],

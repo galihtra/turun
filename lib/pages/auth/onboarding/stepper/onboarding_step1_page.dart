@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import 'package:turun/app/app_dialog.dart';
 import 'package:turun/base_widgets/button/gradient_button.dart';
+import 'package:turun/base_widgets/image/custom_image_profile.dart';
+import 'package:turun/base_widgets/text_field/custom_text_form_field.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
+import 'package:turun/resources/values_app.dart';
 
 class OnboardingStep1Page extends StatefulWidget {
   final Function(Map<String, dynamic>) onNext;
@@ -23,19 +27,26 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _birthDateController = TextEditingController();
-  
+
+  final ValueNotifier<String?> genderNotifier = ValueNotifier(null);
+
   DateTime? _selectedDate;
-  String? _selectedGender;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialData != null) {
       _usernameController.text = widget.initialData!['username'] ?? '';
-      _selectedGender = widget.initialData!['gender'];
+
+      final initialGender = widget.initialData!['gender'];
+      if (initialGender != null) {
+        genderNotifier.value = initialGender;
+      }
+
       if (widget.initialData!['birth_date'] != null) {
         _selectedDate = DateTime.parse(widget.initialData!['birth_date']);
-        _birthDateController.text = DateFormat('dd MMMM yyyy').format(_selectedDate!);
+        _birthDateController.text =
+            DateFormat('dd MMMM yyyy').format(_selectedDate!);
       }
     }
   }
@@ -44,13 +55,15 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
   void dispose() {
     _usernameController.dispose();
     _birthDateController.dispose();
+    genderNotifier.dispose();
     super.dispose();
   }
 
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now().subtract(const Duration(days: 365 * 20)),
+      initialDate: _selectedDate ??
+          DateTime.now().subtract(const Duration(days: 365 * 20)),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
       builder: (context, child) {
@@ -81,7 +94,7 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
       widget.onNext({
         'username': _usernameController.text.trim(),
         'birth_date': _selectedDate?.toIso8601String().split('T')[0],
-        'gender': _selectedGender,
+        'gender': genderNotifier.value,
       });
     }
   }
@@ -95,86 +108,30 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 32.h),
-            
-            // Avatar Section
+            // ======================================================================
+            // Image Profile
+            // ======================================================================
             Center(
-              child: Column(
-                children: [
-                  Text(
-                    'Add Image Profile',
-                    style: AppStyles.title3SemiBold.copyWith(
-                      color: AppColors.deepBlue,
-                    ),
-                  ),
-                  SizedBox(height: 24.h),
-                  Stack(
-                    children: [
-                      Container(
-                        width: 120.w,
-                        height: 120.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.blueLight,
-                        ),
-                        child: Icon(
-                          Icons.person,
-                          size: 60.w,
-                          color: AppColors.blueLogo,
-                        ),
-                      ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 36.w,
-                          height: 36.w,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppColors.blueGradient,
-                          ),
-                          child: Icon(
-                            Icons.edit,
-                            color: Colors.white,
-                            size: 18.w,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              child: CustomImageProfile(
+                size: 100,
+                onEditTap: () {},
+                borderColor: AppColors.blueDark,
+                borderWidth: 2,
               ),
             ),
-
-            SizedBox(height: 40.h),
-
-            // Username Field
-            Text(
-              'Username',
-              style: AppStyles.body1SemiBold.copyWith(
+            AppGaps.kGap20,
+            // ======================================================================
+            // Username
+            // ======================================================================
+            CustomTextFormField(
+              title: "Username",
+              titleStyle: AppStyles.body1SemiBold.copyWith(
                 color: AppColors.deepBlue,
               ),
-            ),
-            SizedBox(height: 8.h),
-            TextFormField(
               controller: _usernameController,
-              decoration: InputDecoration(
-                hintText: 'John21',
-                filled: true,
-                fillColor: AppColors.blueLight,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22.r),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22.r),
-                  borderSide: const BorderSide(color: AppColors.blueDark),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  vertical: 16.h,
-                  horizontal: 18.w,
-                ),
-              ),
+              hintText: 'Input your username',
+              backgroundColor: AppColors.blueLight,
+              borderColor: AppColors.blueDark,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Username is required';
@@ -185,39 +142,24 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
                 return null;
               },
             ),
-
-            SizedBox(height: 24.h),
-
-            // Date of Birth Field
-            Text(
-              'Date of Birth',
-              style: AppStyles.body1SemiBold.copyWith(
+            AppGaps.kGap20,
+            // ======================================================================
+            // Date of Birth
+            // ======================================================================
+            CustomTextFormField(
+              title: "Date of Birth",
+              titleStyle: AppStyles.body1SemiBold.copyWith(
                 color: AppColors.deepBlue,
               ),
-            ),
-            SizedBox(height: 8.h),
-            TextFormField(
               controller: _birthDateController,
-              readOnly: true,
-              onTap: _selectDate,
-              decoration: InputDecoration(
-                hintText: '10 November 2003',
-                filled: true,
-                fillColor: AppColors.blueLight,
-                suffixIcon: const Icon(Icons.calendar_today, color: AppColors.blueLogo),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22.r),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22.r),
-                  borderSide: const BorderSide(color: AppColors.blueDark),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  vertical: 16.h,
-                  horizontal: 18.w,
-                ),
+              suffixIcon: const Icon(
+                Icons.calendar_month_outlined,
+                color: AppColors.blueDark,
               ),
+              hintText: 'Input your birthday',
+              backgroundColor: AppColors.blueLight,
+              borderColor: AppColors.blueDark,
+              onTap: _selectDate,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Date of birth is required';
@@ -225,61 +167,105 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
                 return null;
               },
             ),
-
-            SizedBox(height: 24.h),
-
-            // Gender Field
-            Text(
-              'Gender',
-              style: AppStyles.body1SemiBold.copyWith(
-                color: AppColors.deepBlue,
-              ),
-            ),
-            SizedBox(height: 8.h),
-            DropdownButtonFormField<String>(
-              value: _selectedGender,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: AppColors.blueLight,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22.r),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22.r),
-                  borderSide: const BorderSide(color: AppColors.blueDark),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  vertical: 16.h,
-                  horizontal: 18.w,
-                ),
-              ),
-              hint: const Text('Male'),
-              items: ['Male', 'Female', 'Other'].map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedGender = newValue;
-                });
-              },
-              validator: (value) {
-                if (value == null) {
-                  return 'Please select your gender';
-                }
-                return null;
-              },
-            ),
-
-            SizedBox(height: 40.h),
-
-            // Next Button
+            AppGaps.kGap20,
+            // ======================================================================
+            // Gender
+            // ======================================================================
+            ValueListenableBuilder(
+                valueListenable: genderNotifier,
+                builder: (context, value, _) {
+                  return CustomTextFormField(
+                    title: "Gender",
+                    titleStyle: AppStyles.body1SemiBold.copyWith(
+                      color: AppColors.deepBlue,
+                    ),
+                    controller: TextEditingController(text: value ?? ''),
+                    readOnly: true,
+                    hintText: "Select your gender",
+                    backgroundColor: AppColors.blueLight,
+                    borderColor: AppColors.blueDark,
+                    suffixIcon: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.blueDark,
+                    ),
+                    onTap: () async {
+                      final selected =
+                          await AppBottomSheet.showCustomBottomSheet(
+                        context,
+                        children: [
+                          _genderItem(
+                            icon: Icons.male_rounded,
+                            text: "Male",
+                            color: Colors.blue.shade400,
+                            onTap: () => Navigator.pop(context, "Male"),
+                          ),
+                          _genderItem(
+                            icon: Icons.female_rounded,
+                            text: "Female",
+                            color: Colors.pink.shade400,
+                            onTap: () => Navigator.pop(context, "Female"),
+                          ),
+                        ],
+                      );
+                      if (selected != null) {
+                        genderNotifier.value = selected;
+                      }
+                    },
+                    validator: (_) {
+                      if (genderNotifier.value == null ||
+                          genderNotifier.value!.isEmpty) {
+                        return "Please select your gender";
+                      }
+                      return null;
+                    },
+                  );
+                }),
+            AppGaps.kGap30,
+            // ======================================================================
+            // Button Next
+            // ======================================================================
             GradientButton(
               text: 'Next',
               onTap: _handleNext,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _genderItem({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: color.withValues(alpha: 0.15),
+              child: Icon(
+                icon,
+                color: color,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Text(
+              text,
+              style: AppStyles.body1SemiBold.copyWith(
+                color: AppColors.deepBlue,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
