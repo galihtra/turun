@@ -32,6 +32,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter:
     sdk: flutter
+  flutter_colorpicker: ^1.1.0
   flutter_dotenv: ^5.2.1
   flutter_easyloading: ^3.0.5
   flutter_launcher_icons: ^0.14.4
@@ -43,6 +44,7 @@ dependencies:
   google_fonts: ^6.3.0
   google_maps_flutter: null
   google_sign_in: null
+  image_picker: ^1.2.1
   intl: ^0.20.2
   lottie: null
   pedometer: ^4.1.1

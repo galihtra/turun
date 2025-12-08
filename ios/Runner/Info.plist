@@ -18,6 +18,10 @@
 	<string>APPL</string>
 	<key>GMSApiKey</key>
 	<string>AIzaSyCwKZBR34ZCyH75mwUxNOKGXf7ZUWuIA-c</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access to take profile photos</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need photo library access to select profile photos</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
