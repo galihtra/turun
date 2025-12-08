@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/app/app_dialog.dart';
+import 'package:turun/app/app_logger.dart';
 import 'package:turun/base_widgets/button/gradient_button.dart';
 import 'package:turun/base_widgets/image/custom_image_profile.dart';
 import 'package:turun/base_widgets/text_field/custom_text_form_field.dart';
@@ -41,35 +43,52 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
 
   final ImagePicker _picker = ImagePicker();
 
+  String? _googleAvatarUrl;
+  bool _isUsingGoogleAvatar =
+      true; // Track if using Google avatar or new upload
+
   @override
   void initState() {
     super.initState();
     _loadInitialData();
+    _loadGoogleAvatar();
   }
 
   void _loadInitialData() {
     if (widget.initialData != null) {
-      // Username
       _usernameController.text = widget.initialData!['username'] ?? '';
 
-      // Gender
       final initialGender = widget.initialData!['gender'];
       if (initialGender != null) {
         _genderNotifier.value = initialGender;
       }
 
-      // Birth Date
       if (widget.initialData!['birth_date'] != null) {
         _birthDateNotifier.value =
             DateTime.parse(widget.initialData!['birth_date']);
         _birthDateController.text =
             DateFormat('dd MMMM yyyy').format(_birthDateNotifier.value!);
       }
+    }
+  }
 
-      // Avatar
-      if (widget.initialData!['avatar_path'] != null) {
-        _imageNotifier.value = File(widget.initialData!['avatar_path']);
+  Future<void> _loadGoogleAvatar() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final avatarUrl = user.userMetadata?['avatar_url'] as String?;
+
+        if (avatarUrl != null && avatarUrl.isNotEmpty) {
+          setState(() {
+            _googleAvatarUrl = avatarUrl;
+            _isUsingGoogleAvatar = true;
+          });
+          AppLogger.error(
+              LogLabel.supabase, 'Google avatar loaded: $avatarUrl');
+        }
       }
+    } catch (e) {
+      AppLogger.error(LogLabel.supabase, 'Failed to load Google avatar');
     }
   }
 
@@ -97,9 +116,13 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
       );
 
       if (pickedFile != null) {
-        _imageNotifier.value = File(pickedFile.path);
-        _imageErrorNotifier.value =
-            null; // Clear error saat berhasil pilih image
+        setState(() {
+          _imageNotifier.value = File(pickedFile.path);
+          _imageErrorNotifier.value = null;
+          _isUsingGoogleAvatar = false; // ✅ User changed avatar
+        });
+        AppLogger.info(
+            LogLabel.supabase, 'User selected new avatar from gallery');
       }
     } catch (e) {
       if (mounted) {
@@ -129,6 +152,24 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
             await _pickImage();
           },
         ),
+        // ✅ Show "Use Google Avatar" option if available
+        if (_googleAvatarUrl != null && !_isUsingGoogleAvatar) ...[
+          const SizedBox(height: 12),
+          ImageSourceItem(
+            icon: Icons.account_circle,
+            text: "Use Google Avatar",
+            color: Colors.blue,
+            onTap: () {
+              Navigator.pop(context);
+              setState(() {
+                _imageNotifier.value = null;
+                _isUsingGoogleAvatar = true;
+              });
+              AppLogger.info(
+                  LogLabel.supabase, 'User switched back to Google avatar');
+            },
+          ),
+        ],
         if (_imageNotifier.value != null) ...[
           const SizedBox(height: 12),
           ImageSourceItem(
@@ -137,8 +178,14 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
             color: Colors.red,
             onTap: () {
               Navigator.pop(context);
-              _imageNotifier.value = null;
-              _imageErrorNotifier.value = null;
+              setState(() {
+                _imageNotifier.value = null;
+                _imageErrorNotifier.value = null;
+                // If had Google avatar, revert to it
+                if (_googleAvatarUrl != null) {
+                  _isUsingGoogleAvatar = true;
+                }
+              });
             },
           ),
         ],
@@ -156,8 +203,13 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
       );
 
       if (pickedFile != null) {
-        _imageNotifier.value = File(pickedFile.path);
-        _imageErrorNotifier.value = null;
+        setState(() {
+          _imageNotifier.value = File(pickedFile.path);
+          _imageErrorNotifier.value = null;
+          _isUsingGoogleAvatar = false; // ✅ User changed avatar
+        });
+        AppLogger.info(
+            LogLabel.supabase, 'User selected new avatar from camera');
       }
     } catch (e) {
       if (mounted) {
@@ -201,19 +253,22 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
   // Validation & Submit
   // ======================================================================
   bool _validateImage() {
-    if (_imageNotifier.value == null) {
-      _imageErrorNotifier.value = 'Please select a profile image';
-      return false;
+    if (_isUsingGoogleAvatar && _googleAvatarUrl != null) {
+      _imageErrorNotifier.value = null;
+      return true;
     }
-    _imageErrorNotifier.value = null;
-    return true;
+
+    if (_imageNotifier.value != null) {
+      _imageErrorNotifier.value = null;
+      return true;
+    }
+
+    _imageErrorNotifier.value = 'Please select a profile image';
+    return false;
   }
 
   void _handleNext() {
-    // Validate image first
     final isImageValid = _validateImage();
-
-    // Validate form
     final isFormValid = _formKey.currentState?.validate() ?? false;
 
     if (!isImageValid || !isFormValid) {
@@ -223,13 +278,22 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
       return;
     }
 
-    // Prepare data untuk next step
+    AppLogger.warning(LogLabel.supabase, "'STEP 1 DATA'");
+
     final data = {
       'username': _usernameController.text.trim(),
       'birth_date': _birthDateNotifier.value?.toIso8601String().split('T')[0],
       'gender': _genderNotifier.value,
-      'avatar_path': _imageNotifier.value?.path, // Save path untuk next step
+      // ✅ Pass metadata about avatar
+      '_avatar_source': _isUsingGoogleAvatar ? 'google' : 'upload',
+      if (_isUsingGoogleAvatar && _googleAvatarUrl != null)
+        '_google_avatar_url': _googleAvatarUrl, // Temporary field for next step
+      if (!_isUsingGoogleAvatar && _imageNotifier.value != null)
+        '_avatar_file_path':
+            _imageNotifier.value!.path, // Temporary field for upload
     };
+
+    AppLogger.success(LogLabel.supabase, "Step 1 Complete");
 
     widget.onNext(data);
   }
@@ -252,13 +316,29 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
                   ValueListenableBuilder<File?>(
                     valueListenable: _imageNotifier,
                     builder: (context, imageFile, _) {
+                      // ✅ Show Google avatar or uploaded image
+                      ImageProvider? imageProvider;
+
+                      if (imageFile != null) {
+                        // User uploaded new image
+                        imageProvider = FileImage(imageFile);
+                      } else if (_isUsingGoogleAvatar &&
+                          _googleAvatarUrl != null) {
+                        // Using Google avatar
+                        imageProvider = NetworkImage(_googleAvatarUrl!);
+                      }
+
                       return CustomImageProfile(
-                        title:  "Add Image Profile",
+                        title: imageProvider == null
+                            ? "Add Image Profile"
+                            : _isUsingGoogleAvatar
+                                ? "Google Avatar"
+                                : "Custom Avatar",
                         titleStyle: AppStyles.body1SemiBold.copyWith(
                           color: AppColors.deepBlue,
                         ),
                         size: 100,
-                        image: imageFile != null ? FileImage(imageFile) : null,
+                        image: imageProvider,
                         onTap: _showImageSourceDialog,
                         borderColor: AppColors.blueDark,
                         borderWidth: 2,
@@ -308,7 +388,6 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
                 if (value.length > 20) {
                   return 'Username must not exceed 20 characters';
                 }
-                // Check if username only contains alphanumeric and underscore
                 if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
                   return 'Username can only contain letters, numbers, and underscore';
                 }
@@ -338,7 +417,6 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
                 if (value == null || value.isEmpty) {
                   return 'Date of birth is required';
                 }
-                // Check if user is at least 13 years old
                 if (_birthDateNotifier.value != null) {
                   final age = DateTime.now()
                           .difference(_birthDateNotifier.value!)

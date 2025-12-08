@@ -9,11 +9,11 @@ class AuthTab extends StatelessWidget {
   final VoidCallback onTap;
 
   const AuthTab({
-    Key? key,
+    super.key,
     required this.title,
     required this.active,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

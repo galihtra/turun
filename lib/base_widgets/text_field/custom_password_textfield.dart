@@ -14,7 +14,7 @@ class CustomPasswordTextField extends StatefulWidget {
   final Color? fillColor;
 
   const CustomPasswordTextField({
-    Key? key,
+    super.key,
     this.controller,
     this.hintTxt,
     this.focusNode,
@@ -24,7 +24,7 @@ class CustomPasswordTextField extends StatefulWidget {
     this.validatorMessage,
     this.fillColor,
     this.textStyle,
-  }) : super(key: key);
+  });
 
   @override
   CustomPasswordTextFieldState createState() => CustomPasswordTextFieldState();
