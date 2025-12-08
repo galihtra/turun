@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:turun/base_widgets/button/gradient_button.dart';
+import 'package:turun/pages/auth/onboarding/stepper/widgets/onboarding_navigation_button.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
+import 'package:turun/resources/values_app.dart';
 
 class OnboardingStep3Page extends StatefulWidget {
   final Function(Map<String, dynamic>) onComplete;
@@ -65,9 +66,7 @@ class _OnboardingStep3PageState extends State<OnboardingStep3Page> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 32.h),
-
-          // Goals Grid
+          AppGaps.kGap30,
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -87,13 +86,12 @@ class _OnboardingStep3PageState extends State<OnboardingStep3Page> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.blueLogo.withOpacity(0.1)
+                        ? AppColors.blueLogo.withValues(alpha: 0.1)
                         : AppColors.blueLight,
                     borderRadius: BorderRadius.circular(16.r),
                     border: Border.all(
-                      color: isSelected
-                          ? AppColors.blueLogo
-                          : Colors.transparent,
+                      color:
+                          isSelected ? AppColors.blueLogo : Colors.transparent,
                       width: 2,
                     ),
                   ),
@@ -120,10 +118,10 @@ class _OnboardingStep3PageState extends State<OnboardingStep3Page> {
               );
             },
           ),
-
-          SizedBox(height: 24.h),
-
+          AppGaps.kGap24,
+          // ======================================================================
           // Selected goals count
+          // ======================================================================
           if (_selectedGoals.isNotEmpty)
             Container(
               padding: EdgeInsets.all(12.w),
@@ -139,7 +137,7 @@ class _OnboardingStep3PageState extends State<OnboardingStep3Page> {
                     color: AppColors.blueLogo,
                     size: 20,
                   ),
-                  SizedBox(width: 8.w),
+                  AppGaps.kGap8,
                   Text(
                     '${_selectedGoals.length} goal${_selectedGoals.length > 1 ? 's' : ''} selected',
                     style: AppStyles.body2Medium.copyWith(
@@ -149,37 +147,14 @@ class _OnboardingStep3PageState extends State<OnboardingStep3Page> {
                 ],
               ),
             ),
-
-          SizedBox(height: 40.h),
-
-          // Buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: widget.onBack,
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 16.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24.r),
-                    ),
-                    side: const BorderSide(color: AppColors.blueLogo),
-                  ),
-                  child: Icon(
-                    Icons.arrow_back,
-                    color: AppColors.blueLogo,
-                  ),
-                ),
-              ),
-              SizedBox(width: 16.w),
-              Expanded(
-                flex: 3,
-                child: GradientButton(
-                  text: "Let's Go",
-                  onTap: _handleComplete,
-                ),
-              ),
-            ],
+          // ======================================================================
+          // Navigation Button
+          // ======================================================================
+          AppGaps.kGap40,
+          OnboardingNavigationButton(
+            onBack: widget.onBack,
+            onNext: _handleComplete,
+            nextButtonText: "Let's Go!",
           ),
         ],
       ),
