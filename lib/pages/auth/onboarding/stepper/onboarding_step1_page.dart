@@ -29,6 +29,7 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
   final _birthDateController = TextEditingController();
 
   final ValueNotifier<String?> genderNotifier = ValueNotifier(null);
+  final ValueNotifier<String?> birthDateNotifier = ValueNotifier(null);
 
   DateTime? _selectedDate;
 
@@ -113,8 +114,12 @@ class _OnboardingStep1PageState extends State<OnboardingStep1Page> {
             // ======================================================================
             Center(
               child: CustomImageProfile(
+                title: "Add Image Profile",
+                titleStyle: AppStyles.body1SemiBold.copyWith(
+                  color: AppColors.deepBlue,
+                ),
                 size: 100,
-                onEditTap: () {},
+                onTap: () {},
                 borderColor: AppColors.blueDark,
                 borderWidth: 2,
               ),
