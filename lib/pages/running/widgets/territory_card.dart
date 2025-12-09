@@ -78,7 +78,7 @@ class TerritoryCard extends StatelessWidget {
               ? Colors.white.withValues(alpha: 0.1)
               : AppColors.blueLogo.withValues(alpha: 0.05),
           child: Padding(
-            padding: EdgeInsets.all(18.w),
+            padding: EdgeInsets.all(14.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -305,7 +305,7 @@ class TerritoryCard extends StatelessWidget {
                 
                 const Spacer(),
                 
-                AppGaps.kGap12,
+                AppGaps.kGap8,
                 
                 // ==================== NAVIGATE BUTTON ====================
                 SizedBox(
@@ -317,7 +317,7 @@ class TerritoryCard extends StatelessWidget {
                           isSelected ? Colors.white : AppColors.blueLogo,
                       foregroundColor:
                           isSelected ? AppColors.blueLogo : Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14.r),
                       ),
@@ -328,20 +328,25 @@ class TerritoryCard extends StatelessWidget {
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.navigation_rounded,
                           size: 18.sp,
                         ),
                         AppGaps.kGap8,
-                        Text(
-                          'Go to Location',
-                          style: AppStyles.body2SemiBold.copyWith(
-                            color: isSelected
-                                ? AppColors.blueLogo
-                                : Colors.white,
-                            fontSize: 14.sp,
-                            letterSpacing: 0.3,
+                        Flexible(
+                          child: Text(
+                            'Go to Location',
+                            style: AppStyles.body2SemiBold.copyWith(
+                              color: isSelected
+                                  ? AppColors.blueLogo
+                                  : Colors.white,
+                              fontSize: 14.sp,
+                              letterSpacing: 0.3,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
                       ],
