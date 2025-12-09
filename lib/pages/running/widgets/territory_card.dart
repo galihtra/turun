@@ -28,147 +28,323 @@ class TerritoryCard extends StatelessWidget {
     final displayRegion = territory.region ?? 'Unknown Region';
 
     return Container(
-      width: 280.w,
+      width: 290.w,
       margin: EdgeInsets.only(right: 12.w),
       decoration: BoxDecoration(
         gradient: isSelected
-            ? AppColors.blueGradient
-            : const LinearGradient(
-                colors: [Colors.white, Colors.white],
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.blueLogo,
+                  AppColors.blueLogo.withBlue(255),
+                ],
+              )
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  Colors.grey.shade50,
+                ],
               ),
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: isSelected
-                ? AppColors.blueLogo.withOpacity(0.3)
-                : Colors.black.withOpacity(0.1),
-            blurRadius: isSelected ? 12 : 8,
-            offset: Offset(0, isSelected ? 4 : 2),
+                ? AppColors.blueLogo.withOpacity(0.4)
+                : Colors.black.withOpacity(0.08),
+            blurRadius: isSelected ? 20 : 10,
+            offset: Offset(0, isSelected ? 6 : 3),
+            spreadRadius: 0,
           ),
         ],
+        border: Border.all(
+          color: isSelected
+              ? Colors.white.withValues(alpha: 0.3)
+              : Colors.grey.shade200,
+          width: 1.5,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16.r),
+          borderRadius: BorderRadius.circular(20.r),
+          splashColor: isSelected
+              ? Colors.white.withValues(alpha: 0.2)
+              : AppColors.blueLogo.withValues(alpha: 0.1),
+          highlightColor: isSelected
+              ? Colors.white.withValues(alpha: 0.1)
+              : AppColors.blueLogo.withValues(alpha: 0.05),
           child: Padding(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.all(18.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with status badge
+                // ==================== HEADER ====================
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Territory name
                     Expanded(
-                      child: Text(
-                        displayName,
-                        style: AppStyles.body1SemiBold.copyWith(
-                          color: isSelected ? Colors.white : AppColors.deepBlue,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        children: [
+                          // Icon
+                          Container(
+                            padding: EdgeInsets.all(8.w),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white.withValues(alpha: 0.2)
+                                  : AppColors.blueLogo.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10.r),
+                              border: Border.all(
+                                color: isSelected
+                                    ? Colors.white.withValues(alpha: 0.3)
+                                    : AppColors.blueLogo.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.location_city_rounded,
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppColors.blueLogo,
+                              size: 18.sp,
+                            ),
+                          ),
+                          AppGaps.kGap8,
+                          Expanded(
+                            child: Text(
+                              displayName,
+                              style: AppStyles.body1SemiBold.copyWith(
+                                color: isSelected
+                                    ? Colors.white
+                                    : AppColors.deepBlue,
+                                fontSize: 15.sp,
+                                height: 1.2,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    AppGaps.kGap8,
+                    // Status badge
                     Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: 8.w,
-                        vertical: 4.h,
+                        horizontal: 10.w,
+                        vertical: 5.h,
                       ),
                       decoration: BoxDecoration(
-                        color: territory.isOwned
+                        gradient: territory.isOwned
                             ? (isSelected
-                                ? Colors.white.withOpacity(0.2)
-                                : AppColors.blue.withOpacity(0.1))
+                                ? LinearGradient(
+                                    colors: [
+                                      Colors.white.withValues(alpha: 0.3),
+                                      Colors.white.withValues(alpha: 0.2),
+                                    ],
+                                  )
+                                : LinearGradient(
+                                    colors: [
+                                      Colors.blue.shade50,
+                                      Colors.blue.shade100,
+                                    ],
+                                  ))
                             : (isSelected
-                                ? Colors.white.withOpacity(0.2)
-                                : AppColors.grey.withOpacity(0.1)),
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      child: Text(
-                        territory.isOwned ? 'Owned' : 'Available',
-                        style: AppStyles.body3SemiBold.copyWith(
+                                ? LinearGradient(
+                                    colors: [
+                                      Colors.white.withValues(alpha: 0.3),
+                                      Colors.white.withValues(alpha: 0.2),
+                                    ],
+                                  )
+                                : LinearGradient(
+                                    colors: [
+                                      Colors.grey.shade100,
+                                      Colors.grey.shade200,
+                                    ],
+                                  )),
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(
                           color: territory.isOwned
-                              ? (isSelected ? Colors.white : AppColors.blue)
-                              : (isSelected ? Colors.white : AppColors.grey),
+                              ? (isSelected
+                                  ? Colors.white.withValues(alpha: 0.4)
+                                  : Colors.blue.shade200)
+                              : (isSelected
+                                  ? Colors.white.withValues(alpha: 0.4)
+                                  : Colors.grey.shade300),
+                          width: 1,
                         ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            territory.isOwned
+                                ? Icons.verified_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            size: 12.sp,
+                            color: territory.isOwned
+                                ? (isSelected
+                                    ? Colors.white
+                                    : Colors.blue.shade700)
+                                : (isSelected
+                                    ? Colors.white
+                                    : Colors.grey.shade700),
+                          ),
+                          AppGaps.kGap4,
+                          Text(
+                            territory.isOwned ? 'Owned' : 'Available',
+                            style: AppStyles.body3SemiBold.copyWith(
+                              color: territory.isOwned
+                                  ? (isSelected
+                                      ? Colors.white
+                                      : Colors.blue.shade700)
+                                  : (isSelected
+                                      ? Colors.white
+                                      : Colors.grey.shade700),
+                              fontSize: 10.sp,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                AppGaps.kGap8,
-                // Region
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      size: 14.sp,
-                      color:
-                          isSelected ? Colors.white70 : AppColors.grey.shade600,
-                    ),
-                    AppGaps.kGap4,
-                    Expanded(
-                      child: Text(
-                        displayRegion,
-                        style: AppStyles.body3Regular.copyWith(
-                          color: isSelected
-                              ? Colors.white70
-                              : AppColors.grey.shade600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
+                
                 AppGaps.kGap12,
-                // Distance if available
-                if (distance != null) ...[
-                  Row(
+                
+                // ==================== DETAILS ====================
+                // Region
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 6.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.white.withValues(alpha: 0.15)
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.straighten,
+                        Icons.place_rounded,
                         size: 14.sp,
                         color: isSelected
-                            ? Colors.white70
-                            : AppColors.grey.shade600,
+                            ? Colors.white.withValues(alpha: 0.9)
+                            : AppColors.grey.shade700,
                       ),
-                      AppGaps.kGap4,
-                      Text(
-                        '${(distance! / 1000).toStringAsFixed(2)} km away',
-                        style: AppStyles.body3Regular.copyWith(
-                          color: isSelected
-                              ? Colors.white70
-                              : AppColors.grey.shade600,
+                      AppGaps.kGap6,
+                      Flexible(
+                        child: Text(
+                          displayRegion,
+                          style: AppStyles.body3Regular.copyWith(
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.9)
+                                : AppColors.grey.shade700,
+                            fontSize: 12.sp,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                  AppGaps.kGap12,
+                ),
+                
+                // Distance if available
+                if (distance != null) ...[
+                  AppGaps.kGap8,
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10.w,
+                      vertical: 6.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withValues(alpha: 0.15)
+                          : Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : Colors.orange.shade200,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.straighten_rounded,
+                          size: 14.sp,
+                          color: isSelected
+                              ? Colors.white.withValues(alpha: 0.9)
+                              : Colors.orange.shade700,
+                        ),
+                        AppGaps.kGap6,
+                        Text(
+                          '${(distance! / 1000).toStringAsFixed(2)} km away',
+                          style: AppStyles.body3SemiBold.copyWith(
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.9)
+                                : Colors.orange.shade700,
+                            fontSize: 12.sp,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
-                // Navigate button
+                
+                const Spacer(),
+                
+                AppGaps.kGap12,
+                
+                // ==================== NAVIGATE BUTTON ====================
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
+                  child: ElevatedButton(
                     onPressed: onNavigate,
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           isSelected ? Colors.white : AppColors.blueLogo,
                       foregroundColor:
                           isSelected ? AppColors.blueLogo : Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
-                      elevation: 0,
+                      elevation: isSelected ? 5 : 2,
+                      shadowColor: isSelected
+                          ? Colors.white.withValues(alpha: 0.5)
+                          : AppColors.blueLogo.withValues(alpha: 0.3),
                     ),
-                    icon: Icon(Icons.navigation, size: 16.sp),
-                    label: Text(
-                      'Go to Location',
-                      style: AppStyles.body2SemiBold.copyWith(
-                        color: isSelected ? AppColors.blueLogo : Colors.white,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.navigation_rounded,
+                          size: 18.sp,
+                        ),
+                        AppGaps.kGap8,
+                        Text(
+                          'Go to Location',
+                          style: AppStyles.body2SemiBold.copyWith(
+                            color: isSelected
+                                ? AppColors.blueLogo
+                                : Colors.white,
+                            fontSize: 14.sp,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

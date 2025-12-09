@@ -56,15 +56,20 @@ class _RunningPageState extends State<RunningPage> {
 
     // Animate camera to show route
     if (provider.currentLatLng != null && mapController != null) {
-      // Calculate bounds to show both current location and destination
-      final bounds = _calculateBounds(
-        provider.currentLatLng!,
-        provider.routePolylines.first.points.last,
-      );
+      // Small delay to ensure route is loaded
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (provider.routePolylines.isNotEmpty && mapController != null) {
+          // Calculate bounds to show both current location and destination
+          final bounds = _calculateBounds(
+            provider.currentLatLng!,
+            provider.routePolylines.first.points.last,
+          );
 
-      mapController!.animateCamera(
-        CameraUpdate.newLatLngBounds(bounds, 100),
-      );
+          mapController!.animateCamera(
+            CameraUpdate.newLatLngBounds(bounds, 100),
+          );
+        }
+      });
     }
   }
 
@@ -148,22 +153,35 @@ class _RunningPageState extends State<RunningPage> {
               if (runningProvider.isLoading ||
                   runningProvider.isLoadingTerritories)
                 Container(
-                  color: Colors.black26,
+                  color: Colors.black.withOpacity(0.7),
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const CircularProgressIndicator(
-                          color: Colors.blue,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          runningProvider.isLoadingTerritories
-                              ? 'Loading territories...'
-                              : 'Getting location...',
-                          style: const TextStyle(
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
                             color: Colors.white,
-                            fontSize: 14,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Column(
+                            children: [
+                              const CircularProgressIndicator(
+                                color: Colors.blue,
+                                strokeWidth: 3,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                runningProvider.isLoadingTerritories
+                                    ? 'Loading territories...'
+                                    : 'Getting location...',
+                                style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -184,9 +202,9 @@ class _RunningPageState extends State<RunningPage> {
                       borderRadius: BorderRadius.circular(AppDimens.r30),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
+                          color: Colors.blue.withOpacity(0.2),
+                          blurRadius: 15,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -197,9 +215,14 @@ class _RunningPageState extends State<RunningPage> {
                             onTap: () => setState(() => _selectedMode = 0),
                             child: Container(
                               decoration: BoxDecoration(
-                                color: _selectedMode == 0
-                                    ? Colors.blue
-                                    : Colors.transparent,
+                                gradient: _selectedMode == 0
+                                    ? const LinearGradient(
+                                        colors: [
+                                          Color(0xFF2196F3),
+                                          Color(0xFF1976D2),
+                                        ],
+                                      )
+                                    : null,
                                 borderRadius:
                                     BorderRadius.circular(AppDimens.r30),
                               ),
@@ -233,9 +256,14 @@ class _RunningPageState extends State<RunningPage> {
                             onTap: () => setState(() => _selectedMode = 1),
                             child: Container(
                               decoration: BoxDecoration(
-                                color: _selectedMode == 1
-                                    ? Colors.blue
-                                    : Colors.transparent,
+                                gradient: _selectedMode == 1
+                                    ? const LinearGradient(
+                                        colors: [
+                                          Color(0xFF2196F3),
+                                          Color(0xFF1976D2),
+                                        ],
+                                      )
+                                    : null,
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               child: Center(
@@ -257,19 +285,100 @@ class _RunningPageState extends State<RunningPage> {
                   ),
                 ),
 
-              // ==================== TERRITORY LIST ====================
+              // ==================== NAVIGATION INFO CARD ====================
+              if (runningProvider.isNavigating &&
+                  runningProvider.selectedTerritory != null)
+                Positioned(
+                  top: 60,
+                  left: 0,
+                  right: 0,
+                  child: NavigationInfoCard(
+                    destinationName:
+                        runningProvider.selectedTerritory!.name ??
+                            'Territory #${runningProvider.selectedTerritory!.id}',
+                    // ✅ FIX: Pass the actual distance and duration from provider
+                    distanceText: runningProvider.distanceText,
+                    durationText: runningProvider.durationText,
+                    isLoadingRoute: runningProvider.isLoadingRoute,
+                    onStop: () => runningProvider.stopNavigation(),
+                    // ✅ START RUNNING callback
+                    onStartRunning: () {
+                      // Check if user is at territory
+                      final currentTerritory = runningProvider.getTerritoryAtLocation(
+                        runningProvider.currentLatLng!,
+                      );
+                      
+                      if (currentTerritory?.id == runningProvider.selectedTerritory?.id) {
+                        // ✅ User arrived at territory!
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Row(
+                              children: [
+                                Icon(Icons.celebration, color: Colors.white),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    '🎉 You\'ve arrived! Starting running session...',
+                                    style: TextStyle(fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: Colors.green.shade600,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            margin: const EdgeInsets.all(16),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                        // TODO: Start running session
+                        // runningProvider.startRunningSession();
+                      } else {
+                        // ⚠️ User not at territory yet
+                        final distance = runningProvider.distanceText ?? '---';
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(Icons.info_outline, color: Colors.white),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Keep going! $distance remaining to destination',
+                                    style: const TextStyle(fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: Colors.orange.shade600,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            margin: const EdgeInsets.all(16),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+
+              // ==================== TERRITORY LIST (BOTTOM) ====================
               if (!runningProvider.isNavigating &&
                   !runningProvider.isLoadingTerritories &&
                   runningProvider.territories.isNotEmpty)
                 Positioned(
-                  top: 120,
+                  bottom: 20,
                   left: 0,
                   right: 0,
                   child: SizedBox(
-                    height: 180,
+                    height: 200,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: runningProvider.territories.length,
                       itemBuilder: (context, index) {
                         final territory = runningProvider.territories[index];
@@ -298,97 +407,24 @@ class _RunningPageState extends State<RunningPage> {
                   ),
                 ),
 
-              // ==================== NAVIGATION INFO CARD ====================
-              if (runningProvider.isNavigating &&
-                  runningProvider.selectedTerritory != null)
-                Positioned(
-                  top: 60,
-                  left: 0,
-                  right: 0,
-                  child: NavigationInfoCard(
-                    destinationName:
-                        runningProvider.selectedTerritory!.name ??
-                            'Territory #${runningProvider.selectedTerritory!.id}',
-                    onStop: () => runningProvider.stopNavigation(),
-                  ),
-                ),
-
-              // ==================== START BUTTON ====================
-              if (!runningProvider.isNavigating)
-                Positioned(
-                  bottom: 40,
-                  child: ElevatedButton(
-                    onPressed: (runningProvider.isLoading ||
-                            runningProvider.isLoadingTerritories)
-                        ? null
-                        : () {
-                            if (runningProvider.currentLatLng == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Waiting for location...'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            } else {
-                              final nearbyTerritories =
-                                  runningProvider.getTerritoriesNear(
-                                runningProvider.currentLatLng!,
-                                0.5,
-                              );
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Found ${nearbyTerritories.length} territories nearby',
-                                  ),
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppDimens.r30),
-                      ),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppDimens.w40,
-                        vertical: AppDimens.h15,
-                      ),
-                      elevation: 5,
-                    ),
-                    child: const Row(
-                      children: [
-                        Text(
-                          "START",
-                          style: TextStyle(
-                            fontSize: AppSizes.s18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        AppGaps.kGap8,
-                        Icon(Icons.play_arrow, color: Colors.white),
-                      ],
-                    ),
-                  ),
-                ),
-
               // ==================== MAP TYPE TOGGLE ====================
               Positioned(
-                bottom: 50,
+                bottom: runningProvider.isNavigating ? 50 : 240,
                 left: 20,
                 child: Material(
-                  elevation: 3,
+                  elevation: 5,
                   shape: const CircleBorder(),
+                  shadowColor: Colors.blue.withOpacity(0.3),
                   child: CircleAvatar(
+                    radius: 25,
                     backgroundColor: Colors.white,
                     child: IconButton(
                       icon: Icon(
                         _currentMapType == MapType.normal
-                            ? Icons.layers
-                            : Icons.map,
-                        color: Colors.black87,
+                            ? Icons.layers_rounded
+                            : Icons.map_rounded,
+                        color: Colors.blue.shade700,
+                        size: 22,
                       ),
                       onPressed: _toggleMapType,
                       tooltip: 'Toggle Map Type',
@@ -399,22 +435,28 @@ class _RunningPageState extends State<RunningPage> {
 
               // ==================== MY LOCATION BUTTON ====================
               Positioned(
-                bottom: 50,
+                bottom: runningProvider.isNavigating ? 50 : 240,
                 right: 20,
                 child: Material(
-                  elevation: 3,
+                  elevation: 5,
                   shape: const CircleBorder(),
+                  shadowColor: Colors.blue.withOpacity(0.3),
                   child: CircleAvatar(
+                    radius: 25,
                     backgroundColor: Colors.white,
                     child: IconButton(
-                      icon: const Icon(Icons.my_location, color: Colors.blue),
+                      icon: Icon(
+                        Icons.my_location_rounded,
+                        color: Colors.blue.shade700,
+                        size: 22,
+                      ),
                       onPressed: () async {
                         if (runningProvider.currentLatLng != null &&
                             mapController != null) {
                           await mapController!.animateCamera(
                             CameraUpdate.newLatLngZoom(
                               runningProvider.currentLatLng!,
-                              16.0,
+                              17.0,
                             ),
                           );
                         } else {
@@ -424,7 +466,7 @@ class _RunningPageState extends State<RunningPage> {
                             await mapController!.animateCamera(
                               CameraUpdate.newLatLngZoom(
                                 runningProvider.currentLatLng!,
-                                16.0,
+                                17.0,
                               ),
                             );
                           }
@@ -439,20 +481,25 @@ class _RunningPageState extends State<RunningPage> {
               // ==================== ERROR MESSAGE ====================
               if (runningProvider.error != null)
                 Positioned(
-                  top: runningProvider.isNavigating ? 250 : 320,
+                  top: runningProvider.isNavigating ? 250 : 120,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
-                      vertical: 10,
+                      vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade700,
-                      borderRadius: BorderRadius.circular(20),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.orange.shade600,
+                          Colors.orange.shade700,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(25),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          color: Colors.orange.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -460,9 +507,9 @@ class _RunningPageState extends State<RunningPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.info_outline,
+                          Icons.info_outline_rounded,
                           color: Colors.white,
-                          size: 16,
+                          size: 18,
                         ),
                         SizedBox(width: 8),
                         Text(
@@ -470,7 +517,7 @@ class _RunningPageState extends State<RunningPage> {
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -487,7 +534,6 @@ class _RunningPageState extends State<RunningPage> {
   @override
   void dispose() {
     mapController?.dispose();
-    // Provider will handle stopping location tracking
     super.dispose();
   }
 }
