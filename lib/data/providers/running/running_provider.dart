@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter/material.dart';
+import 'package:turun/app/app_logger.dart';
 
 import '../../model/territory/territory_model.dart';
+import '../../services/directions_service.dart';
 
 class RunningProvider extends ChangeNotifier {
   // Location properties
@@ -11,12 +14,24 @@ class RunningProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   LatLng? _currentLatLng;
+  StreamSubscription<Position>? _positionStream;
 
   // Territories properties
   List<Territory> _territories = [];
   Set<Polygon> _polygons = {};
   bool _isLoadingTerritories = false;
   String? _territoriesError;
+
+  // Navigation properties
+  Territory? _selectedTerritory;
+  Set<Polyline> _routePolylines = {};
+  List<LatLng> _routePoints = [];
+  bool _isNavigating = false;
+  bool _isLoadingRoute = false;
+  double? _distanceToDestination;
+  double? _estimatedTime;
+  String? _distanceText;
+  String? _durationText;
 
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -32,11 +47,20 @@ class RunningProvider extends ChangeNotifier {
   bool get isLoadingTerritories => _isLoadingTerritories;
   String? get territoriesError => _territoriesError;
 
-  // Inisialisasi location saat app start
+  // Navigation getters
+  Territory? get selectedTerritory => _selectedTerritory;
+  Set<Polyline> get routePolylines => _routePolylines;
+  bool get isNavigating => _isNavigating;
+  bool get isLoadingRoute => _isLoadingRoute;
+  double? get distanceToDestination => _distanceToDestination;
+  double? get estimatedTime => _estimatedTime;
+  String? get distanceText => _distanceText;
+  String? get durationText => _durationText;
+
+  // ==================== INITIALIZATION ====================
   Future<void> initializeLocation() async {
     if (_currentPosition != null && _territories.isNotEmpty) return;
 
-    // Load location dan territories secara parallel untuk performa lebih cepat
     await Future.wait([
       getCurrentLocation(),
       loadTerritories(),
@@ -49,7 +73,6 @@ class RunningProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Check permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -62,25 +85,25 @@ class RunningProvider extends ChangeNotifier {
         throw Exception('Location permission permanently denied');
       }
 
-      // Check if location service enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         throw Exception('Location services are disabled');
       }
 
-      // Get current position dengan accuracy tinggi tapi timeout cepat
       _currentPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 5), // Timeout 5 detik
+        timeLimit: const Duration(seconds: 5),
       );
 
       _currentLatLng = LatLng(
         _currentPosition!.latitude,
         _currentPosition!.longitude,
       );
+
+      AppLogger.success(LogLabel.general, 'Current location obtained');
     } catch (e) {
+      AppLogger.error(LogLabel.general, 'Failed to get location', e);
       _error = e.toString();
-      // Fallback ke default location (Batam)
       _currentLatLng = const LatLng(1.18376, 104.01703);
     } finally {
       _isLoading = false;
@@ -88,62 +111,62 @@ class RunningProvider extends ChangeNotifier {
     }
   }
 
-  // Update location di background (optional)
-  void startLocationUpdates() {
-    Geolocator.getPositionStream(
+  // ==================== REAL-TIME LOCATION TRACKING ====================
+  void startLocationTracking() {
+    AppLogger.info(LogLabel.general, 'Starting real-time location tracking');
+
+    _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Update setiap 10 meter
+        distanceFilter: 10, // Update every 10 meters (untuk avoid too many API calls)
       ),
     ).listen((Position position) {
       _currentPosition = position;
       _currentLatLng = LatLng(position.latitude, position.longitude);
+
+      // Update route if navigating
+      if (_isNavigating && _selectedTerritory != null) {
+        _updateRouteRealtime();
+      }
+
       notifyListeners();
     });
   }
 
-  // ==================== TERRITORIES FUNCTIONS ====================
+  void stopLocationTracking() {
+    AppLogger.info(LogLabel.general, 'Stopping location tracking');
+    _positionStream?.cancel();
+    _positionStream = null;
+  }
 
-  // Load territories dari Supabase
+  // ==================== TERRITORIES ====================
   Future<void> loadTerritories() async {
     _isLoadingTerritories = true;
     _territoriesError = null;
     notifyListeners();
 
     try {
-      debugPrint('🔄 Loading territories from Supabase...');
+      AppLogger.info(LogLabel.supabase, 'Loading territories from database');
 
       final response = await _supabase.from('territories').select().order('id');
 
-      debugPrint('📦 Raw response: $response');
-      debugPrint('📦 Response type: ${response.runtimeType}');
-
       if (response == null) {
-        debugPrint('⚠️ Response is null');
         _territories = [];
       } else if (response is List) {
-        debugPrint('📋 Response is List with ${response.length} items');
-
         _territories = response.map((json) {
-          debugPrint('🔍 Parsing territory: $json');
           return Territory.fromJson(json as Map<String, dynamic>);
         }).toList();
       } else {
-        debugPrint('⚠️ Unexpected response type: ${response.runtimeType}');
         _territories = [];
       }
 
-      // Generate polygons untuk ditampilkan di map
       _generatePolygons();
 
-      debugPrint('✅ Loaded ${_territories.length} territories');
-      if (_territories.isNotEmpty) {
-        debugPrint(
-            '📍 First territory: ${_territories.first.name}, Points: ${_territories.first.points.length}');
-      }
+      AppLogger.success(
+          LogLabel.supabase, 'Loaded ${_territories.length} territories');
     } catch (e, stackTrace) {
-      debugPrint('❌ Error loading territories: $e');
-      debugPrint('Stack trace: $stackTrace');
+      AppLogger.error(LogLabel.supabase, 'Failed to load territories', e,
+          stackTrace);
       _territoriesError = 'Failed to load territories: $e';
       _territories = [];
     } finally {
@@ -152,23 +175,23 @@ class RunningProvider extends ChangeNotifier {
     }
   }
 
-  // Generate polygons dari territories
   void _generatePolygons() {
     _polygons.clear();
 
     for (var territory in _territories) {
       if (territory.points.isEmpty) continue;
 
-      // Tentukan warna berdasarkan ownership
       Color fillColor;
       Color strokeColor;
 
-      if (territory.isOwned) {
-        // Territory yang sudah dikuasai - biru
+      // Highlight selected territory
+      if (_selectedTerritory?.id == territory.id) {
+        fillColor = Colors.green.withOpacity(0.4);
+        strokeColor = Colors.green;
+      } else if (territory.isOwned) {
         fillColor = Colors.blue.withOpacity(0.3);
         strokeColor = Colors.blue;
       } else {
-        // Territory kosong - abu-abu
         fillColor = Colors.grey.withOpacity(0.2);
         strokeColor = Colors.grey.shade400;
       }
@@ -178,53 +201,197 @@ class RunningProvider extends ChangeNotifier {
         points: territory.points,
         fillColor: fillColor,
         strokeColor: strokeColor,
-        strokeWidth: 2,
+        strokeWidth: _selectedTerritory?.id == territory.id ? 3 : 2,
         consumeTapEvents: true,
-        onTap: () {
-          _onTerritoryTap(territory);
-        },
+        onTap: () => selectTerritory(territory),
       );
 
       _polygons.add(polygon);
     }
-
-    debugPrint('✅ Generated ${_polygons.length} polygons');
   }
 
-  // Handle territory tap
-  void _onTerritoryTap(Territory territory) {
-    debugPrint(
-        '🎯 Territory tapped: ${territory.name ?? "Territory #${territory.id}"}');
-    debugPrint('   Owner: ${territory.ownerId ?? "Unclaimed"}');
-    debugPrint('   Region: ${territory.region ?? "Unknown"}');
-    // TODO: Show bottom sheet dengan info territory
-    // TODO: Tambahkan logic untuk claim territory
+  // ==================== NAVIGATION ====================
+  void selectTerritory(Territory territory) {
+    AppLogger.info(
+        LogLabel.general, 'Territory selected: ${territory.name ?? territory.id}');
+
+    _selectedTerritory = territory;
+    _generatePolygons();
+    notifyListeners();
   }
 
-  // Update territory ownership (claim territory)
-  Future<bool> claimTerritory(int territoryId, String userId) async {
-    try {
-      await _supabase
-          .from('territories')
-          .update({'owner_id': userId}).eq('id', territoryId);
+  Future<void> startNavigation(Territory territory) async {
+    if (_currentLatLng == null) {
+      AppLogger.warning(LogLabel.general, 'Cannot start navigation: no location');
+      return;
+    }
 
-      // Reload territories untuk update UI
-      await loadTerritories();
+    AppLogger.info(
+        LogLabel.general, 'Starting navigation to ${territory.name ?? territory.id}');
 
-      debugPrint('✅ Territory $territoryId claimed by $userId');
-      return true;
-    } catch (e) {
-      debugPrint('❌ Error claiming territory: $e');
-      return false;
+    _selectedTerritory = territory;
+    _isNavigating = true;
+    _isLoadingRoute = true;
+    notifyListeners();
+
+    // Get center point of territory
+    final destination = _getCenterPoint(territory.points);
+
+    // ✅ Fetch real route from Google Directions API
+    final directionsResult = await DirectionsService.getDirections(
+      origin: _currentLatLng!,
+      destination: destination,
+      mode: TravelMode.walking, // atau driving/bicycling
+    );
+
+    if (directionsResult != null) {
+      // ✅ Use real route points (following roads!)
+      _routePoints = directionsResult.polylinePoints;
+      
+      // ✅ Use Google's calculated distance & time
+      _distanceToDestination = directionsResult.distanceValue.toDouble();
+      _estimatedTime = directionsResult.durationValue / 60.0; // to minutes
+      _distanceText = directionsResult.distanceText;
+      _durationText = directionsResult.durationText;
+
+      AppLogger.success(
+        LogLabel.network, 
+        'Route loaded: ${directionsResult.distanceText}, ${directionsResult.durationText}'
+      );
+    } else {
+      // ❌ Fallback to straight line if API fails
+      AppLogger.warning(
+        LogLabel.network, 
+        'Directions API failed, using straight line'
+      );
+      
+      _routePoints = [_currentLatLng!, destination];
+      _calculateRouteMetricsFallback();
+    }
+
+    _createRoutePolyline();
+    _isLoadingRoute = false;
+
+    // Start tracking
+    startLocationTracking();
+
+    _generatePolygons();
+    notifyListeners();
+  }
+
+  void stopNavigation() {
+    AppLogger.info(LogLabel.general, 'Navigation stopped');
+
+    _isNavigating = false;
+    _selectedTerritory = null;
+    _routePoints.clear();
+    _routePolylines.clear();
+    _distanceToDestination = null;
+    _estimatedTime = null;
+    _distanceText = null;
+    _durationText = null;
+
+    stopLocationTracking();
+    _generatePolygons();
+    notifyListeners();
+  }
+
+  /// Update route in real-time as user moves
+  Future<void> _updateRouteRealtime() async {
+    if (_currentLatLng == null || _selectedTerritory == null) return;
+
+    final destination = _getCenterPoint(_selectedTerritory!.points);
+
+    // ✅ Fetch updated route from current position
+    final directionsResult = await DirectionsService.getDirections(
+      origin: _currentLatLng!,
+      destination: destination,
+      mode: TravelMode.walking,
+    );
+
+    if (directionsResult != null) {
+      _routePoints = directionsResult.polylinePoints;
+      _distanceToDestination = directionsResult.distanceValue.toDouble();
+      _estimatedTime = directionsResult.durationValue / 60.0;
+      _distanceText = directionsResult.distanceText;
+      _durationText = directionsResult.durationText;
+
+      _createRoutePolyline();
+      notifyListeners();
+
+      AppLogger.debug(
+        LogLabel.general, 
+        'Route updated: ${directionsResult.distanceText} remaining'
+      );
     }
   }
 
-  // Get territories near location (dalam radius tertentu)
+  void _createRoutePolyline() {
+    _routePolylines.clear();
+
+    if (_routePoints.isEmpty) return;
+
+    final polyline = Polyline(
+      polylineId: const PolylineId('route'),
+      points: _routePoints,
+      color: Colors.blue,
+      width: 5,
+      geodesic: true,
+      // ✅ Solid line for real route (looks more professional)
+    );
+
+    _routePolylines.add(polyline);
+  }
+
+  /// Fallback calculation if Directions API fails
+  void _calculateRouteMetricsFallback() {
+    if (_currentLatLng == null || _routePoints.length < 2) return;
+
+    final destination = _routePoints.last;
+
+    final distanceInMeters = Geolocator.distanceBetween(
+      _currentLatLng!.latitude,
+      _currentLatLng!.longitude,
+      destination.latitude,
+      destination.longitude,
+    );
+
+    _distanceToDestination = distanceInMeters;
+    _estimatedTime = (distanceInMeters / 1000 / 5.0) * 60; // 5 km/h walking speed
+    
+    // Format text manually
+    if (distanceInMeters < 1000) {
+      _distanceText = '${distanceInMeters.toStringAsFixed(0)} m';
+    } else {
+      _distanceText = '${(distanceInMeters / 1000).toStringAsFixed(1)} km';
+    }
+    
+    final mins = (_estimatedTime ?? 0).round();
+    _durationText = '$mins min';
+  }
+
+  LatLng _getCenterPoint(List<LatLng> points) {
+    if (points.isEmpty) return const LatLng(0, 0);
+
+    double totalLat = 0;
+    double totalLng = 0;
+
+    for (var point in points) {
+      totalLat += point.latitude;
+      totalLng += point.longitude;
+    }
+
+    return LatLng(
+      totalLat / points.length,
+      totalLng / points.length,
+    );
+  }
+
+  // ==================== TERRITORY HELPERS ====================
   List<Territory> getTerritoriesNear(LatLng location, double radiusInKm) {
     return _territories.where((territory) {
       if (territory.points.isEmpty) return false;
 
-      // Check if any point in territory is within radius
       return territory.points.any((point) {
         final distance = Geolocator.distanceBetween(
           location.latitude,
@@ -232,12 +399,11 @@ class RunningProvider extends ChangeNotifier {
           point.latitude,
           point.longitude,
         );
-        return distance <= radiusInKm * 1000; // Convert km to meters
+        return distance <= radiusInKm * 1000;
       });
     }).toList();
   }
 
-  // Get unclaimed territories near location
   List<Territory> getUnclaimedTerritoriesNear(
       LatLng location, double radiusInKm) {
     return getTerritoriesNear(location, radiusInKm)
@@ -245,7 +411,6 @@ class RunningProvider extends ChangeNotifier {
         .toList();
   }
 
-  // Check if user is inside a territory
   Territory? getTerritoryAtLocation(LatLng location) {
     for (var territory in _territories) {
       if (_isPointInPolygon(location, territory.points)) {
@@ -255,7 +420,6 @@ class RunningProvider extends ChangeNotifier {
     return null;
   }
 
-  // Helper: Check if point is inside polygon (Ray Casting Algorithm)
   bool _isPointInPolygon(LatLng point, List<LatLng> polygon) {
     if (polygon.length < 3) return false;
 
@@ -274,13 +438,18 @@ class RunningProvider extends ChangeNotifier {
     return inside;
   }
 
-  // Get statistics
+  // ==================== STATISTICS ====================
   int get totalTerritories => _territories.length;
   int get claimedTerritories => _territories.where((t) => t.isOwned).length;
   int get unclaimedTerritories => _territories.where((t) => !t.isOwned).length;
 
-  // Get territories by user
   List<Territory> getTerritoriesByUser(String userId) {
     return _territories.where((t) => t.ownerId == userId).toList();
+  }
+
+  @override
+  void dispose() {
+    stopLocationTracking();
+    super.dispose();
   }
 }
