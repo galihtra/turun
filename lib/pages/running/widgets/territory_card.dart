@@ -25,10 +25,12 @@ class TerritoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final displayName = territory.name ?? 'Territory #${territory.id}';
-    final displayRegion = territory.region ?? 'Unknown Region';
-
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = screenWidth * 0.85;
+    final cardHeight = cardWidth * 0.75; 
     return Container(
-      width: 290.w,
+      width: cardWidth,
+      height: cardHeight,
       margin: EdgeInsets.only(right: 12.w),
       decoration: BoxDecoration(
         gradient: isSelected
@@ -53,9 +55,9 @@ class TerritoryCard extends StatelessWidget {
           BoxShadow(
             color: isSelected
                 ? AppColors.blueLogo.withOpacity(0.4)
-                : Colors.black.withOpacity(0.08),
-            blurRadius: isSelected ? 20 : 10,
-            offset: Offset(0, isSelected ? 6 : 3),
+                : Colors.black.withOpacity(0.1),
+            blurRadius: isSelected ? 24 : 12,
+            offset: Offset(0, isSelected ? 8 : 4),
             spreadRadius: 0,
           ),
         ],
@@ -78,278 +80,279 @@ class TerritoryCard extends StatelessWidget {
               ? Colors.white.withValues(alpha: 0.1)
               : AppColors.blueLogo.withValues(alpha: 0.05),
           child: Padding(
-            padding: EdgeInsets.all(14.w),
+            padding: EdgeInsets.all(12.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // ==================== HEADER ====================
+                // ==================== TOP SECTION (IMAGE + INFO) ====================
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Territory name
-                    Expanded(
-                      child: Row(
-                        children: [
-                          // Icon
-                          Container(
-                            padding: EdgeInsets.all(8.w),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.white.withValues(alpha: 0.2)
-                                  : AppColors.blueLogo.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10.r),
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.white.withValues(alpha: 0.3)
-                                    : AppColors.blueLogo.withValues(alpha: 0.2),
-                                width: 1,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.location_city_rounded,
-                              color: isSelected
-                                  ? Colors.white
-                                  : AppColors.blueLogo,
-                              size: 18.sp,
-                            ),
-                          ),
-                          AppGaps.kGap8,
-                          Expanded(
-                            child: Text(
-                              displayName,
-                              style: AppStyles.body1SemiBold.copyWith(
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppColors.deepBlue,
-                                fontSize: 15.sp,
-                                height: 1.2,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                    // IMAGE
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12.r),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                    ),
-                    AppGaps.kGap8,
-                    // Status badge
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 10.w,
-                        vertical: 5.h,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: territory.isOwned
-                            ? (isSelected
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12.r),
+                        child: Container(
+                          width: 75.w,
+                          height: 75.w,
+                          decoration: BoxDecoration(
+                            gradient: isSelected
                                 ? LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                     colors: [
                                       Colors.white.withValues(alpha: 0.3),
-                                      Colors.white.withValues(alpha: 0.2),
+                                      Colors.white.withValues(alpha: 0.1),
                                     ],
                                   )
                                 : LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                     colors: [
-                                      Colors.blue.shade50,
-                                      Colors.blue.shade100,
-                                    ],
-                                  ))
-                            : (isSelected
-                                ? LinearGradient(
-                                    colors: [
-                                      Colors.white.withValues(alpha: 0.3),
-                                      Colors.white.withValues(alpha: 0.2),
-                                    ],
-                                  )
-                                : LinearGradient(
-                                    colors: [
-                                      Colors.grey.shade100,
                                       Colors.grey.shade200,
+                                      Colors.grey.shade300,
                                     ],
-                                  )),
-                        borderRadius: BorderRadius.circular(10.r),
-                        border: Border.all(
-                          color: territory.isOwned
-                              ? (isSelected
-                                  ? Colors.white.withValues(alpha: 0.4)
-                                  : Colors.blue.shade200)
-                              : (isSelected
-                                  ? Colors.white.withValues(alpha: 0.4)
-                                  : Colors.grey.shade300),
-                          width: 1,
+                                  ),
+                          ),
+                          child: territory.imageUrl != null
+                              ? Image.network(
+                                  territory.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      Icons.location_city_rounded,
+                                      color: isSelected
+                                          ? Colors.white.withValues(alpha: 0.8)
+                                          : AppColors.blueLogo
+                                              .withValues(alpha: 0.6),
+                                      size: 32.sp,
+                                    );
+                                  },
+                                )
+                              : Icon(
+                                  Icons.location_city_rounded,
+                                  color: isSelected
+                                      ? Colors.white.withValues(alpha: 0.8)
+                                      : AppColors.blueLogo
+                                          .withValues(alpha: 0.6),
+                                  size: 32.sp,
+                                ),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    ),
+
+                    AppGaps.kGap12,
+
+                    // INFO
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            territory.isOwned
-                                ? Icons.verified_rounded
-                                : Icons.radio_button_unchecked_rounded,
-                            size: 12.sp,
-                            color: territory.isOwned
-                                ? (isSelected
-                                    ? Colors.white
-                                    : Colors.blue.shade700)
-                                : (isSelected
-                                    ? Colors.white
-                                    : Colors.grey.shade700),
+                          // Stars & Difficulty Badge Row - Top Right
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              if (territory.difficulty != null) ...[
+                                // Stars
+                                Row(
+                                  children: List.generate(
+                                    3,
+                                    (index) => Padding(
+                                      padding: EdgeInsets.only(
+                                          right: index < 2 ? 2.w : 0),
+                                      child: Icon(
+                                        Icons.star,
+                                        size: 16.sp,
+                                        color: _getDifficultyStarColor(
+                                          territory.difficulty!,
+                                          index,
+                                          isSelected,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 8.w),
+                                // Difficulty Badge
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 10.w,
+                                    vertical: 5.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.white.withValues(alpha: 0.2)
+                                        : _getDifficultyColor(
+                                                territory.difficulty!)
+                                            .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8.r),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? Colors.white.withValues(alpha: 0.3)
+                                          : _getDifficultyColor(
+                                                  territory.difficulty!)
+                                              .withValues(alpha: 0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    territory.difficulty!,
+                                    style: AppStyles.body3SemiBold.copyWith(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : _getDifficultyColor(
+                                              territory.difficulty!),
+                                      fontSize: 11.sp,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                          AppGaps.kGap4,
-                          Text(
-                            territory.isOwned ? 'Owned' : 'Available',
-                            style: AppStyles.body3SemiBold.copyWith(
-                              color: territory.isOwned
-                                  ? (isSelected
-                                      ? Colors.white
-                                      : Colors.blue.shade700)
-                                  : (isSelected
-                                      ? Colors.white
-                                      : Colors.grey.shade700),
-                              fontSize: 10.sp,
-                              letterSpacing: 0.3,
+
+                          AppGaps.kGap8,
+
+                          // Distance
+                          if (distance != null) ...[
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 10.w,
+                                vertical: 5.h,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Colors.white.withValues(alpha: 0.2)
+                                    : AppColors.blueLogo.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    size: 14.sp,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : AppColors.blueLogo,
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  Text(
+                                    '${(distance! / 1000).toStringAsFixed(1)}km',
+                                    style: AppStyles.body3SemiBold.copyWith(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.blueLogo,
+                                      fontSize: 11.sp,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+                            AppGaps.kGap8,
+                          ],
+                          // Territory Name
+                          Text(
+                            displayName,
+                            style: AppStyles.body1SemiBold.copyWith(
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppColors.deepBlue,
+                              fontSize: 16.sp,
+                              height: 1.2,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          AppGaps.kGap8,
+                          Row(
+                            children: [
+                              _buildInfoChip(
+                                icon: Icons.monetization_on,
+                                label: '${territory.rewardPoints ?? 100} PTS',
+                                color: Colors.amber,
+                                isSelected: isSelected,
+                              ),
+                              AppGaps.kGap6,
+                              // Area Size
+                              if (territory.areaSizeKm != null)
+                                _buildInfoChip(
+                                  icon: Icons.square_foot,
+                                  label:
+                                      '${territory.areaSizeKm!.toStringAsFixed(2)} km²',
+                                  color: Colors.purple,
+                                  isSelected: isSelected,
+                                ),
+                            ],
+                          ),
+
+                          AppGaps.kGap6,
+  
+                          // Owner
+                          _buildInfoChip(
+                            icon: Icons.person,
+                            label: territory.ownerName != null
+                                ? 'Owned by ${territory.ownerName!}'
+                                : 'No owner',
+                            color: territory.ownerName != null
+                                ? Colors.green
+                                : Colors.grey,
+                            isSelected: isSelected,
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                
-                AppGaps.kGap12,
-                
-                // ==================== DETAILS ====================
-                // Region
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 10.w,
-                    vertical: 6.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? Colors.white.withValues(alpha: 0.15)
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.place_rounded,
-                        size: 14.sp,
-                        color: isSelected
-                            ? Colors.white.withValues(alpha: 0.9)
-                            : AppColors.grey.shade700,
-                      ),
-                      AppGaps.kGap6,
-                      Flexible(
-                        child: Text(
-                          displayRegion,
-                          style: AppStyles.body3Regular.copyWith(
-                            color: isSelected
-                                ? Colors.white.withValues(alpha: 0.9)
-                                : AppColors.grey.shade700,
-                            fontSize: 12.sp,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Distance if available
-                if (distance != null) ...[
-                  AppGaps.kGap8,
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 10.w,
-                      vertical: 6.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.white.withValues(alpha: 0.15)
-                          : Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.white.withValues(alpha: 0.2)
-                            : Colors.orange.shade200,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.straighten_rounded,
-                          size: 14.sp,
-                          color: isSelected
-                              ? Colors.white.withValues(alpha: 0.9)
-                              : Colors.orange.shade700,
-                        ),
-                        AppGaps.kGap6,
-                        Text(
-                          '${(distance! / 1000).toStringAsFixed(2)} km away',
-                          style: AppStyles.body3SemiBold.copyWith(
-                            color: isSelected
-                                ? Colors.white.withValues(alpha: 0.9)
-                                : Colors.orange.shade700,
-                            fontSize: 12.sp,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                
+
+                AppGaps.kGap6,
                 const Spacer(),
-                
-                AppGaps.kGap8,
-                
                 // ==================== NAVIGATE BUTTON ====================
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
+                  child: ElevatedButton.icon(
                     onPressed: onNavigate,
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           isSelected ? Colors.white : AppColors.blueLogo,
                       foregroundColor:
                           isSelected ? AppColors.blueLogo : Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 10.h,
+                        horizontal: 14.w,
+                      ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14.r),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       elevation: isSelected ? 5 : 2,
                       shadowColor: isSelected
                           ? Colors.white.withValues(alpha: 0.5)
-                          : AppColors.blueLogo.withValues(alpha: 0.3),
+                          : AppColors.blueLogo.withValues(alpha: 0.4),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.navigation_rounded,
-                          size: 18.sp,
-                        ),
-                        AppGaps.kGap8,
-                        Flexible(
-                          child: Text(
-                            'Go to Location',
-                            style: AppStyles.body2SemiBold.copyWith(
-                              color: isSelected
-                                  ? AppColors.blueLogo
-                                  : Colors.white,
-                              fontSize: 14.sp,
-                              letterSpacing: 0.3,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                      ],
+                    icon: Icon(
+                      Icons.navigation_rounded,
+                      size: 16.sp,
+                    ),
+                    label: Text(
+                      'Navigate to Location',
+                      style: AppStyles.body2SemiBold.copyWith(
+                          fontSize: 13.sp,
+                          letterSpacing: 0.2,
+                          color:
+                              isSelected ? AppColors.blueLogo : Colors.white),
                     ),
                   ),
                 ),
@@ -359,5 +362,81 @@ class TerritoryCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required MaterialColor color,
+    required bool isSelected,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: 10.w,
+        vertical: 6.h,
+      ),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? Colors.white.withValues(alpha: 0.2)
+            : color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(
+          color: isSelected
+              ? Colors.white.withValues(alpha: 0.3)
+              : color.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14.sp,
+            color: isSelected ? Colors.white : color.shade700,
+          ),
+          SizedBox(width: 5.w),
+          Text(
+            label,
+            style: AppStyles.body3SemiBold.copyWith(
+              color: isSelected
+                  ? Colors.white.withValues(alpha: 0.95)
+                  : color.shade700,
+              fontSize: 11.sp,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getDifficultyColor(String difficulty) {
+    switch (difficulty.toLowerCase()) {
+      case 'easy':
+        return Colors.green;
+      case 'medium':
+        return Colors.orange;
+      case 'hard':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getDifficultyStarColor(String difficulty, int index, bool isSelected) {
+    if (isSelected) {
+      return Colors.amber.shade300;
+    }
+
+    switch (difficulty.toLowerCase()) {
+      case 'easy':
+        return index < 1 ? Colors.amber.shade600 : Colors.grey.shade300;
+      case 'medium':
+        return index < 2 ? Colors.amber.shade600 : Colors.grey.shade300;
+      case 'hard':
+        return Colors.amber.shade600;
+      default:
+        return Colors.grey.shade300;
+    }
   }
 }
