@@ -394,8 +394,34 @@ class _RunningPageState extends State<RunningPage> {
                           territory: territory,
                           isSelected: isSelected,
                           distance: distance,
-                          onTap: () =>
-                              runningProvider.selectTerritory(territory),
+                          onTap: () {
+                            runningProvider.selectTerritory(territory);
+                            // Animate camera to territory location when card is tapped
+                            if (territory.points.isNotEmpty &&
+                                mapController != null) {
+                              // Calculate center of territory
+                              double totalLat = 0;
+                              double totalLng = 0;
+                              for (var point in territory.points) {
+                                totalLat += point.latitude;
+                                totalLng += point.longitude;
+                              }
+                              final centerLat =
+                                  totalLat / territory.points.length;
+                              final centerLng =
+                                  totalLng / territory.points.length;
+                              final territoryCenter =
+                                  LatLng(centerLat, centerLng);
+
+                              // Animate camera to territory with smooth animation
+                              mapController!.animateCamera(
+                                CameraUpdate.newLatLngZoom(
+                                  territoryCenter,
+                                  16.5,
+                                ),
+                              );
+                            }
+                          },
                           onNavigate: () => _handleTerritoryNavigate(
                             context,
                             runningProvider,

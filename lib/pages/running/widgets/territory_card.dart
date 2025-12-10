@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
-import 'package:turun/resources/values_app.dart';
 
 import '../../../data/model/territory/territory_model.dart';
 
@@ -27,7 +26,7 @@ class TerritoryCard extends StatelessWidget {
     final displayName = territory.name ?? 'Territory #${territory.id}';
     final screenWidth = MediaQuery.of(context).size.width;
     final cardWidth = screenWidth * 0.85;
-    final cardHeight = cardWidth * 0.75; 
+    final cardHeight = cardWidth * 0.75;
     return Container(
       width: cardWidth,
       height: cardHeight,
@@ -54,8 +53,8 @@ class TerritoryCard extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: isSelected
-                ? AppColors.blueLogo.withOpacity(0.4)
-                : Colors.black.withOpacity(0.1),
+                ? AppColors.blueLogo.withValues(alpha: 0.4)
+                : Colors.black.withValues(alpha: 0.1),
             blurRadius: isSelected ? 24 : 12,
             offset: Offset(0, isSelected ? 8 : 4),
             spreadRadius: 0,
@@ -80,10 +79,9 @@ class TerritoryCard extends StatelessWidget {
               ? Colors.white.withValues(alpha: 0.1)
               : AppColors.blueLogo.withValues(alpha: 0.05),
           child: Padding(
-            padding: EdgeInsets.all(12.w),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
                 // ==================== TOP SECTION (IMAGE + INFO) ====================
                 Row(
@@ -104,8 +102,8 @@ class TerritoryCard extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12.r),
                         child: Container(
-                          width: 75.w,
-                          height: 75.w,
+                          width: 80.w,
+                          height: 80.w,
                           decoration: BoxDecoration(
                             gradient: isSelected
                                 ? LinearGradient(
@@ -152,117 +150,103 @@ class TerritoryCard extends StatelessWidget {
                       ),
                     ),
 
-                    AppGaps.kGap12,
+                    SizedBox(width: 12.w),
 
-                    // INFO
+                    // INFO - Right side of image
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Stars & Difficulty Badge Row - Top Right
+                          // Top Row: Distance & Stars/Difficulty
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (territory.difficulty != null) ...[
-                                // Stars
+                              // Distance (Left)
+                              if (distance != null)
                                 Row(
-                                  children: List.generate(
-                                    3,
-                                    (index) => Padding(
-                                      padding: EdgeInsets.only(
-                                          right: index < 2 ? 2.w : 0),
-                                      child: Icon(
-                                        Icons.star,
-                                        size: 16.sp,
-                                        color: _getDifficultyStarColor(
-                                          territory.difficulty!,
-                                          index,
-                                          isSelected,
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 14.sp,
+                                      color: isSelected
+                                          ? Colors.white.withValues(alpha: 0.9)
+                                          : AppColors.blueLogo,
+                                    ),
+                                    SizedBox(width: 4.w),
+                                    Text(
+                                      '${(distance! / 1000).toStringAsFixed(1)}km away',
+                                      style: AppStyles.body3SemiBold.copyWith(
+                                        color: isSelected
+                                            ? Colors.white.withValues(alpha: 0.9)
+                                            : AppColors.blueLogo,
+                                        fontSize: 11.sp,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                              // Stars & Difficulty (Right)
+                              if (territory.difficulty != null)
+                                Row(
+                                  children: [
+                                    // Stars - jumlah sesuai difficulty
+                                    ...List.generate(
+                                      _getStarCount(territory.difficulty!),
+                                      (index) => Padding(
+                                        padding: EdgeInsets.only(
+                                            right: index < _getStarCount(territory.difficulty!) - 1 ? 2.w : 4.w),
+                                        child: Icon(
+                                          Icons.star,
+                                          size: 14.sp,
+                                          color: isSelected
+                                              ? Colors.amber.shade300
+                                              : Colors.amber.shade600,
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                                SizedBox(width: 8.w),
-                                // Difficulty Badge
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 10.w,
-                                    vertical: 5.h,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? Colors.white.withValues(alpha: 0.2)
-                                        : _getDifficultyColor(
-                                                territory.difficulty!)
-                                            .withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? Colors.white.withValues(alpha: 0.3)
-                                          : _getDifficultyColor(
-                                                  territory.difficulty!)
-                                              .withValues(alpha: 0.3),
-                                      width: 1,
+                                    // Difficulty Badge
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8.w,
+                                        vertical: 4.h,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? Colors.white.withValues(alpha: 0.2)
+                                            : _getDifficultyColor(
+                                                    territory.difficulty!)
+                                                .withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(6.r),
+                                        border: Border.all(
+                                          color: isSelected
+                                              ? Colors.white.withValues(alpha: 0.3)
+                                              : _getDifficultyColor(
+                                                      territory.difficulty!)
+                                                  .withValues(alpha: 0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        territory.difficulty!,
+                                        style: AppStyles.body3SemiBold.copyWith(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : _getDifficultyColor(
+                                                  territory.difficulty!),
+                                          fontSize: 10.sp,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  child: Text(
-                                    territory.difficulty!,
-                                    style: AppStyles.body3SemiBold.copyWith(
-                                      color: isSelected
-                                          ? Colors.white
-                                          : _getDifficultyColor(
-                                              territory.difficulty!),
-                                      fontSize: 11.sp,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
+                                  ],
                                 ),
-                              ],
                             ],
                           ),
 
-                          AppGaps.kGap8,
+                          SizedBox(height: 8.h),
 
-                          // Distance
-                          if (distance != null) ...[
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10.w,
-                                vertical: 5.h,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Colors.white.withValues(alpha: 0.2)
-                                    : AppColors.blueLogo.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8.r),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.location_on,
-                                    size: 14.sp,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : AppColors.blueLogo,
-                                  ),
-                                  SizedBox(width: 4.w),
-                                  Text(
-                                    '${(distance! / 1000).toStringAsFixed(1)}km',
-                                    style: AppStyles.body3SemiBold.copyWith(
-                                      color: isSelected
-                                          ? Colors.white
-                                          : AppColors.blueLogo,
-                                      fontSize: 11.sp,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            AppGaps.kGap8,
-                          ],
                           // Territory Name
                           Text(
                             displayName,
@@ -270,14 +254,17 @@ class TerritoryCard extends StatelessWidget {
                               color: isSelected
                                   ? Colors.white
                                   : AppColors.deepBlue,
-                              fontSize: 16.sp,
+                              fontSize: 15.sp,
                               height: 1.2,
                               fontWeight: FontWeight.bold,
                             ),
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          AppGaps.kGap8,
+
+                          SizedBox(height: 6.h),
+
+                          // Reward & Area Size Row
                           Row(
                             children: [
                               _buildInfoChip(
@@ -286,8 +273,7 @@ class TerritoryCard extends StatelessWidget {
                                 color: Colors.amber,
                                 isSelected: isSelected,
                               ),
-                              AppGaps.kGap6,
-                              // Area Size
+                              SizedBox(width: 6.w),
                               if (territory.areaSizeKm != null)
                                 _buildInfoChip(
                                   icon: Icons.square_foot,
@@ -299,9 +285,9 @@ class TerritoryCard extends StatelessWidget {
                             ],
                           ),
 
-                          AppGaps.kGap6,
-  
-                          // Owner
+                          SizedBox(height: 6.h),
+
+                          // Owner info
                           _buildInfoChip(
                             icon: Icons.person,
                             label: territory.ownerName != null
@@ -318,8 +304,8 @@ class TerritoryCard extends StatelessWidget {
                   ],
                 ),
 
-                AppGaps.kGap6,
                 const Spacer(),
+
                 // ==================== NAVIGATE BUTTON ====================
                 SizedBox(
                   width: double.infinity,
@@ -331,8 +317,8 @@ class TerritoryCard extends StatelessWidget {
                       foregroundColor:
                           isSelected ? AppColors.blueLogo : Colors.white,
                       padding: EdgeInsets.symmetric(
-                        vertical: 10.h,
-                        horizontal: 14.w,
+                        vertical: 12.h,
+                        horizontal: 16.w,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12.r),
@@ -344,15 +330,16 @@ class TerritoryCard extends StatelessWidget {
                     ),
                     icon: Icon(
                       Icons.navigation_rounded,
-                      size: 16.sp,
+                      size: 18.sp,
                     ),
                     label: Text(
-                      'Navigate to Location',
+                      'GO TO LOCATION',
                       style: AppStyles.body2SemiBold.copyWith(
-                          fontSize: 13.sp,
-                          letterSpacing: 0.2,
-                          color:
-                              isSelected ? AppColors.blueLogo : Colors.white),
+                        fontSize: 13.sp,
+                        letterSpacing: 0.5,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? AppColors.blueLogo : Colors.white,
+                      ),
                     ),
                   ),
                 ),
@@ -423,20 +410,16 @@ class TerritoryCard extends StatelessWidget {
     }
   }
 
-  Color _getDifficultyStarColor(String difficulty, int index, bool isSelected) {
-    if (isSelected) {
-      return Colors.amber.shade300;
-    }
-
+  int _getStarCount(String difficulty) {
     switch (difficulty.toLowerCase()) {
       case 'easy':
-        return index < 1 ? Colors.amber.shade600 : Colors.grey.shade300;
+        return 1;
       case 'medium':
-        return index < 2 ? Colors.amber.shade600 : Colors.grey.shade300;
+        return 2;
       case 'hard':
-        return Colors.amber.shade600;
+        return 3;
       default:
-        return Colors.grey.shade300;
+        return 1;
     }
   }
 }
