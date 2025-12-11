@@ -4,12 +4,14 @@ import 'package:turun/pages/territory_leaderboard/widgets/territory_leaderboard_
 import 'package:turun/resources/values_app.dart';
 
 class TerritoryLeaderboardPage extends StatefulWidget {
+  const TerritoryLeaderboardPage({super.key});
+
   @override
-  _TerritoryLeaderboardPageState createState() =>
-      _TerritoryLeaderboardPageState();
+  TerritoryLeaderboardPageState createState() =>
+      TerritoryLeaderboardPageState();
 }
 
-class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
+class TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
   GoogleMapController? mapController;
   final DraggableScrollableController _draggableController =
       DraggableScrollableController();

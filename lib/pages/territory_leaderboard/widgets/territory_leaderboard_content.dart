@@ -21,11 +21,11 @@ class TerritoryLeaderboardContent extends StatefulWidget {
   });
 
   @override
-  _TerritoryLeaderboardContentState createState() =>
-      _TerritoryLeaderboardContentState();
+  TerritoryLeaderboardContentState createState() =>
+      TerritoryLeaderboardContentState();
 }
 
-class _TerritoryLeaderboardContentState
+class TerritoryLeaderboardContentState
     extends State<TerritoryLeaderboardContent> {
   int? _expandedIndex; // Menyimpan index item yang sedang expanded
 
@@ -282,7 +282,7 @@ class _TerritoryLeaderboardContentState
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppColors.blueLogo.withOpacity(0.3),
+              color: AppColors.blueLogo.withValues(alpha: 0.3),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),

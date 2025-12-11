@@ -22,7 +22,8 @@ class _StartPageState extends State<StartPage> {
   final _formKey = GlobalKey<FormState>();
 
   // >>> GANTI dengan Web OAuth Client ID dari Google Cloud (bukan Android/iOS) <<<
-  static const _webClientId = '392657528338-l6jkm0kah6lm5qsquslpggku02b87ric.apps.googleusercontent.com';
+  static const _webClientId =
+      '392657528338-l6jkm0kah6lm5qsquslpggku02b87ric.apps.googleusercontent.com';
 
   // GoogleSignIn hanya dipakai di mobile (Android/iOS)
   late final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -53,7 +54,8 @@ class _StartPageState extends State<StartPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sign-in failed: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Sign-in failed: $e'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _signInLoading = false);
@@ -80,7 +82,8 @@ class _StartPageState extends State<StartPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sign-up failed: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Sign-up failed: $e'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _signUpLoading = false);
@@ -118,12 +121,14 @@ class _StartPageState extends State<StartPage> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Signed in with Google!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Signed in with Google!')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In failed: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Google Sign-In failed: $e'),
+            backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _googleSignInLoading = false);
@@ -143,13 +148,13 @@ class _StartPageState extends State<StartPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 24),
-
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(labelText: 'Email'),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Field is required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Field is required'
+                        : null,
                   ),
                   TextFormField(
                     controller: _passwordController,
@@ -158,9 +163,7 @@ class _StartPageState extends State<StartPage> {
                     validator: (v) =>
                         (v == null || v.isEmpty) ? 'Field is required' : null,
                   ),
-
                   const SizedBox(height: 24),
-
                   _signInLoading
                       ? const Center(child: CircularProgressIndicator())
                       : ElevatedButton(
@@ -168,9 +171,7 @@ class _StartPageState extends State<StartPage> {
                           child: const Text('Sign In',
                               style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
-
                   const Divider(),
-
                   _signUpLoading
                       ? const Center(child: CircularProgressIndicator())
                       : OutlinedButton(
@@ -178,17 +179,14 @@ class _StartPageState extends State<StartPage> {
                           child: const Text('Sign Up',
                               style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
-
                   const SizedBox(height: 24),
-
-                  Row(
-                    children: const [
+                  const Row(
+                    children: [
                       Expanded(child: Divider()),
                       Padding(padding: EdgeInsets.all(12), child: Text('OR')),
                       Expanded(child: Divider()),
                     ],
                   ),
-
                   _googleSignInLoading
                       ? const Center(child: CircularProgressIndicator())
                       : OutlinedButton.icon(

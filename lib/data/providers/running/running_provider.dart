@@ -18,13 +18,13 @@ class RunningProvider extends ChangeNotifier {
 
   // Territories properties
   List<Territory> _territories = [];
-  Set<Polygon> _polygons = {};
+  final Set<Polygon> _polygons = {};
   bool _isLoadingTerritories = false;
   String? _territoriesError;
 
   // Navigation properties
   Territory? _selectedTerritory;
-  Set<Polyline> _routePolylines = {};
+  final Set<Polyline> _routePolylines = {};
   List<LatLng> _routePoints = [];
   bool _isNavigating = false;
   bool _isLoadingRoute = false;
@@ -91,8 +91,10 @@ class RunningProvider extends ChangeNotifier {
       }
 
       _currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 5),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 5),
+        ),
       );
 
       _currentLatLng = LatLng(
@@ -150,15 +152,9 @@ class RunningProvider extends ChangeNotifier {
 
       final response = await _supabase.from('territories').select().order('id');
 
-      if (response == null) {
-        _territories = [];
-      } else if (response is List) {
-        _territories = response.map((json) {
-          return Territory.fromJson(json as Map<String, dynamic>);
-        }).toList();
-      } else {
-        _territories = [];
-      }
+      _territories = (response as List)
+          .map((json) => Territory.fromJson(json))
+          .toList();
 
       _generatePolygons();
 
@@ -186,13 +182,13 @@ class RunningProvider extends ChangeNotifier {
 
       // Highlight selected territory
       if (_selectedTerritory?.id == territory.id) {
-        fillColor = Colors.green.withOpacity(0.4);
+        fillColor = Colors.green.withValues(alpha: 0.4);
         strokeColor = Colors.green;
       } else if (territory.isOwned) {
-        fillColor = Colors.blue.withOpacity(0.3);
+        fillColor = Colors.blue.withValues(alpha: 0.3);
         strokeColor = Colors.blue;
       } else {
-        fillColor = Colors.grey.withOpacity(0.2);
+        fillColor = Colors.grey.withValues(alpha: 0.2);
         strokeColor = Colors.grey.shade400;
       }
 

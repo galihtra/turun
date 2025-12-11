@@ -9,9 +9,9 @@ class RunnerProfilePage extends StatelessWidget {
   final String runnerName;
 
   const RunnerProfilePage({
-    Key? key,
+    super.key,
     required this.runnerName,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

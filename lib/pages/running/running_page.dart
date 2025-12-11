@@ -7,15 +7,16 @@ import 'package:turun/resources/values_app.dart';
 import '../../data/providers/running/running_provider.dart';
 import 'widgets/navigation_info_card.dart';
 import 'widgets/territory_card.dart';
+import 'widgets/territory_card_shimmer.dart';
 
 class RunningPage extends StatefulWidget {
   const RunningPage({super.key});
 
   @override
-  _RunningPageState createState() => _RunningPageState();
+  RunningPageState createState() => RunningPageState();
 }
 
-class _RunningPageState extends State<RunningPage> {
+class RunningPageState extends State<RunningPage> {
   GoogleMapController? mapController;
   int _selectedMode = 0;
   MapType _currentMapType = MapType.normal;
@@ -153,7 +154,7 @@ class _RunningPageState extends State<RunningPage> {
               if (runningProvider.isLoading ||
                   runningProvider.isLoadingTerritories)
                 Container(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withValues(alpha: 0.7),
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -202,7 +203,7 @@ class _RunningPageState extends State<RunningPage> {
                       borderRadius: BorderRadius.circular(AppDimens.r30),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.blue.withOpacity(0.2),
+                          color: Colors.blue.withValues(alpha: 0.2),
                           blurRadius: 15,
                           offset: const Offset(0, 3),
                         ),
@@ -333,7 +334,6 @@ class _RunningPageState extends State<RunningPage> {
                             duration: const Duration(seconds: 3),
                           ),
                         );
-                        // TODO: Start running session
                         // runningProvider.startRunningSession();
                       } else {
                         // ⚠️ User not at territory yet
@@ -363,6 +363,26 @@ class _RunningPageState extends State<RunningPage> {
                         );
                       }
                     },
+                  ),
+                ),
+
+              // ==================== TERRITORY LIST SHIMMER (LOADING) ====================
+              if (!runningProvider.isNavigating &&
+                  runningProvider.isLoadingTerritories)
+                Positioned(
+                  bottom: 20,
+                  left: 0,
+                  right: 0,
+                  child: SizedBox(
+                    height: 200,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: 3, // Show 3 shimmer cards
+                      itemBuilder: (context, index) {
+                        return const TerritoryCardShimmer();
+                      },
+                    ),
                   ),
                 ),
 
@@ -440,7 +460,7 @@ class _RunningPageState extends State<RunningPage> {
                 child: Material(
                   elevation: 5,
                   shape: const CircleBorder(),
-                  shadowColor: Colors.blue.withOpacity(0.3),
+                  shadowColor: Colors.blue.withValues(alpha: 0.3),
                   child: CircleAvatar(
                     radius: 25,
                     backgroundColor: Colors.white,
@@ -466,7 +486,7 @@ class _RunningPageState extends State<RunningPage> {
                 child: Material(
                   elevation: 5,
                   shape: const CircleBorder(),
-                  shadowColor: Colors.blue.withOpacity(0.3),
+                  shadowColor: Colors.blue.withValues(alpha: 0.3),
                   child: CircleAvatar(
                     radius: 25,
                     backgroundColor: Colors.white,
@@ -523,7 +543,7 @@ class _RunningPageState extends State<RunningPage> {
                       borderRadius: BorderRadius.circular(25),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.orange.withOpacity(0.3),
+                          color: Colors.orange.withValues(alpha: 0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 3),
                         ),

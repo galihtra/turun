@@ -44,13 +44,15 @@ dependencies:
   google_fonts: ^6.3.0
   google_maps_flutter: null
   google_sign_in: null
-  image_picker: ^1.2.1
+  http: ^1.2.2
+  image_picker: ^1.1.2
   intl: ^0.20.2
   lottie: null
   pedometer: ^4.1.1
   permission_handler: ^12.0.1
   provider: ^6.1.5+1
   shared_preferences: ^2.5.3
+  shimmer: ^3.0.0
   supabase_flutter: ^2.9.1
 
 dev_dependencies:
