@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:turun/data/providers/running/running_provider.dart';
+import 'package:turun/data/providers/user/user_provider.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:gap/gap.dart';
 import 'run_completion_screen.dart';
@@ -14,10 +15,15 @@ class RunTrackingScreen extends StatefulWidget {
   State<RunTrackingScreen> createState() => _RunTrackingScreenState();
 }
 
-class _RunTrackingScreenState extends State<RunTrackingScreen> {
+class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTickerProviderStateMixin {
   GoogleMapController? _mapController;
   Timer? _uiUpdateTimer;
-  bool _isStatsExpanded = false; // For expandable stats
+
+  // Draggable sheet controller
+  final DraggableScrollableController _sheetController = DraggableScrollableController();
+  double _sheetSize = 0.25; // Start collapsed (25% of screen)
+  final double _minSheetSize = 0.25;
+  final double _maxSheetSize = 0.7;
 
   @override
   void initState() {
@@ -73,15 +79,18 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Consumer<RunningProvider>(
-        builder: (context, provider, child) {
+      body: Consumer2<RunningProvider, UserProvider>(
+        builder: (context, runProvider, userProvider, child) {
+          // Get user's profile color for route polyline
+          final userColor = _parseColor(userProvider.currentUser?.profileColor);
+
           return Stack(
             children: [
-              // Map showing run route
+              // Map showing run route (full screen - no blockage!)
               GoogleMap(
                 onMapCreated: _onMapCreated,
                 initialCameraPosition: CameraPosition(
-                  target: provider.currentLatLng ?? const LatLng(1.18376, 104.01703),
+                  target: runProvider.currentLatLng ?? const LatLng(1.18376, 104.01703),
                   zoom: 17.0,
                 ),
                 myLocationEnabled: true,
@@ -91,315 +100,80 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> {
                 mapToolbarEnabled: false,
                 tiltGesturesEnabled: false,
                 rotateGesturesEnabled: false,
-                polygons: provider.polygons,
-                polylines: provider.runRoutePolylines,
+                polygons: runProvider.polygons,
+                polylines: _buildAllPolylines(runProvider, userColor),
+                markers: runProvider.runMarkers, // Checkpoint markers
               ),
 
-              // Gradient overlay at top
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.6),
-                        Colors.transparent,
+              // Top territory name badge (compact)
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: userColor.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.flag_rounded,
+                            color: userColor,
+                            size: 14,
+                          ),
+                        ),
+                        const Gap(8),
+                        Text(
+                          runProvider.selectedTerritory?.name ??
+                              'Territory ${runProvider.selectedTerritory?.id}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: userColor,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
 
-              // Top stats card
-              SafeArea(
-                child: Column(
-                  children: [
-                    // Header with territory name
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(25),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                gradient: AppColors.blueGradient,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.flag,
-                                color: Colors.white,
-                                size: 16,
-                              ),
-                            ),
-                            const Gap(12),
-                            Text(
-                              provider.selectedTerritory?.name ??
-                                  'Territory ${provider.selectedTerritory?.id}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.deepBlue,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const Spacer(),
-
-                    // Main metrics card
-                    Container(
-                      margin: const EdgeInsets.all(20),
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          // Duration - Big display
-                          Text(
-                            _formatDuration(provider.runDuration),
-                            style: TextStyle(
-                              fontSize: 64,
-                              fontWeight: FontWeight.bold,
-                              foreground: Paint()
-                                ..shader = AppColors.blueGradient.createShader(
-                                  const Rect.fromLTWH(0, 0, 300, 100),
-                                ),
-                              letterSpacing: -2,
-                            ),
-                          ),
-
-                          const Gap(8),
-
-                          Text(
-                            'Duration',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-
-                          const Gap(24),
-
-                          // Distance and Pace
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _MetricCard(
-                                  icon: Icons.straighten_rounded,
-                                  label: 'Distance',
-                                  value: _formatDistance(provider.runDistance),
-                                  color: AppColors.blueLogo,
-                                ),
-                              ),
-                              const Gap(16),
-                              Expanded(
-                                child: _MetricCard(
-                                  icon: Icons.speed_rounded,
-                                  label: 'Pace',
-                                  value: '${_formatPace(provider.currentPace)}/km',
-                                  color: AppColors.cyan,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const Gap(16),
-
-                          // Current Speed
-                          _MetricCard(
-                            icon: Icons.directions_run_rounded,
-                            label: 'Current Speed',
-                            value: '${(provider.currentSpeed * 3.6).toStringAsFixed(1)} km/h',
-                            color: AppColors.greenLunatic,
-                            isWide: true,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const Gap(20),
-
-                    // Control buttons
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          // Pause/Resume button
-                          _ControlButton(
-                            icon: provider.activeRunSession?.status.name == 'active'
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            label: provider.activeRunSession?.status.name == 'active'
-                                ? 'Pause'
-                                : 'Resume',
-                            color: AppColors.yellow[500]!,
-                            onTap: () {
-                              if (provider.activeRunSession?.status.name == 'active') {
-                                provider.pauseRunSession();
-                              } else {
-                                provider.resumeRunSession();
-                              }
-                            },
-                          ),
-
-                          // Finish button
-                          _ControlButton(
-                            icon: Icons.check_circle_rounded,
-                            label: 'Finish',
-                            color: AppColors.green[500]!,
-                            onTap: () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Finish Run?'),
-                                  content: const Text(
-                                    'Are you sure you want to finish this run?',
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () => Navigator.pop(context, true),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.green[500],
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                      child: const Text('Finish'),
-                                    ),
-                                  ],
-                                ),
-                              );
-
-                              if (confirm == true && mounted) {
-                                final result = await provider.completeRunSession();
-                                if (result != null && mounted) {
-                                  // Navigate to completion screen
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => RunCompletionScreen(
-                                        session: result,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                          ),
-
-                          // Cancel button
-                          _ControlButton(
-                            icon: Icons.close_rounded,
-                            label: 'Cancel',
-                            color: AppColors.red[500]!,
-                            onTap: () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Cancel Run?'),
-                                  content: const Text(
-                                    'Are you sure? This will discard your progress.',
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
-                                      child: const Text('No'),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () => Navigator.pop(context, true),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.red[500],
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                      child: const Text('Yes, Cancel'),
-                                    ),
-                                  ],
-                                ),
-                              );
-
-                              if (confirm == true && mounted) {
-                                provider.cancelRunSession();
-                                Navigator.pop(context);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const Gap(30),
-                  ],
-                ),
-              ),
-
               // Center location button
               Positioned(
-                bottom: 200,
-                right: 20,
+                bottom: MediaQuery.of(context).size.height * 0.3,
+                right: 16,
                 child: Material(
-                  elevation: 5,
+                  elevation: 4,
                   shape: const CircleBorder(),
                   child: CircleAvatar(
-                    radius: 25,
+                    radius: 22,
                     backgroundColor: Colors.white,
                     child: IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.my_location_rounded,
-                        color: AppColors.blueLogo,
-                        size: 22,
+                        color: userColor,
+                        size: 20,
                       ),
                       onPressed: () {
-                        if (provider.currentLatLng != null) {
+                        if (runProvider.currentLatLng != null) {
                           _mapController?.animateCamera(
                             CameraUpdate.newLatLngZoom(
-                              provider.currentLatLng!,
+                              runProvider.currentLatLng!,
                               17.0,
                             ),
                           );
@@ -409,23 +183,501 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> {
                   ),
                 ),
               ),
+
+              // Draggable bottom sheet with stats
+              DraggableScrollableSheet(
+                controller: _sheetController,
+                initialChildSize: _minSheetSize,
+                minChildSize: _minSheetSize,
+                maxChildSize: _maxSheetSize,
+                builder: (context, scrollController) {
+                  return NotificationListener<DraggableScrollableNotification>(
+                    onNotification: (notification) {
+                      setState(() {
+                        _sheetSize = notification.extent;
+                      });
+                      return true;
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(24),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 20,
+                            offset: const Offset(0, -5),
+                          ),
+                        ],
+                      ),
+                      child: ListView(
+                        controller: scrollController,
+                        padding: EdgeInsets.zero,
+                        children: [
+                          // Drag handle
+                          Center(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 12),
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+
+                          // Compact stats view
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: _buildStatsContent(runProvider, userColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ],
           );
         },
       ),
     );
   }
+
+  // Build stats content based on sheet size
+  Widget _buildStatsContent(RunningProvider provider, Color userColor) {
+    final isExpanded = _sheetSize > 0.4;
+
+    if (!isExpanded) {
+      // COLLAPSED: Compact horizontal stats
+      return Column(
+        children: [
+          // Route progress bar
+          if (provider.routeProgress > 0) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Route Progress',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        '${provider.routeProgress.toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: userColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Gap(4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: provider.routeProgress / 100,
+                      minHeight: 6,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(userColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Gap(12),
+          ],
+
+          // Compact metrics row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _CompactMetric(
+                label: 'Duration',
+                value: _formatDuration(provider.runDuration),
+                color: userColor,
+              ),
+              Container(width: 1, height: 40, color: Colors.grey[300]),
+              _CompactMetric(
+                label: 'Distance',
+                value: _formatDistance(provider.runDistance),
+                color: userColor,
+              ),
+              Container(width: 1, height: 40, color: Colors.grey[300]),
+              _CompactMetric(
+                label: 'Pace',
+                value: _formatPace(provider.currentPace),
+                color: userColor,
+              ),
+            ],
+          ),
+          const Gap(16),
+          // Control buttons (compact)
+          _buildCompactControls(provider, userColor),
+          const Gap(12),
+        ],
+      );
+    } else {
+      // EXPANDED: Full detailed stats
+      return Column(
+        children: [
+          // Route progress (if running)
+          if (provider.routeProgress > 0) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: userColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: userColor.withOpacity(0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.route_rounded,
+                            color: userColor,
+                            size: 16,
+                          ),
+                          const Gap(8),
+                          Text(
+                            'Route Progress',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        '${provider.routeProgress.toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: userColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Gap(10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: provider.routeProgress / 100,
+                      minHeight: 8,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(userColor),
+                    ),
+                  ),
+                  const Gap(6),
+                  Text(
+                    'Checkpoint ${provider.currentCheckpointIndex} of ${provider.selectedTerritory?.points.length ?? 0}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Big duration display
+          Text(
+            _formatDuration(provider.runDuration),
+            style: TextStyle(
+              fontSize: 56,
+              fontWeight: FontWeight.bold,
+              color: userColor,
+              letterSpacing: -2,
+            ),
+          ),
+          Text(
+            'Duration',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Gap(24),
+
+          // Detailed metrics grid
+          Row(
+            children: [
+              Expanded(
+                child: _DetailedMetricCard(
+                  icon: Icons.straighten_rounded,
+                  label: 'Distance',
+                  value: _formatDistance(provider.runDistance),
+                  color: userColor,
+                ),
+              ),
+              const Gap(12),
+              Expanded(
+                child: _DetailedMetricCard(
+                  icon: Icons.speed_rounded,
+                  label: 'Pace',
+                  value: '${_formatPace(provider.currentPace)}/km',
+                  color: userColor,
+                ),
+              ),
+            ],
+          ),
+          const Gap(12),
+          _DetailedMetricCard(
+            icon: Icons.directions_run_rounded,
+            label: 'Current Speed',
+            value: '${(provider.currentSpeed * 3.6).toStringAsFixed(1)} km/h',
+            color: userColor,
+            isWide: true,
+          ),
+          const Gap(24),
+
+          // Control buttons (expanded)
+          _buildExpandedControls(provider, userColor),
+          const Gap(20),
+        ],
+      );
+    }
+  }
+
+  // Build compact control buttons
+  Widget _buildCompactControls(RunningProvider provider, Color userColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _CompactButton(
+          icon: provider.activeRunSession?.status.name == 'active'
+              ? Icons.pause_rounded
+              : Icons.play_arrow_rounded,
+          color: AppColors.yellow[500]!,
+          onTap: () {
+            if (provider.activeRunSession?.status.name == 'active') {
+              provider.pauseRunSession();
+            } else {
+              provider.resumeRunSession();
+            }
+          },
+        ),
+        _CompactButton(
+          icon: Icons.check_circle_rounded,
+          color: AppColors.green[500]!,
+          onTap: () => _handleFinishRun(provider),
+        ),
+        _CompactButton(
+          icon: Icons.close_rounded,
+          color: AppColors.red[500]!,
+          onTap: () => _handleCancelRun(provider),
+        ),
+      ],
+    );
+  }
+
+  // Build expanded control buttons
+  Widget _buildExpandedControls(RunningProvider provider, Color userColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _ControlButton(
+          icon: provider.activeRunSession?.status.name == 'active'
+              ? Icons.pause_rounded
+              : Icons.play_arrow_rounded,
+          label: provider.activeRunSession?.status.name == 'active' ? 'Pause' : 'Resume',
+          color: AppColors.yellow[500]!,
+          onTap: () {
+            if (provider.activeRunSession?.status.name == 'active') {
+              provider.pauseRunSession();
+            } else {
+              provider.resumeRunSession();
+            }
+          },
+        ),
+        _ControlButton(
+          icon: Icons.check_circle_rounded,
+          label: 'Finish',
+          color: AppColors.green[500]!,
+          onTap: () => _handleFinishRun(provider),
+        ),
+        _ControlButton(
+          icon: Icons.close_rounded,
+          label: 'Cancel',
+          color: AppColors.red[500]!,
+          onTap: () => _handleCancelRun(provider),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleFinishRun(RunningProvider provider) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Finish Run?'),
+        content: const Text('Are you sure you want to finish this run?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.green[500],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Finish'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      final result = await provider.completeRunSession();
+      if (result != null && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RunCompletionScreen(session: result),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleCancelRun(RunningProvider provider) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Run?'),
+        content: const Text('Are you sure? This will discard your progress.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.red[500],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Yes, Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      provider.cancelRunSession();
+      Navigator.pop(context);
+    }
+  }
+
+  // Build all polylines: guidance + user's actual route
+  Set<Polyline> _buildAllPolylines(RunningProvider provider, Color userColor) {
+    final polylines = <Polyline>{};
+
+    // 1. Territory guidance route (dashed blue line showing path to follow)
+    polylines.addAll(provider.territoryGuidancePolylines);
+
+    // 2. User's actual running path (solid line with user's color)
+    final userRoutePoints = provider.runRoutePolylines;
+    for (var polyline in userRoutePoints) {
+      polylines.add(
+        polyline.copyWith(
+          colorParam: userColor,
+          widthParam: 6,
+        ),
+      );
+    }
+
+    return polylines;
+  }
+
+  // Parse color from hex string
+  Color _parseColor(String? colorHex) {
+    if (colorHex == null || colorHex.isEmpty) {
+      return AppColors.blueLogo; // Default color
+    }
+
+    try {
+      final hexColor = colorHex.replaceAll('#', '');
+      return Color(int.parse('FF$hexColor', radix: 16));
+    } catch (e) {
+      return AppColors.blueLogo; // Fallback
+    }
+  }
 }
 
-// Metric Card Widget
-class _MetricCard extends StatelessWidget {
+// Compact Metric Widget (for collapsed bottom sheet)
+class _CompactMetric extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _CompactMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const Gap(4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Detailed Metric Card (for expanded bottom sheet)
+class _DetailedMetricCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
   final Color color;
   final bool isWide;
 
-  const _MetricCard({
+  const _DetailedMetricCard({
     required this.icon,
     required this.label,
     required this.value,
@@ -436,12 +688,12 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: color.withValues(alpha: 0.3),
+          color: color.withOpacity(0.2),
           width: 1.5,
         ),
       ),
@@ -449,14 +701,14 @@ class _MetricCard extends StatelessWidget {
           ? Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.2),
+                    color: color.withOpacity(0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, color: color, size: 24),
+                  child: Icon(icon, color: color, size: 20),
                 ),
-                const Gap(16),
+                const Gap(12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -464,7 +716,7 @@ class _MetricCard extends StatelessWidget {
                       Text(
                         label,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: Colors.grey[600],
                           fontWeight: FontWeight.w500,
                         ),
@@ -473,7 +725,7 @@ class _MetricCard extends StatelessWidget {
                       Text(
                         value,
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: color,
                         ),
@@ -486,18 +738,18 @@ class _MetricCard extends StatelessWidget {
           : Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.2),
+                    color: color.withOpacity(0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, color: color, size: 24),
+                  child: Icon(icon, color: color, size: 20),
                 ),
-                const Gap(12),
+                const Gap(10),
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: Colors.grey[600],
                     fontWeight: FontWeight.w500,
                   ),
@@ -506,7 +758,7 @@ class _MetricCard extends StatelessWidget {
                 Text(
                   value,
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
@@ -514,6 +766,42 @@ class _MetricCard extends StatelessWidget {
                 ),
               ],
             ),
+    );
+  }
+}
+
+// Compact Button Widget (for collapsed bottom sheet)
+class _CompactButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _CompactButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: color.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: color,
+          size: 26,
+        ),
+      ),
     );
   }
 }
@@ -543,7 +831,7 @@ class _ControlButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.3),
+              color: color.withOpacity(0.3),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -554,7 +842,7 @@ class _ControlButton extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
+                color: color.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 28),
