@@ -6,7 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/app/app_logger.dart';
 
 import '../../model/territory/territory_model.dart';
+import '../../model/running/run_session_model.dart';
 import '../../services/directions_service.dart';
+import '../../services/run_tracking_service.dart';
 
 class RunningProvider extends ChangeNotifier {
   // Location properties
@@ -19,6 +21,7 @@ class RunningProvider extends ChangeNotifier {
   // Territories properties
   List<Territory> _territories = [];
   final Set<Polygon> _polygons = {};
+  final Set<Marker> _markers = {};
   bool _isLoadingTerritories = false;
   String? _territoriesError;
 
@@ -33,6 +36,12 @@ class RunningProvider extends ChangeNotifier {
   String? _distanceText;
   String? _durationText;
 
+  // Run tracking properties
+  final RunTrackingService _runTrackingService = RunTrackingService();
+  RunSession? _activeRunSession;
+  bool _isRunning = false;
+  final Set<Polyline> _runRoutePolylines = {};
+
   final SupabaseClient _supabase = Supabase.instance.client;
 
   // Location getters
@@ -44,6 +53,7 @@ class RunningProvider extends ChangeNotifier {
   // Territories getters
   List<Territory> get territories => _territories;
   Set<Polygon> get polygons => _polygons;
+  Set<Marker> get markers => _markers;
   bool get isLoadingTerritories => _isLoadingTerritories;
   String? get territoriesError => _territoriesError;
 
@@ -56,6 +66,23 @@ class RunningProvider extends ChangeNotifier {
   double? get estimatedTime => _estimatedTime;
   String? get distanceText => _distanceText;
   String? get durationText => _durationText;
+
+  /// Check if user has arrived at start point (within 20m)
+  bool get hasArrivedAtStartPoint {
+    if (!_isNavigating || _selectedTerritory == null || _currentLatLng == null) {
+      return false;
+    }
+    return isAtTerritoryStartPoint(_currentLatLng!, _selectedTerritory!);
+  }
+
+  // Run tracking getters
+  RunSession? get activeRunSession => _activeRunSession;
+  bool get isRunning => _isRunning;
+  Set<Polyline> get runRoutePolylines => _runRoutePolylines;
+  double get runDistance => _runTrackingService.totalDistance;
+  int get runDuration => _runTrackingService.elapsedSeconds;
+  double get currentPace => _runTrackingService.currentPace;
+  double get currentSpeed => _runTrackingService.currentSpeed;
 
   // ==================== INITIALIZATION ====================
   Future<void> initializeLocation() async {
@@ -173,6 +200,7 @@ class RunningProvider extends ChangeNotifier {
 
   void _generatePolygons() {
     _polygons.clear();
+    _markers.clear();
 
     for (var territory in _territories) {
       if (territory.points.isEmpty) continue;
@@ -203,6 +231,21 @@ class RunningProvider extends ChangeNotifier {
       );
 
       _polygons.add(polygon);
+
+      // Add START POINT marker for selected territory
+      if (_selectedTerritory?.id == territory.id && territory.points.isNotEmpty) {
+        final startPoint = territory.points.first;
+        final marker = Marker(
+          markerId: MarkerId('start_${territory.id}'),
+          position: startPoint,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          infoWindow: const InfoWindow(
+            title: '🏁 START POINT',
+            snippet: 'Begin your run here',
+          ),
+        );
+        _markers.add(marker);
+      }
     }
   }
 
@@ -230,8 +273,10 @@ class RunningProvider extends ChangeNotifier {
     _isLoadingRoute = true;
     notifyListeners();
 
-    // Get center point of territory
-    final destination = _getCenterPoint(territory.points);
+    // ✅ Navigate to START POINT (first coordinate) instead of center
+    final destination = territory.points.isNotEmpty
+        ? territory.points.first
+        : _getCenterPoint(territory.points);
 
     // ✅ Fetch real route from Google Directions API
     final directionsResult = await DirectionsService.getDirections(
@@ -296,7 +341,10 @@ class RunningProvider extends ChangeNotifier {
   Future<void> _updateRouteRealtime() async {
     if (_currentLatLng == null || _selectedTerritory == null) return;
 
-    final destination = _getCenterPoint(_selectedTerritory!.points);
+    // ✅ Always navigate to START POINT (first coordinate)
+    final destination = _selectedTerritory!.points.isNotEmpty
+        ? _selectedTerritory!.points.first
+        : _getCenterPoint(_selectedTerritory!.points);
 
     // ✅ Fetch updated route from current position
     final directionsResult = await DirectionsService.getDirections(
@@ -416,6 +464,38 @@ class RunningProvider extends ChangeNotifier {
     return null;
   }
 
+  /// Check if user is at the starting point of a territory
+  /// Returns true if within 20 meters of first coordinate
+  bool isAtTerritoryStartPoint(LatLng userLocation, Territory territory) {
+    if (territory.points.isEmpty) return false;
+
+    final startPoint = territory.points.first;
+    final distanceToStart = Geolocator.distanceBetween(
+      userLocation.latitude,
+      userLocation.longitude,
+      startPoint.latitude,
+      startPoint.longitude,
+    );
+
+    // User must be within 20 meters of start point
+    return distanceToStart <= 20;
+  }
+
+  /// Get distance to start point for display
+  double? getDistanceToStartPoint(LatLng? userLocation, Territory? territory) {
+    if (userLocation == null || territory == null || territory.points.isEmpty) {
+      return null;
+    }
+
+    final startPoint = territory.points.first;
+    return Geolocator.distanceBetween(
+      userLocation.latitude,
+      userLocation.longitude,
+      startPoint.latitude,
+      startPoint.longitude,
+    );
+  }
+
   bool _isPointInPolygon(LatLng point, List<LatLng> polygon) {
     if (polygon.length < 3) return false;
 
@@ -443,9 +523,192 @@ class RunningProvider extends ChangeNotifier {
     return _territories.where((t) => t.ownerId == userId).toList();
   }
 
+  // ==================== RUN TRACKING ====================
+
+  /// Start run session at current territory
+  Future<bool> startRunSession() async {
+    if (_currentLatLng == null || _selectedTerritory == null) {
+      AppLogger.warning(LogLabel.general, 'Cannot start run: no location or territory');
+      return false;
+    }
+
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) {
+      AppLogger.warning(LogLabel.general, 'Cannot start run: no user');
+      return false;
+    }
+
+    try {
+      final session = await _runTrackingService.startRunSession(
+        userId: userId,
+        territoryId: _selectedTerritory!.id,
+        startLocation: _currentLatLng!,
+      );
+
+      if (session != null) {
+        _activeRunSession = session;
+        _isRunning = true;
+
+        // Stop navigation since we're now running
+        stopNavigation();
+
+        // Start updating run route visualization
+        _startRunRouteUpdates();
+
+        notifyListeners();
+        return true;
+      }
+
+      return false;
+    } catch (e, stackTrace) {
+      AppLogger.error(LogLabel.general, 'Failed to start run session', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Update run route visualization periodically
+  Timer? _runRouteTimer;
+
+  void _startRunRouteUpdates() {
+    _runRouteTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (_isRunning && _runTrackingService.recordedPoints.isNotEmpty) {
+        _updateRunRoutePolyline();
+        notifyListeners();
+      }
+    });
+  }
+
+  void _updateRunRoutePolyline() {
+    _runRoutePolylines.clear();
+
+    final points = _runTrackingService.recordedPoints;
+    if (points.length < 2) return;
+
+    final polyline = Polyline(
+      polylineId: const PolylineId('run_route'),
+      points: points,
+      color: const Color(0xFF00E676), // Bright green for active run
+      width: 6,
+      geodesic: true,
+    );
+
+    _runRoutePolylines.add(polyline);
+  }
+
+  /// Pause run session
+  void pauseRunSession() {
+    _runTrackingService.pauseRunSession();
+    notifyListeners();
+  }
+
+  /// Resume run session
+  void resumeRunSession() {
+    _runTrackingService.resumeRunSession();
+    notifyListeners();
+  }
+
+  /// Complete run session
+  Future<RunSession?> completeRunSession() async {
+    if (!_isRunning || _currentLatLng == null) return null;
+
+    try {
+      final completedSession = await _runTrackingService.completeRunSession(
+        endLocation: _currentLatLng!,
+      );
+
+      if (completedSession != null) {
+        _activeRunSession = completedSession;
+        _isRunning = false;
+        _runRouteTimer?.cancel();
+
+        // Check if user can conquer territory
+        final canConquer = await _checkTerritoryConquest(completedSession);
+
+        if (canConquer) {
+          _activeRunSession = completedSession.copyWith(
+            territoryConquered: true,
+          );
+        }
+
+        // Reload territories to reflect ownership changes
+        await loadTerritories();
+
+        notifyListeners();
+        return _activeRunSession;
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      AppLogger.error(LogLabel.general, 'Failed to complete run', e, stackTrace);
+      return null;
+    }
+  }
+
+  /// Check if user conquered territory with this run
+  Future<bool> _checkTerritoryConquest(RunSession newRun) async {
+    try {
+      // Get current best run for territory
+      final currentBestRun = await _runTrackingService.getBestRunForTerritory(
+        territoryId: newRun.territoryId,
+      );
+
+      final canConquer = await _runTrackingService.canConquerTerritory(
+        newRun: newRun,
+        currentBestRun: currentBestRun,
+      );
+
+      if (canConquer) {
+        // Update territory ownership
+        await _runTrackingService.updateTerritoryOwnership(
+          territoryId: newRun.territoryId,
+          newOwnerId: newRun.userId,
+          previousOwnerId: currentBestRun?.userId,
+        );
+
+        AppLogger.success(
+          LogLabel.general,
+          '🏆 Territory conquered! Pace: ${newRun.formattedPace}',
+        );
+
+        return true;
+      }
+
+      return false;
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        LogLabel.general,
+        'Failed to check territory conquest',
+        e,
+        stackTrace,
+      );
+      return false;
+    }
+  }
+
+  /// Cancel run session
+  void cancelRunSession() {
+    _runTrackingService.cancelRunSession();
+    _activeRunSession = null;
+    _isRunning = false;
+    _runRouteTimer?.cancel();
+    _runRoutePolylines.clear();
+    notifyListeners();
+  }
+
+  /// Get leaderboard for current territory
+  Future<List<RunSession>> getTerritoryLeaderboard() async {
+    if (_selectedTerritory == null) return [];
+
+    return await _runTrackingService.getTerritoryLeaderboard(
+      territoryId: _selectedTerritory!.id,
+    );
+  }
+
   @override
   void dispose() {
     stopLocationTracking();
+    _runTrackingService.dispose();
+    _runRouteTimer?.cancel();
     super.dispose();
   }
 }

@@ -8,6 +8,7 @@ import '../../data/providers/running/running_provider.dart';
 import 'widgets/navigation_info_card.dart';
 import 'widgets/territory_card.dart';
 import 'widgets/territory_card_shimmer.dart';
+import 'run_tracking_screen.dart';
 
 class RunningPage extends StatefulWidget {
   const RunningPage({super.key});
@@ -148,6 +149,7 @@ class RunningPageState extends State<RunningPage> {
                 rotateGesturesEnabled: false,
                 polygons: runningProvider.polygons,
                 polylines: runningProvider.routePolylines,
+                markers: runningProvider.markers, // ✅ Show start point marker
               ),
 
               // ==================== LOADING OVERLAY ====================
@@ -287,8 +289,10 @@ class RunningPageState extends State<RunningPage> {
                 ),
 
               // ==================== NAVIGATION INFO CARD ====================
+              // Show ONLY when navigating AND not arrived yet
               if (runningProvider.isNavigating &&
-                  runningProvider.selectedTerritory != null)
+                  runningProvider.selectedTerritory != null &&
+                  !runningProvider.hasArrivedAtStartPoint)
                 Positioned(
                   top: 60,
                   left: 0,
@@ -302,15 +306,21 @@ class RunningPageState extends State<RunningPage> {
                     durationText: runningProvider.durationText,
                     isLoadingRoute: runningProvider.isLoadingRoute,
                     onStop: () => runningProvider.stopNavigation(),
-                    // ✅ START RUNNING callback
-                    onStartRunning: () {
-                      // Check if user is at territory
-                      final currentTerritory = runningProvider.getTerritoryAtLocation(
+                    // ✅ START RUNNING callback (not used when card visible)
+                    onStartRunning: () async {
+                      final selectedTerritory = runningProvider.selectedTerritory;
+                      if (selectedTerritory == null || runningProvider.currentLatLng == null) {
+                        return;
+                      }
+
+                      // ✅ Check if user is at START POINT (first coordinate)
+                      final isAtStartPoint = runningProvider.isAtTerritoryStartPoint(
                         runningProvider.currentLatLng!,
+                        selectedTerritory,
                       );
-                      
-                      if (currentTerritory?.id == runningProvider.selectedTerritory?.id) {
-                        // ✅ User arrived at territory!
+
+                      if (isAtStartPoint) {
+                        // ✅ User at start point! Can begin run
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: const Row(
@@ -319,7 +329,7 @@ class RunningPageState extends State<RunningPage> {
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    '🎉 You\'ve arrived! Starting running session...',
+                                    '🎉 You\'re at the start point! Starting run...',
                                     style: TextStyle(fontWeight: FontWeight.w500),
                                   ),
                                 ),
@@ -331,13 +341,40 @@ class RunningPageState extends State<RunningPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             margin: const EdgeInsets.all(16),
-                            duration: const Duration(seconds: 3),
+                            duration: const Duration(seconds: 2),
                           ),
                         );
-                        // runningProvider.startRunningSession();
+
+                        // Start run session
+                        final started = await runningProvider.startRunSession();
+
+                        if (started && context.mounted) {
+                          // Navigate to run tracking screen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RunTrackingScreen(),
+                            ),
+                          );
+                        }
                       } else {
-                        // ⚠️ User not at territory yet
-                        final distance = runningProvider.distanceText ?? '---';
+                        // ⚠️ User not at start point yet
+                        final distanceToStart = runningProvider.getDistanceToStartPoint(
+                          runningProvider.currentLatLng,
+                          selectedTerritory,
+                        );
+
+                        String distanceMessage;
+                        if (distanceToStart != null) {
+                          if (distanceToStart < 1000) {
+                            distanceMessage = '${distanceToStart.toStringAsFixed(0)} m';
+                          } else {
+                            distanceMessage = '${(distanceToStart / 1000).toStringAsFixed(2)} km';
+                          }
+                        } else {
+                          distanceMessage = runningProvider.distanceText ?? '---';
+                        }
+
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Row(
@@ -346,7 +383,7 @@ class RunningPageState extends State<RunningPage> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    'Keep going! $distance remaining to destination',
+                                    'Please go to the START POINT first!\n$distanceMessage remaining',
                                     style: const TextStyle(fontWeight: FontWeight.w500),
                                   ),
                                 ),
@@ -358,7 +395,7 @@ class RunningPageState extends State<RunningPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             margin: const EdgeInsets.all(16),
-                            duration: const Duration(seconds: 2),
+                            duration: const Duration(seconds: 3),
                           ),
                         );
                       }
@@ -478,6 +515,108 @@ class RunningPageState extends State<RunningPage> {
                   ),
                 ),
               ),
+
+              // ==================== START RUN FLOATING BUTTON ====================
+              // Show when arrived at start point
+              if (runningProvider.isNavigating &&
+                  runningProvider.hasArrivedAtStartPoint)
+                Positioned(
+                  bottom: 100,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Material(
+                      elevation: 8,
+                      borderRadius: BorderRadius.circular(30),
+                      child: InkWell(
+                        onTap: () async {
+                          // Start run session
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Row(
+                                children: [
+                                  Icon(Icons.celebration, color: Colors.white),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      '🎉 Starting run session...',
+                                      style: TextStyle(fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: Colors.green.shade600,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              margin: const EdgeInsets.all(16),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+
+                          final started = await runningProvider.startRunSession();
+
+                          if (started && context.mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const RunTrackingScreen(),
+                              ),
+                            );
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(30),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 40,
+                            vertical: 20,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF00E676), Color(0xFF00C853)],
+                            ),
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.green.withValues(alpha: 0.4),
+                                blurRadius: 15,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'MULAI LARI',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
 
               // ==================== MY LOCATION BUTTON ====================
               Positioned(
