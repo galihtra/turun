@@ -22,14 +22,14 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
 
   // Draggable sheet controller
   final DraggableScrollableController _sheetController = DraggableScrollableController();
-  double _sheetSize = 0.25; // Start collapsed (25% of screen)
+  double _sheetSize = 0.25;
   final double _minSheetSize = 0.25;
   final double _maxSheetSize = 0.7;
 
   @override
   void initState() {
     super.initState();
-    // Update UI every second for live metrics
+    // Update UI every second for live metrics and check for auto-finish
     _uiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {});
@@ -44,8 +44,8 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
     
     final provider = context.read<RunningProvider>();
     
-    // If run finished (isRunning is false but we have a completed session)
-    if (!provider.isRunning && provider.activeRunSession != null) {
+    // ✅ Check both runCompleted flag AND if we have a completed session
+    if (provider.runCompleted && provider.activeRunSession != null && !provider.isRunning) {
       _hasNavigatedToCompletion = true;
       
       // Navigate to completion screen
@@ -112,9 +112,14 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
           // Get user's profile color for route polyline
           final userColor = _parseColor(userProvider.currentUser?.profileColor);
 
+          // ✅ Calculate coins collected and total
+          final totalCoins = (runProvider.selectedTerritory?.points.length ?? 1) - 1;
+          final coinsCollected = (runProvider.currentCheckpointIndex - 1).clamp(0, totalCoins);
+          final allCoinsCollected = coinsCollected >= totalCoins;
+
           return Stack(
             children: [
-              // Map showing run route (full screen - no blockage!)
+              // Map showing run route
               GoogleMap(
                 onMapCreated: _onMapCreated,
                 initialCameraPosition: CameraPosition(
@@ -130,10 +135,10 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                 rotateGesturesEnabled: false,
                 polygons: runProvider.polygons,
                 polylines: _buildAllPolylines(runProvider, userColor),
-                markers: runProvider.runMarkers, // Checkpoint markers
+                markers: runProvider.runMarkers,
               ),
 
-              // Top territory name badge (compact)
+              // Top territory name badge
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -180,6 +185,75 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                   ),
                 ),
               ),
+
+              // ✅ "Return to START" banner when all coins collected
+              if (allCoinsCollected && runProvider.isRunning)
+                Positioned(
+                  top: 100,
+                  left: 16,
+                  right: 16,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.green.shade600, Colors.green.shade800],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.emoji_events_rounded,
+                            color: Colors.amber,
+                            size: 24,
+                          ),
+                        ),
+                        const Gap(12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '🎉 All Coins Collected!',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const Gap(4),
+                              Text(
+                                'Return to START to finish the run',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
               // Center location button
               Positioned(
@@ -257,10 +331,10 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                             ),
                           ),
 
-                          // Compact stats view
+                          // Stats content
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: _buildStatsContent(runProvider, userColor),
+                            child: _buildStatsContent(runProvider, userColor, coinsCollected, totalCoins),
                           ),
                         ],
                       ),
@@ -276,14 +350,15 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
   }
 
   // Build stats content based on sheet size
-  Widget _buildStatsContent(RunningProvider provider, Color userColor) {
+  Widget _buildStatsContent(RunningProvider provider, Color userColor, int coinsCollected, int totalCoins) {
     final isExpanded = _sheetSize > 0.4;
+    final allCoinsCollected = coinsCollected >= totalCoins;
 
     if (!isExpanded) {
       // COLLAPSED: Compact horizontal stats
       return Column(
         children: [
-          // Route progress bar (always show during run)
+          // Route progress bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Column(
@@ -291,19 +366,41 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Route Progress',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          'Progress',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (allCoinsCollected) ...[
+                          const Gap(8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '✓ Complete!',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     Text(
-                      '${provider.routeProgress.toStringAsFixed(0)}%',
+                      '$coinsCollected / $totalCoins coins',
                       style: TextStyle(
                         fontSize: 10,
-                        color: userColor,
+                        color: allCoinsCollected ? Colors.green : userColor,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -316,7 +413,9 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                     value: provider.routeProgress / 100,
                     minHeight: 6,
                     backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(userColor),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      allCoinsCollected ? Colors.green : userColor,
+                    ),
                   ),
                 ),
               ],
@@ -357,15 +456,19 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
       // EXPANDED: Full detailed stats
       return Column(
         children: [
-          // Route progress (always show during run)
+          // Route progress (with coin counter)
           Container(
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: userColor.withOpacity(0.08),
+              color: allCoinsCollected 
+                  ? Colors.green.shade50 
+                  : userColor.withOpacity(0.08),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: userColor.withOpacity(0.2),
+                color: allCoinsCollected 
+                    ? Colors.green.withOpacity(0.3) 
+                    : userColor.withOpacity(0.2),
                 width: 1.5,
               ),
             ),
@@ -377,49 +480,67 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                     Row(
                       children: [
                         Icon(
-                          Icons.route_rounded,
-                          color: userColor,
-                          size: 16,
+                          allCoinsCollected 
+                              ? Icons.emoji_events_rounded 
+                              : Icons.monetization_on_rounded,
+                          color: allCoinsCollected ? Colors.amber : userColor,
+                          size: 20,
                         ),
                         const Gap(8),
                         Text(
-                          'Route Progress',
+                          allCoinsCollected ? 'All Coins Collected!' : 'Coins Collected',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[700],
+                            color: allCoinsCollected 
+                                ? Colors.green.shade700 
+                                : Colors.grey[700],
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
-                    Text(
-                      '${provider.routeProgress.toStringAsFixed(0)}%',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: userColor,
-                        fontWeight: FontWeight.bold,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: allCoinsCollected 
+                            ? Colors.green 
+                            : userColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$coinsCollected / $totalCoins',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const Gap(10),
+                const Gap(12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: LinearProgressIndicator(
                     value: provider.routeProgress / 100,
-                    minHeight: 8,
+                    minHeight: 10,
                     backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(userColor),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      allCoinsCollected ? Colors.green : userColor,
+                    ),
                   ),
                 ),
-                const Gap(6),
-                Text(
-                  'Coins: ${(provider.currentCheckpointIndex - 1).clamp(0, 999)} of ${(provider.selectedTerritory?.points.length ?? 1) - 1}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
+                if (allCoinsCollected) ...[
+                  const Gap(10),
+                  Text(
+                    '🏁 Return to START to finish!',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -622,10 +743,10 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
   Set<Polyline> _buildAllPolylines(RunningProvider provider, Color userColor) {
     final polylines = <Polyline>{};
 
-    // 1. Territory guidance route (dashed blue line showing path to follow)
+    // 1. Territory guidance route
     polylines.addAll(provider.territoryGuidancePolylines);
 
-    // 2. User's actual running path (solid line with user's color)
+    // 2. User's actual running path
     final userRoutePoints = provider.runRoutePolylines;
     for (var polyline in userRoutePoints) {
       polylines.add(
@@ -642,19 +763,19 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
   // Parse color from hex string
   Color _parseColor(String? colorHex) {
     if (colorHex == null || colorHex.isEmpty) {
-      return AppColors.blueLogo; // Default color
+      return AppColors.blueLogo;
     }
 
     try {
       final hexColor = colorHex.replaceAll('#', '');
       return Color(int.parse('FF$hexColor', radix: 16));
     } catch (e) {
-      return AppColors.blueLogo; // Fallback
+      return AppColors.blueLogo;
     }
   }
 }
 
-// Compact Metric Widget (for collapsed bottom sheet)
+// Compact Metric Widget
 class _CompactMetric extends StatelessWidget {
   final String label;
   final String value;
@@ -693,7 +814,7 @@ class _CompactMetric extends StatelessWidget {
   }
 }
 
-// Detailed Metric Card (for expanded bottom sheet)
+// Detailed Metric Card
 class _DetailedMetricCard extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -794,7 +915,7 @@ class _DetailedMetricCard extends StatelessWidget {
   }
 }
 
-// Compact Button Widget (for collapsed bottom sheet)
+// Compact Button Widget
 class _CompactButton extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -886,4 +1007,3 @@ class _ControlButton extends StatelessWidget {
     );
   }
 }
-

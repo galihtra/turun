@@ -45,8 +45,12 @@ class RunningProvider extends ChangeNotifier {
   final Set<Polyline> _territoryGuidancePolylines = {};
   final Set<Marker> _runMarkers = {};
   int _currentCheckpointIndex = 0;
-  bool _hasLeftStartPoint = false; // ✅ Prevent immediate finish
-  DateTime? _lastFinishLogTime; // For throttling finish logs
+  bool _hasLeftStartPoint = false;
+  DateTime? _lastFinishLogTime;
+  bool _runCompleted = false; // ✅ NEW: Flag to prevent multiple completions
+
+  // ✅ NEW: GPS stream specifically for running
+  StreamSubscription<Position>? _runGpsStream;
 
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -92,20 +96,15 @@ class RunningProvider extends ChangeNotifier {
   int get runDuration => _runTrackingService.elapsedSeconds;
   double get currentPace => _runTrackingService.currentPace;
   double get currentSpeed => _runTrackingService.currentSpeed;
+  bool get runCompleted => _runCompleted; // ✅ NEW: Expose completion flag
 
   /// Get progress percentage through territory route
-  /// Progress is based on checkpoint coins collected
-  /// _currentCheckpointIndex = 1 means no coins collected yet
-  /// _currentCheckpointIndex = 2 means coin 1 collected, etc.
   double get routeProgress {
     if (_selectedTerritory == null || _selectedTerritory!.points.isEmpty) return 0;
     
-    // Total coins = total points - 1 (excluding START at index 0)
     final totalCoins = _selectedTerritory!.points.length - 1;
     if (totalCoins <= 0) return 0;
     
-    // Coins collected = _currentCheckpointIndex - 1
-    // Because index 1 = targeting coin 1 (0 collected), index 2 = targeting coin 2 (1 collected), etc.
     final coinsCollected = (_currentCheckpointIndex - 1).clamp(0, totalCoins);
     
     return (coinsCollected / totalCoins) * 100;
@@ -174,13 +173,12 @@ class RunningProvider extends ChangeNotifier {
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Update every 10 meters (untuk avoid too many API calls)
+        distanceFilter: 10,
       ),
     ).listen((Position position) {
       _currentPosition = position;
       _currentLatLng = LatLng(position.latitude, position.longitude);
 
-      // Update route if navigating
       if (_isNavigating && _selectedTerritory != null) {
         _updateRouteRealtime();
       }
@@ -193,6 +191,49 @@ class RunningProvider extends ChangeNotifier {
     AppLogger.info(LogLabel.general, 'Stopping location tracking');
     _positionStream?.cancel();
     _positionStream = null;
+  }
+
+  // ==================== GPS TRACKING FOR RUNNING ====================
+  /// ✅ NEW: Start dedicated GPS tracking for run with checkpoint detection
+  void _startRunGpsTracking() {
+    AppLogger.info(LogLabel.general, '🏃 Starting GPS tracking for run...');
+
+    _runGpsStream?.cancel(); // Cancel any existing stream
+
+    _runGpsStream = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 3, // Update every 3 meters for accurate checkpoint detection
+      ),
+    ).listen(
+      (Position position) {
+        if (!_isRunning || _runCompleted) return;
+
+        // Update current location
+        _currentPosition = position;
+        _currentLatLng = LatLng(position.latitude, position.longitude);
+
+        AppLogger.debug(
+          LogLabel.general,
+          '📍 GPS Update: ${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
+        );
+
+        // ✅ Check checkpoint progress with new location
+        _checkCheckpointProgressSync();
+
+        notifyListeners();
+      },
+      onError: (error) {
+        AppLogger.error(LogLabel.general, 'GPS tracking error during run', error);
+      },
+    );
+  }
+
+  /// ✅ NEW: Stop GPS tracking for run
+  void _stopRunGpsTracking() {
+    AppLogger.info(LogLabel.general, '🛑 Stopping run GPS tracking');
+    _runGpsStream?.cancel();
+    _runGpsStream = null;
   }
 
   // ==================== TERRITORIES ====================
@@ -235,7 +276,6 @@ class RunningProvider extends ChangeNotifier {
       Color fillColor;
       Color strokeColor;
 
-      // Highlight selected territory
       if (_selectedTerritory?.id == territory.id) {
         fillColor = Colors.green.withOpacity(0.3);
         strokeColor = Colors.green;
@@ -259,7 +299,6 @@ class RunningProvider extends ChangeNotifier {
 
       _polygons.add(polygon);
 
-      // Add START POINT marker ONLY for selected territory (when NOT running)
       if (_selectedTerritory?.id == territory.id &&
           territory.points.isNotEmpty &&
           !_isRunning) {
@@ -274,9 +313,6 @@ class RunningProvider extends ChangeNotifier {
           ),
         );
         _markers.add(marker);
-
-        // NOTE: Tidak menampilkan corner markers untuk preview
-        // User hanya melihat START point sebelum mulai lari
       }
     }
   }
@@ -305,25 +341,20 @@ class RunningProvider extends ChangeNotifier {
     _isLoadingRoute = true;
     notifyListeners();
 
-    // ✅ Navigate to START POINT (first coordinate) instead of center
     final destination = territory.points.isNotEmpty
         ? territory.points.first
         : _getCenterPoint(territory.points);
 
-    // ✅ Fetch real route from Google Directions API
     final directionsResult = await DirectionsService.getDirections(
       origin: _currentLatLng!,
       destination: destination,
-      mode: TravelMode.walking, // atau driving/bicycling
+      mode: TravelMode.walking,
     );
 
     if (directionsResult != null) {
-      // ✅ Use real route points (following roads!)
       _routePoints = directionsResult.polylinePoints;
-      
-      // ✅ Use Google's calculated distance & time
       _distanceToDestination = directionsResult.distanceValue.toDouble();
-      _estimatedTime = directionsResult.durationValue / 60.0; // to minutes
+      _estimatedTime = directionsResult.durationValue / 60.0;
       _distanceText = directionsResult.distanceText;
       _durationText = directionsResult.durationText;
 
@@ -332,7 +363,6 @@ class RunningProvider extends ChangeNotifier {
         'Route loaded: ${directionsResult.distanceText}, ${directionsResult.durationText}'
       );
     } else {
-      // ❌ Fallback to straight line if API fails
       AppLogger.warning(
         LogLabel.network, 
         'Directions API failed, using straight line'
@@ -345,7 +375,6 @@ class RunningProvider extends ChangeNotifier {
     _createRoutePolyline();
     _isLoadingRoute = false;
 
-    // Start tracking
     startLocationTracking();
 
     _generatePolygons();
@@ -369,13 +398,10 @@ class RunningProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Stop navigation but KEEP territory reference (used when starting run)
-  /// This prevents clearing _selectedTerritory which is needed for run markers
   void _stopNavigationKeepTerritory() {
     AppLogger.info(LogLabel.general, 'Navigation stopped (keeping territory for run)');
 
     _isNavigating = false;
-    // ✅ Don't clear _selectedTerritory! It's needed for checkpoint markers
     _routePoints.clear();
     _routePolylines.clear();
     _distanceToDestination = null;
@@ -385,19 +411,15 @@ class RunningProvider extends ChangeNotifier {
 
     stopLocationTracking();
     _generatePolygons();
-    // Don't call notifyListeners here - parent will do it
   }
 
-  /// Update route in real-time as user moves
   Future<void> _updateRouteRealtime() async {
     if (_currentLatLng == null || _selectedTerritory == null) return;
 
-    // ✅ Always navigate to START POINT (first coordinate)
     final destination = _selectedTerritory!.points.isNotEmpty
         ? _selectedTerritory!.points.first
         : _getCenterPoint(_selectedTerritory!.points);
 
-    // ✅ Fetch updated route from current position
     final directionsResult = await DirectionsService.getDirections(
       origin: _currentLatLng!,
       destination: destination,
@@ -432,13 +454,11 @@ class RunningProvider extends ChangeNotifier {
       color: Colors.blue,
       width: 5,
       geodesic: true,
-      // ✅ Solid line for real route (looks more professional)
     );
 
     _routePolylines.add(polyline);
   }
 
-  /// Fallback calculation if Directions API fails
   void _calculateRouteMetricsFallback() {
     if (_currentLatLng == null || _routePoints.length < 2) return;
 
@@ -452,9 +472,8 @@ class RunningProvider extends ChangeNotifier {
     );
 
     _distanceToDestination = distanceInMeters;
-    _estimatedTime = (distanceInMeters / 1000 / 5.0) * 60; // 5 km/h walking speed
+    _estimatedTime = (distanceInMeters / 1000 / 5.0) * 60;
     
-    // Format text manually
     if (distanceInMeters < 1000) {
       _distanceText = '${distanceInMeters.toStringAsFixed(0)} m';
     } else {
@@ -515,8 +534,6 @@ class RunningProvider extends ChangeNotifier {
     return null;
   }
 
-  /// Check if user is at the starting point of a territory
-  /// Returns true if within 20 meters of first coordinate
   bool isAtTerritoryStartPoint(LatLng userLocation, Territory territory) {
     if (territory.points.isEmpty) return false;
 
@@ -528,11 +545,9 @@ class RunningProvider extends ChangeNotifier {
       startPoint.longitude,
     );
 
-    // User must be within 20 meters of start point
     return distanceToStart <= 20;
   }
 
-  /// Get distance to start point for display
   double? getDistanceToStartPoint(LatLng? userLocation, Territory? territory) {
     if (userLocation == null || territory == null || territory.points.isEmpty) {
       return null;
@@ -600,20 +615,27 @@ class RunningProvider extends ChangeNotifier {
         _activeRunSession = session;
         _isRunning = true;
 
-        // Reset checkpoint progress
-        _currentCheckpointIndex = 1; // ✅ Start at 1 (first coin to collect)
-        _hasLeftStartPoint = false; // ✅ Reset flag for new run
-        _lastFinishLogTime = null; // Reset log throttle
+        // ✅ Reset ALL checkpoint progress flags
+        _currentCheckpointIndex = 1;
+        _hasLeftStartPoint = false;
+        _lastFinishLogTime = null;
+        _runCompleted = false; // ✅ CRITICAL: Reset completion flag
 
-        // ✅ FIX: Create markers BEFORE stopping navigation!
-        // stopNavigation() clears _selectedTerritory, so we must create
-        // markers while territory data is still available
+        AppLogger.info(LogLabel.general, '🚀 Run session initialized');
+        AppLogger.info(LogLabel.general, '   - Territory: ${_selectedTerritory!.name}');
+        AppLogger.info(LogLabel.general, '   - Total points: ${_selectedTerritory!.points.length}');
+        AppLogger.info(LogLabel.general, '   - Total coins to collect: ${_selectedTerritory!.points.length - 1}');
+        AppLogger.info(LogLabel.general, '   - Starting checkpoint index: $_currentCheckpointIndex');
+
+        // Create markers BEFORE stopping navigation
         await _startRunRouteUpdates();
 
-        // NOW stop navigation (clears route polylines but markers already created)
+        // Stop navigation but keep territory
         _stopNavigationKeepTerritory();
 
-        // Notify listeners after markers are ready
+        // ✅ START DEDICATED GPS TRACKING FOR RUN
+        _startRunGpsTracking();
+
         notifyListeners();
 
         AppLogger.success(
@@ -638,23 +660,21 @@ class RunningProvider extends ChangeNotifier {
     AppLogger.info(LogLabel.general, '🚀 _startRunRouteUpdates() START');
     AppLogger.info(LogLabel.general, '   Current markers before: ${_runMarkers.length}');
 
-    // Create territory guidance route IMMEDIATELY and WAIT for completion
     await _createTerritoryGuidanceRoute();
 
     AppLogger.info(LogLabel.general, '   Current markers after: ${_runMarkers.length}');
     AppLogger.success(LogLabel.general, '🚀 _startRunRouteUpdates() COMPLETE');
 
-    _runRouteTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (_isRunning && _runTrackingService.recordedPoints.isNotEmpty) {
+    // Timer for UI updates only (checkpoint detection is handled by GPS stream)
+    _runRouteTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_isRunning && !_runCompleted) {
         _updateRunRoutePolyline();
-        _updateCheckpointProgress();
         notifyListeners();
       }
     });
   }
 
   /// Create guidance polyline showing territory route to follow
-  /// Shows different colors for completed vs remaining segments
   Future<void> _createTerritoryGuidanceRoute() async {
     AppLogger.info(LogLabel.general, '🗺️ _createTerritoryGuidanceRoute() START');
 
@@ -671,16 +691,13 @@ class RunningProvider extends ChangeNotifier {
 
     final points = _selectedTerritory!.points;
     
-    // Create REMAINING route (from current checkpoint to end and back to start)
-    // This shows user where they still need to go
+    // Create REMAINING route
     final List<LatLng> remainingRoutePoints = [];
     
-    // Start from current checkpoint position
     final startIndex = _currentCheckpointIndex.clamp(0, points.length - 1);
     for (int i = startIndex; i < points.length; i++) {
       remainingRoutePoints.add(points[i]);
     }
-    // Complete the loop back to START
     remainingRoutePoints.add(points.first);
     
     if (remainingRoutePoints.length >= 2) {
@@ -698,7 +715,7 @@ class RunningProvider extends ChangeNotifier {
       _territoryGuidancePolylines.add(remainingPolyline);
     }
 
-    // Create NEXT CHECKPOINT indicator (bright line from current position to next checkpoint)
+    // Create NEXT CHECKPOINT indicator
     if (_currentLatLng != null && _currentCheckpointIndex < points.length) {
       final nextCheckpoint = points[_currentCheckpointIndex.clamp(0, points.length - 1)];
       final nextCheckpointLine = Polyline(
@@ -718,7 +735,6 @@ class RunningProvider extends ChangeNotifier {
     
     AppLogger.info(LogLabel.general, '   ✅ Guidance polylines created');
 
-    // Create checkpoint markers
     AppLogger.info(LogLabel.general, '   Calling _createCheckpointMarkers()...');
     await _createCheckpointMarkers();
 
@@ -742,18 +758,16 @@ class RunningProvider extends ChangeNotifier {
     }
 
     final points = _selectedTerritory!.points;
-    final hasCompletedAllCheckpoints = _currentCheckpointIndex >= points.length;
+    final totalCoins = points.length - 1;
+    final hasCompletedAllCheckpoints = _currentCheckpointIndex > totalCoins;
     
     AppLogger.info(LogLabel.general, '📍 Creating markers for ${points.length} points...');
     AppLogger.info(LogLabel.general, '   Current checkpoint: $_currentCheckpointIndex');
+    AppLogger.info(LogLabel.general, '   Total coins: $totalCoins');
     AppLogger.info(LogLabel.general, '   All checkpoints completed: $hasCompletedAllCheckpoints');
 
-    // ✅ START/FINISH marker at first position
-    // Only show ONE icon to prevent overlap:
-    // - If NOT completed all checkpoints → show START (green flag)
-    // - If completed all checkpoints → show FINISH (trophy)
+    // START/FINISH marker at first position
     if (hasCompletedAllCheckpoints) {
-      // Show FINISH trophy
       AppLogger.info(LogLabel.general, '   Creating FINISH marker (completed!)...');
       final finishIcon = await CustomMarkerHelper.createFinishMarker();
       final finishMarker = Marker(
@@ -761,14 +775,13 @@ class RunningProvider extends ChangeNotifier {
         position: points.first,
         icon: finishIcon,
         infoWindow: const InfoWindow(
-          title: '� FINISH',
-          snippet: 'Congratulations! Run completed!',
+          title: '🏆 FINISH',
+          snippet: 'Return here to complete!',
         ),
       );
       _runMarkers.add(finishMarker);
       AppLogger.info(LogLabel.general, '   ✅ FINISH marker created');
     } else {
-      // Show START marker
       AppLogger.info(LogLabel.general, '   Creating START marker...');
       final startIcon = await CustomMarkerHelper.createStartMarker();
       final startMarker = Marker(
@@ -776,24 +789,22 @@ class RunningProvider extends ChangeNotifier {
         position: points.first,
         icon: startIcon,
         infoWindow: const InfoWindow(
-          title: '🏁 START',
-          snippet: 'Begin your run here',
+          title: '🏁 START / FINISH',
+          snippet: 'Collect all coins and return here',
         ),
       );
       _runMarkers.add(startMarker);
       AppLogger.info(LogLabel.general, '   ✅ START marker created');
     }
 
-    // Checkpoint coins (skip index 0 = START/FINISH position, start from 1)
-    // Only show coins that haven't been collected yet
+    // Checkpoint coins (skip index 0, only show uncollected)
     for (int i = 1; i < points.length; i++) {
-      // ✅ Skip collected coins completely (don't show them at all)
       if (i < _currentCheckpointIndex) {
-        AppLogger.info(LogLabel.general, '   ⏭️ Coin $i already collected, skipping');
+        AppLogger.debug(LogLabel.general, '   ⏭️ Coin $i already collected, skipping');
         continue;
       }
       
-      AppLogger.info(LogLabel.general, '   Creating Coin $i...');
+      AppLogger.debug(LogLabel.general, '   Creating Coin $i...');
       final coinIcon = await CustomMarkerHelper.createCheckpointCoin(i);
 
       final marker = Marker(
@@ -807,7 +818,6 @@ class RunningProvider extends ChangeNotifier {
       );
 
       _runMarkers.add(marker);
-      AppLogger.info(LogLabel.general, '   ✅ Coin $i created');
     }
 
     AppLogger.success(
@@ -816,23 +826,16 @@ class RunningProvider extends ChangeNotifier {
     );
   }
 
-  /// Update checkpoint progress based on user location
-  /// 
-  /// LOGIC:
-  /// 1. User starts at START - _currentCheckpointIndex = 1 (skip coin 0, first coin is 1)
-  /// 2. User must LEAVE start area first (_hasLeftStartPoint = true when >30m from START)
-  /// 3. Each coin collected when user within 25m
-  /// 4. After ALL coins collected, user must return to START to finish
-  /// 5. FINISH only triggers if _hasLeftStartPoint is true (prevents immediate finish)
-  Future<void> _updateCheckpointProgress() async {
+  /// ✅ NEW: Synchronous checkpoint check called from GPS stream
+  void _checkCheckpointProgressSync() {
     if (_currentLatLng == null || _selectedTerritory == null) return;
-    if (!_isRunning) return;
+    if (!_isRunning || _runCompleted) return;
 
     final points = _selectedTerritory!.points;
     if (points.isEmpty) return;
     
     final startPoint = points.first;
-    final totalCoins = points.length - 1; // Coins are at index 1 to N-1
+    final totalCoins = points.length - 1;
     
     // Calculate distance to START point
     final distanceToStart = Geolocator.distanceBetween(
@@ -842,15 +845,14 @@ class RunningProvider extends ChangeNotifier {
       startPoint.longitude,
     );
     
-    // ✅ STEP 1: Detect when user has LEFT the start area (more than 30m away)
+    // STEP 1: Detect when user has LEFT the start area (more than 30m away)
     if (!_hasLeftStartPoint && distanceToStart > 30) {
       _hasLeftStartPoint = true;
       AppLogger.info(LogLabel.general, '🚀 User left START area (${distanceToStart.toStringAsFixed(0)}m away)');
     }
     
-    // ✅ STEP 2: Check for coin collection (only coins at index 1+, NOT index 0)
-    // _currentCheckpointIndex starts at 1, meaning "next coin to collect is coin 1"
-    if (_currentCheckpointIndex <= totalCoins && _currentCheckpointIndex >= 1) {
+    // STEP 2: Check for coin collection
+    if (_currentCheckpointIndex >= 1 && _currentCheckpointIndex <= totalCoins) {
       final nextCoinIndex = _currentCheckpointIndex;
       final coinPosition = points[nextCoinIndex];
       
@@ -861,18 +863,22 @@ class RunningProvider extends ChangeNotifier {
         coinPosition.longitude,
       );
       
+      AppLogger.debug(
+        LogLabel.general,
+        '📏 Distance to coin $nextCoinIndex: ${distanceToCoin.toStringAsFixed(1)}m',
+      );
+      
       // Within 25 meters = coin collected
       if (distanceToCoin <= 25) {
         AppLogger.success(
           LogLabel.general,
-          '🪙 Coin $nextCoinIndex collected! (${distanceToCoin.toStringAsFixed(0)}m)',
+          '🪙 COIN $nextCoinIndex COLLECTED! (${distanceToCoin.toStringAsFixed(0)}m)',
         );
 
-        _currentCheckpointIndex++; // Move to next coin
+        _currentCheckpointIndex++;
 
-        // Refresh markers only (more efficient than recreating guidance route)
-        await _createCheckpointMarkers();
-        notifyListeners();
+        // Refresh markers asynchronously
+        _refreshMarkersAsync();
 
         AppLogger.info(
           LogLabel.general,
@@ -881,31 +887,22 @@ class RunningProvider extends ChangeNotifier {
       }
     }
     
-    // ✅ STEP 3: Check for FINISH (only after leaving start AND collecting all coins)
+    // STEP 3: Check for FINISH
     final allCoinsCollected = _currentCheckpointIndex > totalCoins;
     
-    if (allCoinsCollected && _hasLeftStartPoint) {
-      // Check if back at START
+    if (allCoinsCollected && _hasLeftStartPoint && !_runCompleted) {
       if (distanceToStart <= 25) {
         AppLogger.success(LogLabel.general, '🏆 FINISH! All coins collected and returned to START!');
-
-        // Update markers to show FINISH trophy
-        await _createCheckpointMarkers();
-        notifyListeners();
-
-        // Small delay to let user see the trophy
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        // Auto-complete the run and navigate to summary
-        final session = await completeRunSession();
-        if (session != null) {
-          AppLogger.success(LogLabel.general, '✅ Run session completed successfully!');
-          // Navigation to summary will be handled by UI listening to state changes
-        }
+        
+        // ✅ Set completion flag IMMEDIATELY to prevent multiple triggers
+        _runCompleted = true;
+        
+        // Trigger async completion
+        _handleAutoFinish();
       } else {
-        // Log distance to finish (only once per second to avoid spam)
+        // Log distance to finish (throttled)
         final now = DateTime.now();
-        if (_lastFinishLogTime == null || now.difference(_lastFinishLogTime!) > const Duration(seconds: 1)) {
+        if (_lastFinishLogTime == null || now.difference(_lastFinishLogTime!) > const Duration(seconds: 2)) {
           _lastFinishLogTime = now;
           AppLogger.info(
             LogLabel.general,
@@ -916,17 +913,111 @@ class RunningProvider extends ChangeNotifier {
     }
   }
 
+  /// Refresh markers asynchronously after coin collection
+  Future<void> _refreshMarkersAsync() async {
+    await _createCheckpointMarkers();
+    await _updateGuidanceRoute();
+    notifyListeners();
+  }
+
+  /// Update guidance route after checkpoint collected
+  Future<void> _updateGuidanceRoute() async {
+    if (_selectedTerritory == null || _selectedTerritory!.points.isEmpty) return;
+
+    _territoryGuidancePolylines.clear();
+    
+    final points = _selectedTerritory!.points;
+    final totalCoins = points.length - 1;
+    final allCoinsCollected = _currentCheckpointIndex > totalCoins;
+
+    if (allCoinsCollected) {
+      // Show route back to START
+      if (_currentLatLng != null) {
+        final returnRoute = Polyline(
+          polylineId: const PolylineId('return_to_start'),
+          points: [_currentLatLng!, points.first],
+          color: Colors.green,
+          width: 6,
+          geodesic: true,
+          patterns: [
+            PatternItem.dash(15),
+            PatternItem.gap(8),
+          ],
+        );
+        _territoryGuidancePolylines.add(returnRoute);
+      }
+    } else {
+      // Show remaining route
+      final List<LatLng> remainingRoutePoints = [];
+      final startIndex = _currentCheckpointIndex.clamp(0, points.length - 1);
+      
+      for (int i = startIndex; i < points.length; i++) {
+        remainingRoutePoints.add(points[i]);
+      }
+      remainingRoutePoints.add(points.first);
+      
+      if (remainingRoutePoints.length >= 2) {
+        final remainingPolyline = Polyline(
+          polylineId: const PolylineId('remaining_route'),
+          points: remainingRoutePoints,
+          color: Colors.blue.withOpacity(0.7),
+          width: 6,
+          geodesic: true,
+          patterns: [
+            PatternItem.dash(20),
+            PatternItem.gap(10),
+          ],
+        );
+        _territoryGuidancePolylines.add(remainingPolyline);
+      }
+
+      // Next checkpoint line
+      if (_currentLatLng != null && _currentCheckpointIndex < points.length) {
+        final nextCheckpoint = points[_currentCheckpointIndex];
+        final nextCheckpointLine = Polyline(
+          polylineId: const PolylineId('next_checkpoint_line'),
+          points: [_currentLatLng!, nextCheckpoint],
+          color: Colors.orange,
+          width: 4,
+          geodesic: true,
+          patterns: [
+            PatternItem.dash(10),
+            PatternItem.gap(5),
+          ],
+        );
+        _territoryGuidancePolylines.add(nextCheckpointLine);
+      }
+    }
+  }
+
+  /// Handle auto finish when all checkpoints completed
+  Future<void> _handleAutoFinish() async {
+    AppLogger.info(LogLabel.general, '🎯 Auto-finishing run...');
+
+    // Update markers to show FINISH trophy
+    await _createCheckpointMarkers();
+    notifyListeners();
+
+    // Small delay to let user see the trophy
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Complete the run session
+    final session = await completeRunSession();
+    if (session != null) {
+      AppLogger.success(LogLabel.general, '✅ Run session auto-completed successfully!');
+    }
+  }
+
   void _updateRunRoutePolyline() {
     _runRoutePolylines.clear();
 
     final points = _runTrackingService.recordedPoints;
     if (points.length < 2) return;
 
-    // User's actual path (will be colored by user profile in UI)
     final polyline = Polyline(
       polylineId: const PolylineId('run_route'),
       points: points,
-      color: const Color(0xFF00E676), // Default green (akan di-override di UI)
+      color: const Color(0xFF00E676),
       width: 6,
       geodesic: true,
     );
@@ -951,6 +1042,10 @@ class RunningProvider extends ChangeNotifier {
     if (!_isRunning || _currentLatLng == null) return null;
 
     try {
+      // Stop tracking
+      _stopRunGpsTracking();
+      _runRouteTimer?.cancel();
+
       final completedSession = await _runTrackingService.completeRunSession(
         endLocation: _currentLatLng!,
       );
@@ -958,14 +1053,13 @@ class RunningProvider extends ChangeNotifier {
       if (completedSession != null) {
         _activeRunSession = completedSession;
         _isRunning = false;
-        _runRouteTimer?.cancel();
         
-        // ✅ Clean up run-specific visuals
+        // Clean up run-specific visuals
         _runRoutePolylines.clear();
         _territoryGuidancePolylines.clear();
         _runMarkers.clear();
-        _currentCheckpointIndex = 1; // Reset for next run
-        _hasLeftStartPoint = false; // Reset flag
+        _currentCheckpointIndex = 1;
+        _hasLeftStartPoint = false;
 
         // Check if user can conquer territory
         final canConquer = await _checkTerritoryConquest(completedSession);
@@ -976,10 +1070,10 @@ class RunningProvider extends ChangeNotifier {
           );
         }
 
-        // ✅ Clear territory after processing conquest
+        // Clear territory after processing conquest
         _selectedTerritory = null;
 
-        // Reload territories to reflect ownership changes
+        // Reload territories
         await loadTerritories();
 
         notifyListeners();
@@ -996,7 +1090,6 @@ class RunningProvider extends ChangeNotifier {
   /// Check if user conquered territory with this run
   Future<bool> _checkTerritoryConquest(RunSession newRun) async {
     try {
-      // Get current best run for territory
       final currentBestRun = await _runTrackingService.getBestRunForTerritory(
         territoryId: newRun.territoryId,
       );
@@ -1007,7 +1100,6 @@ class RunningProvider extends ChangeNotifier {
       );
 
       if (canConquer) {
-        // Update territory ownership
         await _runTrackingService.updateTerritoryOwnership(
           territoryId: newRun.territoryId,
           newOwnerId: newRun.userId,
@@ -1037,15 +1129,17 @@ class RunningProvider extends ChangeNotifier {
   /// Cancel run session
   void cancelRunSession() {
     _runTrackingService.cancelRunSession();
+    _stopRunGpsTracking();
     _activeRunSession = null;
     _isRunning = false;
+    _runCompleted = false;
     _runRouteTimer?.cancel();
     _runRoutePolylines.clear();
     _territoryGuidancePolylines.clear();
     _runMarkers.clear();
-    _currentCheckpointIndex = 1; // Reset for next run
-    _hasLeftStartPoint = false; // Reset flag
-    _selectedTerritory = null; // ✅ Clear territory for fresh state on next run
+    _currentCheckpointIndex = 1;
+    _hasLeftStartPoint = false;
+    _selectedTerritory = null;
     notifyListeners();
   }
 
@@ -1061,6 +1155,7 @@ class RunningProvider extends ChangeNotifier {
   @override
   void dispose() {
     stopLocationTracking();
+    _stopRunGpsTracking();
     _runTrackingService.dispose();
     _runRouteTimer?.cancel();
     super.dispose();
