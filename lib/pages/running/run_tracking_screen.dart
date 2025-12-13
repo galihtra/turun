@@ -18,6 +18,7 @@ class RunTrackingScreen extends StatefulWidget {
 class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTickerProviderStateMixin {
   GoogleMapController? _mapController;
   Timer? _uiUpdateTimer;
+  bool _hasNavigatedToCompletion = false;
 
   // Draggable sheet controller
   final DraggableScrollableController _sheetController = DraggableScrollableController();
@@ -30,8 +31,35 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
     super.initState();
     // Update UI every second for live metrics
     _uiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+        _checkAutoFinish();
+      }
     });
+  }
+
+  /// Check if run was auto-finished and navigate to completion screen
+  void _checkAutoFinish() {
+    if (_hasNavigatedToCompletion) return;
+    
+    final provider = context.read<RunningProvider>();
+    
+    // If run finished (isRunning is false but we have a completed session)
+    if (!provider.isRunning && provider.activeRunSession != null) {
+      _hasNavigatedToCompletion = true;
+      
+      // Navigate to completion screen
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && provider.activeRunSession != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RunCompletionScreen(session: provider.activeRunSession!),
+            ),
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -255,48 +283,46 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
       // COLLAPSED: Compact horizontal stats
       return Column(
         children: [
-          // Route progress bar
-          if (provider.routeProgress > 0) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Route Progress',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
+          // Route progress bar (always show during run)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Route Progress',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
                       ),
-                      Text(
-                        '${provider.routeProgress.toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: userColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Gap(4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: provider.routeProgress / 100,
-                      minHeight: 6,
-                      backgroundColor: Colors.grey[200],
-                      valueColor: AlwaysStoppedAnimation<Color>(userColor),
                     ),
+                    Text(
+                      '${provider.routeProgress.toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: userColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const Gap(4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: provider.routeProgress / 100,
+                    minHeight: 6,
+                    backgroundColor: Colors.grey[200],
+                    valueColor: AlwaysStoppedAnimation<Color>(userColor),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const Gap(12),
-          ],
+          ),
+          const Gap(12),
 
           // Compact metrics row
           Row(
@@ -331,74 +357,72 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
       // EXPANDED: Full detailed stats
       return Column(
         children: [
-          // Route progress (if running)
-          if (provider.routeProgress > 0) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: userColor.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: userColor.withOpacity(0.2),
-                  width: 1.5,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.route_rounded,
-                            color: userColor,
-                            size: 16,
-                          ),
-                          const Gap(8),
-                          Text(
-                            'Route Progress',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        '${provider.routeProgress.toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: userColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Gap(10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: provider.routeProgress / 100,
-                      minHeight: 8,
-                      backgroundColor: Colors.grey[200],
-                      valueColor: AlwaysStoppedAnimation<Color>(userColor),
-                    ),
-                  ),
-                  const Gap(6),
-                  Text(
-                    'Checkpoint ${provider.currentCheckpointIndex} of ${provider.selectedTerritory?.points.length ?? 0}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
+          // Route progress (always show during run)
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: userColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: userColor.withOpacity(0.2),
+                width: 1.5,
               ),
             ),
-          ],
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.route_rounded,
+                          color: userColor,
+                          size: 16,
+                        ),
+                        const Gap(8),
+                        Text(
+                          'Route Progress',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '${provider.routeProgress.toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: userColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const Gap(10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: provider.routeProgress / 100,
+                    minHeight: 8,
+                    backgroundColor: Colors.grey[200],
+                    valueColor: AlwaysStoppedAnimation<Color>(userColor),
+                  ),
+                ),
+                const Gap(6),
+                Text(
+                  'Coins: ${(provider.currentCheckpointIndex - 1).clamp(0, 999)} of ${(provider.selectedTerritory?.points.length ?? 1) - 1}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
 
           // Big duration display
           Text(

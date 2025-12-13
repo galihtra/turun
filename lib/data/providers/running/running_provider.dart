@@ -45,6 +45,8 @@ class RunningProvider extends ChangeNotifier {
   final Set<Polyline> _territoryGuidancePolylines = {};
   final Set<Marker> _runMarkers = {};
   int _currentCheckpointIndex = 0;
+  bool _hasLeftStartPoint = false; // ✅ Prevent immediate finish
+  DateTime? _lastFinishLogTime; // For throttling finish logs
 
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -92,10 +94,21 @@ class RunningProvider extends ChangeNotifier {
   double get currentSpeed => _runTrackingService.currentSpeed;
 
   /// Get progress percentage through territory route
+  /// Progress is based on checkpoint coins collected
+  /// _currentCheckpointIndex = 1 means no coins collected yet
+  /// _currentCheckpointIndex = 2 means coin 1 collected, etc.
   double get routeProgress {
     if (_selectedTerritory == null || _selectedTerritory!.points.isEmpty) return 0;
-    final totalCheckpoints = _selectedTerritory!.points.length;
-    return (_currentCheckpointIndex / totalCheckpoints) * 100;
+    
+    // Total coins = total points - 1 (excluding START at index 0)
+    final totalCoins = _selectedTerritory!.points.length - 1;
+    if (totalCoins <= 0) return 0;
+    
+    // Coins collected = _currentCheckpointIndex - 1
+    // Because index 1 = targeting coin 1 (0 collected), index 2 = targeting coin 2 (1 collected), etc.
+    final coinsCollected = (_currentCheckpointIndex - 1).clamp(0, totalCoins);
+    
+    return (coinsCollected / totalCoins) * 100;
   }
 
   // ==================== INITIALIZATION ====================
@@ -356,6 +369,25 @@ class RunningProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Stop navigation but KEEP territory reference (used when starting run)
+  /// This prevents clearing _selectedTerritory which is needed for run markers
+  void _stopNavigationKeepTerritory() {
+    AppLogger.info(LogLabel.general, 'Navigation stopped (keeping territory for run)');
+
+    _isNavigating = false;
+    // ✅ Don't clear _selectedTerritory! It's needed for checkpoint markers
+    _routePoints.clear();
+    _routePolylines.clear();
+    _distanceToDestination = null;
+    _estimatedTime = null;
+    _distanceText = null;
+    _durationText = null;
+
+    stopLocationTracking();
+    _generatePolygons();
+    // Don't call notifyListeners here - parent will do it
+  }
+
   /// Update route in real-time as user moves
   Future<void> _updateRouteRealtime() async {
     if (_currentLatLng == null || _selectedTerritory == null) return;
@@ -569,15 +601,19 @@ class RunningProvider extends ChangeNotifier {
         _isRunning = true;
 
         // Reset checkpoint progress
-        _currentCheckpointIndex = 0;
+        _currentCheckpointIndex = 1; // ✅ Start at 1 (first coin to collect)
+        _hasLeftStartPoint = false; // ✅ Reset flag for new run
+        _lastFinishLogTime = null; // Reset log throttle
 
-        // Stop navigation since we're now running
-        stopNavigation();
-
-        // Start updating run route visualization (WAIT for markers to be created!)
+        // ✅ FIX: Create markers BEFORE stopping navigation!
+        // stopNavigation() clears _selectedTerritory, so we must create
+        // markers while territory data is still available
         await _startRunRouteUpdates();
 
-        // NOW notify listeners after markers are ready
+        // NOW stop navigation (clears route polylines but markers already created)
+        _stopNavigationKeepTerritory();
+
+        // Notify listeners after markers are ready
         notifyListeners();
 
         AppLogger.success(
@@ -618,6 +654,7 @@ class RunningProvider extends ChangeNotifier {
   }
 
   /// Create guidance polyline showing territory route to follow
+  /// Shows different colors for completed vs remaining segments
   Future<void> _createTerritoryGuidanceRoute() async {
     AppLogger.info(LogLabel.general, '🗺️ _createTerritoryGuidanceRoute() START');
 
@@ -630,27 +667,58 @@ class RunningProvider extends ChangeNotifier {
 
     AppLogger.info(LogLabel.general, '   Territory: ${_selectedTerritory!.name}');
     AppLogger.info(LogLabel.general, '   Points count: ${_selectedTerritory!.points.length}');
+    AppLogger.info(LogLabel.general, '   Current checkpoint index: $_currentCheckpointIndex');
 
-    // Create a closed loop: start point -> all points -> back to start
-    final routePoints = List<LatLng>.from(_selectedTerritory!.points);
-    routePoints.add(_selectedTerritory!.points.first); // Complete the loop
+    final points = _selectedTerritory!.points;
+    
+    // Create REMAINING route (from current checkpoint to end and back to start)
+    // This shows user where they still need to go
+    final List<LatLng> remainingRoutePoints = [];
+    
+    // Start from current checkpoint position
+    final startIndex = _currentCheckpointIndex.clamp(0, points.length - 1);
+    for (int i = startIndex; i < points.length; i++) {
+      remainingRoutePoints.add(points[i]);
+    }
+    // Complete the loop back to START
+    remainingRoutePoints.add(points.first);
+    
+    if (remainingRoutePoints.length >= 2) {
+      final remainingPolyline = Polyline(
+        polylineId: const PolylineId('remaining_route'),
+        points: remainingRoutePoints,
+        color: Colors.blue.withOpacity(0.7),
+        width: 6,
+        geodesic: true,
+        patterns: [
+          PatternItem.dash(20),
+          PatternItem.gap(10),
+        ],
+      );
+      _territoryGuidancePolylines.add(remainingPolyline);
+    }
 
-    final guidancePolyline = Polyline(
-      polylineId: const PolylineId('territory_guidance'),
-      points: routePoints,
-      color: Colors.blue.withOpacity(0.6), // Semi-transparent blue guidance
-      width: 5,
-      geodesic: true,
-      patterns: [
-        PatternItem.dash(20),
-        PatternItem.gap(10),
-      ], // Dashed line untuk guidance
-    );
+    // Create NEXT CHECKPOINT indicator (bright line from current position to next checkpoint)
+    if (_currentLatLng != null && _currentCheckpointIndex < points.length) {
+      final nextCheckpoint = points[_currentCheckpointIndex.clamp(0, points.length - 1)];
+      final nextCheckpointLine = Polyline(
+        polylineId: const PolylineId('next_checkpoint_line'),
+        points: [_currentLatLng!, nextCheckpoint],
+        color: Colors.orange,
+        width: 4,
+        geodesic: true,
+        patterns: [
+          PatternItem.dash(10),
+          PatternItem.gap(5),
+        ],
+      );
+      _territoryGuidancePolylines.add(nextCheckpointLine);
+      AppLogger.info(LogLabel.general, '   ✅ Next checkpoint line created');
+    }
+    
+    AppLogger.info(LogLabel.general, '   ✅ Guidance polylines created');
 
-    _territoryGuidancePolylines.add(guidancePolyline);
-    AppLogger.info(LogLabel.general, '   ✅ Guidance polyline created');
-
-    // Create checkpoint markers with custom gamified icons
+    // Create checkpoint markers
     AppLogger.info(LogLabel.general, '   Calling _createCheckpointMarkers()...');
     await _createCheckpointMarkers();
 
@@ -674,25 +742,57 @@ class RunningProvider extends ChangeNotifier {
     }
 
     final points = _selectedTerritory!.points;
+    final hasCompletedAllCheckpoints = _currentCheckpointIndex >= points.length;
+    
     AppLogger.info(LogLabel.general, '📍 Creating markers for ${points.length} points...');
+    AppLogger.info(LogLabel.general, '   Current checkpoint: $_currentCheckpointIndex');
+    AppLogger.info(LogLabel.general, '   All checkpoints completed: $hasCompletedAllCheckpoints');
 
-    // START marker (always visible)
-    AppLogger.info(LogLabel.general, '   Creating START marker...');
-    final startIcon = await CustomMarkerHelper.createStartMarker();
-    final startMarker = Marker(
-      markerId: const MarkerId('checkpoint_0'),
-      position: points.first,
-      icon: startIcon,
-      infoWindow: const InfoWindow(
-        title: '🏁 START',
-        snippet: 'Begin your run here',
-      ),
-    );
-    _runMarkers.add(startMarker);
-    AppLogger.info(LogLabel.general, '   ✅ START marker created');
+    // ✅ START/FINISH marker at first position
+    // Only show ONE icon to prevent overlap:
+    // - If NOT completed all checkpoints → show START (green flag)
+    // - If completed all checkpoints → show FINISH (trophy)
+    if (hasCompletedAllCheckpoints) {
+      // Show FINISH trophy
+      AppLogger.info(LogLabel.general, '   Creating FINISH marker (completed!)...');
+      final finishIcon = await CustomMarkerHelper.createFinishMarker();
+      final finishMarker = Marker(
+        markerId: const MarkerId('start_finish_point'),
+        position: points.first,
+        icon: finishIcon,
+        infoWindow: const InfoWindow(
+          title: '� FINISH',
+          snippet: 'Congratulations! Run completed!',
+        ),
+      );
+      _runMarkers.add(finishMarker);
+      AppLogger.info(LogLabel.general, '   ✅ FINISH marker created');
+    } else {
+      // Show START marker
+      AppLogger.info(LogLabel.general, '   Creating START marker...');
+      final startIcon = await CustomMarkerHelper.createStartMarker();
+      final startMarker = Marker(
+        markerId: const MarkerId('start_finish_point'),
+        position: points.first,
+        icon: startIcon,
+        infoWindow: const InfoWindow(
+          title: '🏁 START',
+          snippet: 'Begin your run here',
+        ),
+      );
+      _runMarkers.add(startMarker);
+      AppLogger.info(LogLabel.general, '   ✅ START marker created');
+    }
 
-    // Checkpoint coins (skip index 0 = START, start from 1)
+    // Checkpoint coins (skip index 0 = START/FINISH position, start from 1)
+    // Only show coins that haven't been collected yet
     for (int i = 1; i < points.length; i++) {
+      // ✅ Skip collected coins completely (don't show them at all)
+      if (i < _currentCheckpointIndex) {
+        AppLogger.info(LogLabel.general, '   ⏭️ Coin $i already collected, skipping');
+        continue;
+      }
+      
       AppLogger.info(LogLabel.general, '   Creating Coin $i...');
       final coinIcon = await CustomMarkerHelper.createCheckpointCoin(i);
 
@@ -704,30 +804,11 @@ class RunningProvider extends ChangeNotifier {
           title: 'Checkpoint $i',
           snippet: '${(i / points.length * 100).toStringAsFixed(0)}% complete',
         ),
-        // Fade out collected coins
-        alpha: i < _currentCheckpointIndex ? 0.3 : 1.0,
       );
 
       _runMarkers.add(marker);
       AppLogger.info(LogLabel.general, '   ✅ Coin $i created');
     }
-
-    // FINISH marker (trophy at start point, semi-transparent until user completes loop)
-    AppLogger.info(LogLabel.general, '   Creating FINISH marker...');
-    final finishIcon = await CustomMarkerHelper.createFinishMarker();
-    final finishMarker = Marker(
-      markerId: const MarkerId('finish_point'),
-      position: points.first,
-      icon: finishIcon,
-      infoWindow: const InfoWindow(
-        title: '🏆 FINISH',
-        snippet: 'Complete the loop here',
-      ),
-      alpha: _currentCheckpointIndex >= points.length ? 1.0 : 0.4,
-    );
-
-    _runMarkers.add(finishMarker);
-    AppLogger.info(LogLabel.general, '   ✅ FINISH marker created');
 
     AppLogger.success(
       LogLabel.general,
@@ -736,35 +817,102 @@ class RunningProvider extends ChangeNotifier {
   }
 
   /// Update checkpoint progress based on user location
+  /// 
+  /// LOGIC:
+  /// 1. User starts at START - _currentCheckpointIndex = 1 (skip coin 0, first coin is 1)
+  /// 2. User must LEAVE start area first (_hasLeftStartPoint = true when >30m from START)
+  /// 3. Each coin collected when user within 25m
+  /// 4. After ALL coins collected, user must return to START to finish
+  /// 5. FINISH only triggers if _hasLeftStartPoint is true (prevents immediate finish)
   Future<void> _updateCheckpointProgress() async {
     if (_currentLatLng == null || _selectedTerritory == null) return;
+    if (!_isRunning) return;
 
     final points = _selectedTerritory!.points;
-    if (_currentCheckpointIndex >= points.length) return; // Already finished
-
-    // Check if user reached next checkpoint (within 15 meters)
-    final nextCheckpoint = points[_currentCheckpointIndex];
-    final distanceToCheckpoint = Geolocator.distanceBetween(
+    if (points.isEmpty) return;
+    
+    final startPoint = points.first;
+    final totalCoins = points.length - 1; // Coins are at index 1 to N-1
+    
+    // Calculate distance to START point
+    final distanceToStart = Geolocator.distanceBetween(
       _currentLatLng!.latitude,
       _currentLatLng!.longitude,
-      nextCheckpoint.latitude,
-      nextCheckpoint.longitude,
+      startPoint.latitude,
+      startPoint.longitude,
     );
-
-    if (distanceToCheckpoint <= 15) {
-      // Checkpoint reached!
-      _currentCheckpointIndex++;
-
-      // Refresh markers to update colors (now with custom gamified icons)
-      await _createCheckpointMarkers();
-
-      AppLogger.success(
-        LogLabel.general,
-        '✅ Checkpoint $_currentCheckpointIndex reached! ${routeProgress.toStringAsFixed(0)}% complete',
+    
+    // ✅ STEP 1: Detect when user has LEFT the start area (more than 30m away)
+    if (!_hasLeftStartPoint && distanceToStart > 30) {
+      _hasLeftStartPoint = true;
+      AppLogger.info(LogLabel.general, '🚀 User left START area (${distanceToStart.toStringAsFixed(0)}m away)');
+    }
+    
+    // ✅ STEP 2: Check for coin collection (only coins at index 1+, NOT index 0)
+    // _currentCheckpointIndex starts at 1, meaning "next coin to collect is coin 1"
+    if (_currentCheckpointIndex <= totalCoins && _currentCheckpointIndex >= 1) {
+      final nextCoinIndex = _currentCheckpointIndex;
+      final coinPosition = points[nextCoinIndex];
+      
+      final distanceToCoin = Geolocator.distanceBetween(
+        _currentLatLng!.latitude,
+        _currentLatLng!.longitude,
+        coinPosition.latitude,
+        coinPosition.longitude,
       );
+      
+      // Within 25 meters = coin collected
+      if (distanceToCoin <= 25) {
+        AppLogger.success(
+          LogLabel.general,
+          '🪙 Coin $nextCoinIndex collected! (${distanceToCoin.toStringAsFixed(0)}m)',
+        );
 
-      // Notify UI of progress update
-      notifyListeners();
+        _currentCheckpointIndex++; // Move to next coin
+
+        // Refresh markers only (more efficient than recreating guidance route)
+        await _createCheckpointMarkers();
+        notifyListeners();
+
+        AppLogger.info(
+          LogLabel.general,
+          '📊 Progress: ${routeProgress.toStringAsFixed(0)}% (${_currentCheckpointIndex - 1}/$totalCoins coins)',
+        );
+      }
+    }
+    
+    // ✅ STEP 3: Check for FINISH (only after leaving start AND collecting all coins)
+    final allCoinsCollected = _currentCheckpointIndex > totalCoins;
+    
+    if (allCoinsCollected && _hasLeftStartPoint) {
+      // Check if back at START
+      if (distanceToStart <= 25) {
+        AppLogger.success(LogLabel.general, '🏆 FINISH! All coins collected and returned to START!');
+
+        // Update markers to show FINISH trophy
+        await _createCheckpointMarkers();
+        notifyListeners();
+
+        // Small delay to let user see the trophy
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // Auto-complete the run and navigate to summary
+        final session = await completeRunSession();
+        if (session != null) {
+          AppLogger.success(LogLabel.general, '✅ Run session completed successfully!');
+          // Navigation to summary will be handled by UI listening to state changes
+        }
+      } else {
+        // Log distance to finish (only once per second to avoid spam)
+        final now = DateTime.now();
+        if (_lastFinishLogTime == null || now.difference(_lastFinishLogTime!) > const Duration(seconds: 1)) {
+          _lastFinishLogTime = now;
+          AppLogger.info(
+            LogLabel.general,
+            '📍 All coins collected! Return to START to finish (${distanceToStart.toStringAsFixed(0)}m away)',
+          );
+        }
+      }
     }
   }
 
@@ -811,6 +959,13 @@ class RunningProvider extends ChangeNotifier {
         _activeRunSession = completedSession;
         _isRunning = false;
         _runRouteTimer?.cancel();
+        
+        // ✅ Clean up run-specific visuals
+        _runRoutePolylines.clear();
+        _territoryGuidancePolylines.clear();
+        _runMarkers.clear();
+        _currentCheckpointIndex = 1; // Reset for next run
+        _hasLeftStartPoint = false; // Reset flag
 
         // Check if user can conquer territory
         final canConquer = await _checkTerritoryConquest(completedSession);
@@ -820,6 +975,9 @@ class RunningProvider extends ChangeNotifier {
             territoryConquered: true,
           );
         }
+
+        // ✅ Clear territory after processing conquest
+        _selectedTerritory = null;
 
         // Reload territories to reflect ownership changes
         await loadTerritories();
@@ -885,7 +1043,9 @@ class RunningProvider extends ChangeNotifier {
     _runRoutePolylines.clear();
     _territoryGuidancePolylines.clear();
     _runMarkers.clear();
-    _currentCheckpointIndex = 0;
+    _currentCheckpointIndex = 1; // Reset for next run
+    _hasLeftStartPoint = false; // Reset flag
+    _selectedTerritory = null; // ✅ Clear territory for fresh state on next run
     notifyListeners();
   }
 
