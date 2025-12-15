@@ -245,7 +245,11 @@ class RunningProvider extends ChangeNotifier {
     try {
       AppLogger.info(LogLabel.supabase, 'Loading territories from database');
 
-      final response = await _supabase.from('territories').select().order('id');
+      // Fetch territories (owner_color already stored in territories table)
+      final response = await _supabase
+          .from('territories')
+          .select()
+          .order('id');
 
       _territories = (response as List)
           .map((json) => Territory.fromJson(json))
@@ -280,8 +284,16 @@ class RunningProvider extends ChangeNotifier {
         fillColor = Colors.green.withOpacity(0.3);
         strokeColor = Colors.green;
       } else if (territory.isOwned) {
-        fillColor = Colors.blue.withOpacity(0.2);
-        strokeColor = Colors.blue;
+        // Use owner's profile color if available
+        if (territory.ownerColor != null) {
+          final ownerColor = _colorFromHex(territory.ownerColor!);
+          fillColor = ownerColor.withOpacity(0.3);
+          strokeColor = ownerColor;
+        } else {
+          // Fallback to blue if no color specified
+          fillColor = Colors.blue.withOpacity(0.2);
+          strokeColor = Colors.blue;
+        }
       } else {
         fillColor = Colors.grey.withOpacity(0.15);
         strokeColor = Colors.grey.shade400;
@@ -578,6 +590,22 @@ class RunningProvider extends ChangeNotifier {
       }
     }
     return inside;
+  }
+
+  /// Convert hex color string to Color object
+  /// Supports formats: #RRGGBB, #AARRGGBB, RRGGBB, AARRGGBB
+  Color _colorFromHex(String hexString) {
+    final buffer = StringBuffer();
+    if (hexString.length == 6 || hexString.length == 7) buffer.write('ff');
+    buffer.write(hexString.replaceFirst('#', ''));
+
+    try {
+      return Color(int.parse(buffer.toString(), radix: 16));
+    } catch (e) {
+      // Return blue as fallback if parsing fails
+      AppLogger.warning(LogLabel.general, 'Failed to parse color: $hexString, using blue fallback');
+      return Colors.blue;
+    }
   }
 
   // ==================== STATISTICS ====================
@@ -1090,8 +1118,12 @@ class RunningProvider extends ChangeNotifier {
   /// Check if user conquered territory with this run
   Future<bool> _checkTerritoryConquest(RunSession newRun) async {
     try {
+      AppLogger.info(LogLabel.general, '🔍 Checking territory conquest for run ${newRun.id}...');
+
+      // Get best run EXCLUDING the current run
       final currentBestRun = await _runTrackingService.getBestRunForTerritory(
         territoryId: newRun.territoryId,
+        excludeRunId: newRun.id, // Exclude current run from comparison
       );
 
       final canConquer = await _runTrackingService.canConquerTerritory(
@@ -1100,6 +1132,8 @@ class RunningProvider extends ChangeNotifier {
       );
 
       if (canConquer) {
+        AppLogger.info(LogLabel.general, '✅ Can conquer! Updating territory ownership...');
+
         await _runTrackingService.updateTerritoryOwnership(
           territoryId: newRun.territoryId,
           newOwnerId: newRun.userId,
@@ -1114,6 +1148,7 @@ class RunningProvider extends ChangeNotifier {
         return true;
       }
 
+      AppLogger.info(LogLabel.general, '❌ Cannot conquer territory');
       return false;
     } catch (e, stackTrace) {
       AppLogger.error(

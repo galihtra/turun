@@ -7,6 +7,7 @@ class Territory {
   final List<LatLng> points;
   final String? ownerId;
   final String? ownerName;
+  final String? ownerColor;
   final DateTime createdAt;
   final DateTime? updatedAt;
   final String? imageUrl;
@@ -22,6 +23,7 @@ class Territory {
     required this.points,
     this.ownerId,
     this.ownerName,
+    this.ownerColor,
     required this.createdAt,
     this.updatedAt,
     this.imageUrl,
@@ -50,6 +52,7 @@ class Territory {
       points: pointsList,
       ownerId: json['owner_id'] as String?,
       ownerName: json['owner_name'] as String?,
+      ownerColor: json['owner_color'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)

@@ -5,282 +5,478 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/app/app_logger.dart';
 import '../model/running/run_session_model.dart';
 
+/// Service untuk tracking run dan territory conquest
+/// 
+/// Territory ownership ditentukan berdasarkan PACE TERCEPAT:
+/// - Pace lebih rendah = lebih cepat = lebih baik
+/// - User dengan pace terendah di territory tersebut adalah owner
 class RunTrackingService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  StreamSubscription<Position>? _positionStream;
-  Timer? _updateTimer;
-
-  RunSession? _activeSession;
+  // Run tracking state
+  RunSession? _currentSession;
   final List<LatLng> _recordedPoints = [];
-  final List<double> _speeds = [];
-
-  Position? _lastPosition;
-  DateTime? _lastUpdateTime;
-
   double _totalDistance = 0;
   int _elapsedSeconds = 0;
-  double _currentSpeed = 0;
+  DateTime? _startTime;
+  DateTime? _pauseTime;
+  Timer? _timer;
+  bool _isPaused = false;
 
-  RunSession? get activeSession => _activeSession;
+  // Speed tracking
+  double _currentSpeed = 0;
+  LatLng? _lastPosition;
+  DateTime? _lastPositionTime;
+
+  // Getters
   List<LatLng> get recordedPoints => List.unmodifiable(_recordedPoints);
   double get totalDistance => _totalDistance;
   int get elapsedSeconds => _elapsedSeconds;
   double get currentSpeed => _currentSpeed;
-  double get currentPace => _currentSpeed > 0 ? 60 / (_currentSpeed * 3.6) : 0;
-  bool get isRunning => _activeSession?.status == RunSessionStatus.active;
+  
+  /// Current pace in minutes per km
+  double get currentPace {
+    if (_totalDistance <= 0) return 0;
+    final distanceKm = _totalDistance / 1000;
+    final durationMinutes = _elapsedSeconds / 60;
+    if (distanceKm <= 0) return 0;
+    return durationMinutes / distanceKm;
+  }
 
-  // Start a new run session
+  /// Start a new run session
   Future<RunSession?> startRunSession({
     required String userId,
     required int territoryId,
     required LatLng startLocation,
   }) async {
     try {
-      // Reset tracking data
+      AppLogger.info(LogLabel.supabase, '🏃 Starting run session...');
+      
+      _startTime = DateTime.now();
       _recordedPoints.clear();
-      _speeds.clear();
+      _recordedPoints.add(startLocation);
       _totalDistance = 0;
       _elapsedSeconds = 0;
-      _lastPosition = null;
-      _lastUpdateTime = null;
+      _isPaused = false;
+      _currentSpeed = 0;
+      _lastPosition = startLocation;
+      _lastPositionTime = _startTime;
 
-      // Create new session
-      _activeSession = RunSession(
-        userId: userId,
-        territoryId: territoryId,
-        startTime: DateTime.now(),
-        distanceMeters: 0,
-        durationSeconds: 0,
-        averagePaceMinPerKm: 0,
-        maxSpeed: 0,
-        caloriesBurned: 0,
-        routePoints: [],
-        status: RunSessionStatus.active,
-      );
+      // Insert ke database
+      final response = await _supabase
+          .from('run_sessions')
+          .insert({
+            'user_id': userId,
+            'territory_id': territoryId,
+            'start_time': _startTime!.toIso8601String(),
+            'status': 'active',
+            'route_points': [
+              {'lat': startLocation.latitude, 'lng': startLocation.longitude}
+            ],
+          })
+          .select()
+          .single();
 
-      _recordedPoints.add(startLocation);
-
-      // Start GPS tracking
-      _startGpsTracking();
+      _currentSession = RunSession.fromJson(response);
 
       // Start timer
       _startTimer();
 
-      AppLogger.success(
-        LogLabel.general,
-        'Run session started for territory $territoryId',
-      );
+      // Start GPS tracking
+      _startGpsTracking();
 
-      return _activeSession;
+      AppLogger.success(LogLabel.supabase, '✅ Run session started: ${_currentSession!.id}');
+      return _currentSession;
     } catch (e, stackTrace) {
-      AppLogger.error(
-        LogLabel.general,
-        'Failed to start run session',
-        e,
-        stackTrace,
-      );
+      AppLogger.error(LogLabel.supabase, 'Failed to start run session', e, stackTrace);
       return null;
     }
   }
 
-  // Start GPS tracking with high accuracy
-  void _startGpsTracking() {
-    const locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 5, // Update every 5 meters
-    );
-
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: locationSettings,
-    ).listen(
-      (Position position) {
-        _handleNewPosition(position);
-      },
-      onError: (error) {
-        AppLogger.error(LogLabel.general, 'GPS tracking error', error);
-      },
-    );
-  }
-
-  // Handle new GPS position
-  void _handleNewPosition(Position position) {
-    final newPoint = LatLng(position.latitude, position.longitude);
-
-    // Calculate distance from last point
-    if (_lastPosition != null) {
-      final distance = Geolocator.distanceBetween(
-        _lastPosition!.latitude,
-        _lastPosition!.longitude,
-        position.latitude,
-        position.longitude,
-      );
-
-      // Only add point if moved more than 3 meters (filter noise)
-      if (distance > 3) {
-        _recordedPoints.add(newPoint);
-        _totalDistance += distance;
-
-        // Calculate speed
-        if (_lastUpdateTime != null) {
-          final timeDiff = DateTime.now().difference(_lastUpdateTime!).inSeconds;
-          if (timeDiff > 0) {
-            _currentSpeed = distance / timeDiff; // m/s
-            _speeds.add(_currentSpeed);
-          }
-        }
-
-        _lastPosition = position;
-        _lastUpdateTime = DateTime.now();
-      }
-    } else {
-      _lastPosition = position;
-      _lastUpdateTime = DateTime.now();
-      _recordedPoints.add(newPoint);
-    }
-  }
-
-  // Start elapsed time timer
+  /// Start internal timer
   void _startTimer() {
-    _updateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_activeSession?.status == RunSessionStatus.active) {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!_isPaused) {
         _elapsedSeconds++;
       }
     });
   }
 
-  // Pause run session
+  /// GPS tracking subscription
+  StreamSubscription<Position>? _gpsSubscription;
+
+  void _startGpsTracking() {
+    _gpsSubscription?.cancel();
+    
+    _gpsSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 5, // Update every 5 meters
+      ),
+    ).listen((Position position) {
+      if (_isPaused || _currentSession == null) return;
+
+      final newPoint = LatLng(position.latitude, position.longitude);
+      
+      // Calculate distance from last point
+      if (_recordedPoints.isNotEmpty) {
+        final lastPoint = _recordedPoints.last;
+        final distance = Geolocator.distanceBetween(
+          lastPoint.latitude,
+          lastPoint.longitude,
+          newPoint.latitude,
+          newPoint.longitude,
+        );
+        
+        // Only add if moved at least 3 meters (filter GPS noise)
+        if (distance >= 3) {
+          _totalDistance += distance;
+          _recordedPoints.add(newPoint);
+          
+          // Calculate current speed
+          final now = DateTime.now();
+          if (_lastPositionTime != null) {
+            final timeDiffSeconds = now.difference(_lastPositionTime!).inMilliseconds / 1000;
+            if (timeDiffSeconds > 0) {
+              _currentSpeed = distance / timeDiffSeconds; // m/s
+            }
+          }
+          _lastPosition = newPoint;
+          _lastPositionTime = now;
+        }
+      }
+    });
+  }
+
+  /// Pause run session
   void pauseRunSession() {
-    if (_activeSession == null) return;
-
-    _activeSession = _activeSession!.copyWith(
-      status: RunSessionStatus.paused,
-    );
-
-    AppLogger.info(LogLabel.general, 'Run session paused');
+    if (_currentSession == null || _isPaused) return;
+    
+    _isPaused = true;
+    _pauseTime = DateTime.now();
+    _currentSpeed = 0;
+    
+    AppLogger.info(LogLabel.general, '⏸️ Run paused');
   }
 
-  // Resume run session
+  /// Resume run session
   void resumeRunSession() {
-    if (_activeSession == null) return;
-
-    _activeSession = _activeSession!.copyWith(
-      status: RunSessionStatus.active,
-    );
-
-    AppLogger.info(LogLabel.general, 'Run session resumed');
+    if (_currentSession == null || !_isPaused) return;
+    
+    _isPaused = false;
+    _pauseTime = null;
+    
+    AppLogger.info(LogLabel.general, '▶️ Run resumed');
   }
 
-  // Complete run session and save to database
+  /// Complete run session
   Future<RunSession?> completeRunSession({
     required LatLng endLocation,
-    double userWeightKg = 70.0,
   }) async {
-    if (_activeSession == null) return null;
+    if (_currentSession == null) return null;
 
     try {
+      AppLogger.info(LogLabel.supabase, '🏁 Completing run session...');
+
       // Stop tracking
-      _stopTracking();
+      _timer?.cancel();
+      _gpsSubscription?.cancel();
 
       // Add final point
-      _recordedPoints.add(endLocation);
+      if (_recordedPoints.isEmpty || _recordedPoints.last != endLocation) {
+        _recordedPoints.add(endLocation);
+      }
 
-      // Calculate final metrics
-      final averagePace = RunSession.calculatePace(_totalDistance, _elapsedSeconds);
-      final maxSpeed = _speeds.isNotEmpty
-          ? _speeds.reduce((a, b) => a > b ? a : b)
-          : 0.0;
-      final calories = RunSession.estimateCalories(
-        _totalDistance / 1000,
-        _elapsedSeconds ~/ 60,
-        userWeightKg,
-      );
+      // Calculate final pace
+      final distanceKm = _totalDistance / 1000;
+      final durationMinutes = _elapsedSeconds / 60;
+      final averagePace = distanceKm > 0 ? durationMinutes / distanceKm : 0;
 
-      // Update session
-      _activeSession = _activeSession!.copyWith(
-        endTime: DateTime.now(),
-        distanceMeters: _totalDistance,
-        durationSeconds: _elapsedSeconds,
-        averagePaceMinPerKm: averagePace,
-        maxSpeed: maxSpeed,
-        caloriesBurned: calories,
-        routePoints: List.from(_recordedPoints),
-        status: RunSessionStatus.completed,
-      );
+      // Calculate calories (rough estimate: 60 cal/km for running)
+      final caloriesBurned = (distanceKm * 60).round();
 
-      // Save to database
-      await _saveRunSessionToDatabase(_activeSession!);
+      // Prepare route points for storage
+      final routePointsJson = _recordedPoints
+          .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+          .toList();
 
+      // Update database
+      final response = await _supabase
+          .from('run_sessions')
+          .update({
+            'end_time': DateTime.now().toIso8601String(),
+            'distance_meters': _totalDistance,
+            'duration_seconds': _elapsedSeconds,
+            'average_pace_min_per_km': averagePace,
+            'max_speed': _currentSpeed,
+            'calories_burned': caloriesBurned,
+            'route_points': routePointsJson,
+            'status': 'completed',
+          })
+          .eq('id', _currentSession!.id)
+          .select()
+          .single();
+
+      final completedSession = RunSession.fromJson(response);
+      
       AppLogger.success(
-        LogLabel.general,
-        'Run session completed: ${_activeSession!.formattedDistance}, ${_activeSession!.formattedPace}',
+        LogLabel.supabase,
+        '✅ Run completed! Distance: ${(distanceKm).toStringAsFixed(2)}km, Pace: ${averagePace.toStringAsFixed(2)} min/km',
       );
 
-      return _activeSession;
+      // Reset state
+      _currentSession = null;
+      _recordedPoints.clear();
+
+      return completedSession;
     } catch (e, stackTrace) {
-      AppLogger.error(
-        LogLabel.general,
-        'Failed to complete run session',
-        e,
-        stackTrace,
-      );
+      AppLogger.error(LogLabel.supabase, 'Failed to complete run session', e, stackTrace);
       return null;
     }
   }
 
-  // Cancel run session
+  /// Cancel run session
   void cancelRunSession() {
-    if (_activeSession == null) return;
-
-    _stopTracking();
-
-    _activeSession = _activeSession!.copyWith(
-      status: RunSessionStatus.cancelled,
-    );
-
-    AppLogger.info(LogLabel.general, 'Run session cancelled');
-
-    _activeSession = null;
-  }
-
-  // Stop all tracking
-  void _stopTracking() {
-    _positionStream?.cancel();
-    _positionStream = null;
-    _updateTimer?.cancel();
-    _updateTimer = null;
-  }
-
-  // Save run session to Supabase
-  Future<void> _saveRunSessionToDatabase(RunSession session) async {
-    try {
-      final response = await _supabase
+    _timer?.cancel();
+    _gpsSubscription?.cancel();
+    
+    if (_currentSession != null) {
+      // Delete from database (fire and forget)
+      _supabase
           .from('run_sessions')
-          .insert(session.toJson())
+          .delete()
+          .eq('id', _currentSession!.id)
+          .then((_) {
+            AppLogger.info(LogLabel.supabase, '🗑️ Run session cancelled and deleted');
+          });
+    }
+
+    _currentSession = null;
+    _recordedPoints.clear();
+    _totalDistance = 0;
+    _elapsedSeconds = 0;
+    _isPaused = false;
+    _currentSpeed = 0;
+  }
+
+  // ==================== TERRITORY CONQUEST LOGIC ====================
+
+  /// Get the best (fastest pace) run for a territory
+  /// Returns null if no completed runs exist for this territory
+  /// [excludeRunId] - Optional run ID to exclude from search (used when checking if new run can conquer)
+  Future<RunSession?> getBestRunForTerritory({
+    required int territoryId,
+    String? excludeRunId,
+  }) async {
+    try {
+      AppLogger.info(LogLabel.supabase, '🔍 Getting best run for territory $territoryId...');
+      if (excludeRunId != null) {
+        AppLogger.info(LogLabel.supabase, '   Excluding run ID: $excludeRunId');
+      }
+
+      // Query run with lowest pace (fastest) for this territory
+      // average_pace_min_per_km: lower = faster = better
+      var query = _supabase
+          .from('run_sessions')
           .select()
-          .single();
+          .eq('territory_id', territoryId)
+          .eq('status', 'completed')
+          .gt('average_pace_min_per_km', 0); // Exclude invalid pace
 
-      _activeSession = _activeSession!.copyWith(
-        id: response['id'] as String,
-      );
+      // Exclude specific run ID if provided
+      if (excludeRunId != null) {
+        query = query.neq('id', excludeRunId);
+      }
 
+      final response = await query
+          .order('average_pace_min_per_km', ascending: true) // Lowest pace first
+          .limit(1)
+          .maybeSingle();
+
+      if (response == null) {
+        AppLogger.info(LogLabel.supabase, '📭 No completed runs found for territory $territoryId');
+        return null;
+      }
+
+      final bestRun = RunSession.fromJson(response);
       AppLogger.success(
         LogLabel.supabase,
-        'Run session saved to database',
+        '🏆 Best run found: ${bestRun.formattedPace} by user ${bestRun.userId}',
       );
+
+      return bestRun;
     } catch (e, stackTrace) {
-      AppLogger.error(
-        LogLabel.supabase,
-        'Failed to save run session',
-        e,
-        stackTrace,
-      );
-      rethrow;
+      AppLogger.error(LogLabel.supabase, 'Failed to get best run for territory', e, stackTrace);
+      return null;
     }
   }
 
-  // Get user's run history for a territory
-  Future<List<RunSession>> getUserRunsForTerritory({
+  /// Check if new run can conquer the territory
+  /// Returns true if:
+  /// 1. Territory has no previous runs (unclaimed)
+  /// 2. New run has faster pace than current best
+  Future<bool> canConquerTerritory({
+    required RunSession newRun,
+    RunSession? currentBestRun,
+  }) async {
+    try {
+      // Validate new run has valid pace
+      if (newRun.averagePaceMinPerKm <= 0) {
+        AppLogger.warning(LogLabel.general, '⚠️ New run has invalid pace: ${newRun.averagePaceMinPerKm}');
+        return false;
+      }
+
+      // Case 1: No previous runs - territory is unclaimed
+      if (currentBestRun == null) {
+        AppLogger.info(LogLabel.general, '🆕 Territory is unclaimed! User can conquer.');
+        return true;
+      }
+
+      // Case 2: Compare pace (lower = faster = better)
+      final newPace = newRun.averagePaceMinPerKm;
+      final currentBestPace = currentBestRun.averagePaceMinPerKm;
+
+      AppLogger.info(
+        LogLabel.general,
+        '⚔️ Pace comparison: New ${newPace.toStringAsFixed(2)} vs Best ${currentBestPace.toStringAsFixed(2)}',
+      );
+
+      // New run must be STRICTLY faster to conquer
+      if (newPace < currentBestPace) {
+        AppLogger.success(
+          LogLabel.general,
+          '🏆 NEW CHAMPION! ${newPace.toStringAsFixed(2)} < ${currentBestPace.toStringAsFixed(2)}',
+        );
+        return true;
+      }
+
+      // Check if it's the same user improving their own record
+      if (newRun.userId == currentBestRun.userId && newPace < currentBestPace) {
+        AppLogger.info(LogLabel.general, '📈 User improved their own best time!');
+        return true;
+      }
+
+      AppLogger.info(
+        LogLabel.general,
+        '❌ Not fast enough to conquer. Need pace < ${currentBestPace.toStringAsFixed(2)}',
+      );
+      return false;
+    } catch (e, stackTrace) {
+      AppLogger.error(LogLabel.general, 'Failed to check territory conquest', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Update territory ownership in database
+  Future<bool> updateTerritoryOwnership({
+    required int territoryId,
+    required String newOwnerId,
+    String? previousOwnerId,
+  }) async {
+    try {
+      AppLogger.info(
+        LogLabel.supabase,
+        '👑 Updating territory $territoryId ownership to $newOwnerId',
+      );
+
+      // Get new owner's name and profile color for display
+      String? ownerName;
+      String? ownerColor;
+      try {
+        final userResponse = await _supabase
+            .from('users')
+            .select('full_name, username, profile_color')
+            .eq('id', newOwnerId)
+            .maybeSingle();
+
+        if (userResponse != null) {
+          ownerName = userResponse['full_name'] ?? userResponse['username'] ?? 'Unknown';
+          ownerColor = userResponse['profile_color'] as String?;
+        }
+      } catch (e) {
+        AppLogger.warning(LogLabel.supabase, 'Could not fetch owner info: $e');
+      }
+
+      // Update territory with owner info and color
+      await _supabase
+          .from('territories')
+          .update({
+            'owner_id': newOwnerId,
+            'owner_name': ownerName,
+            'owner_color': ownerColor,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', territoryId);
+
+      // Update run_sessions to mark territory as conquered
+      await _supabase
+          .from('run_sessions')
+          .update({
+            'territory_conquered': true,
+            'previous_owner_id': previousOwnerId,
+          })
+          .eq('territory_id', territoryId)
+          .eq('user_id', newOwnerId)
+          .eq('status', 'completed')
+          .order('average_pace_min_per_km', ascending: true)
+          .limit(1);
+
+      AppLogger.success(
+        LogLabel.supabase,
+        '✅ Territory $territoryId now owned by ${ownerName ?? newOwnerId}',
+      );
+
+      return true;
+    } catch (e, stackTrace) {
+      AppLogger.error(LogLabel.supabase, 'Failed to update territory ownership', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Get leaderboard for a territory (sorted by pace, ascending)
+  Future<List<RunSession>> getTerritoryLeaderboard({
+    required int territoryId,
+    int limit = 10,
+  }) async {
+    try {
+      AppLogger.info(LogLabel.supabase, '📊 Getting leaderboard for territory $territoryId...');
+
+      final response = await _supabase
+          .from('run_sessions')
+          .select('''
+            *,
+            users:user_id (
+              full_name,
+              username,
+              avatar_url,
+              profile_color
+            )
+          ''')
+          .eq('territory_id', territoryId)
+          .eq('status', 'completed')
+          .gt('average_pace_min_per_km', 0)
+          .order('average_pace_min_per_km', ascending: true)
+          .limit(limit);
+
+      final sessions = (response as List)
+          .map((json) => RunSession.fromJson(json))
+          .toList();
+
+      AppLogger.success(
+        LogLabel.supabase,
+        '📊 Leaderboard loaded: ${sessions.length} entries',
+      );
+
+      return sessions;
+    } catch (e, stackTrace) {
+      AppLogger.error(LogLabel.supabase, 'Failed to get territory leaderboard', e, stackTrace);
+      return [];
+    }
+  }
+
+  /// Get user's best run for a territory
+  Future<RunSession?> getUserBestRunForTerritory({
     required String userId,
     required int territoryId,
   }) async {
@@ -288,35 +484,10 @@ class RunTrackingService {
       final response = await _supabase
           .from('run_sessions')
           .select()
+          .eq('territory_id', territoryId)
           .eq('user_id', userId)
-          .eq('territory_id', territoryId)
           .eq('status', 'completed')
-          .order('start_time', ascending: false);
-
-      return (response as List)
-          .map((json) => RunSession.fromJson(json))
-          .toList();
-    } catch (e, stackTrace) {
-      AppLogger.error(
-        LogLabel.supabase,
-        'Failed to fetch user runs',
-        e,
-        stackTrace,
-      );
-      return [];
-    }
-  }
-
-  // Get best run for a territory (fastest pace)
-  Future<RunSession?> getBestRunForTerritory({
-    required int territoryId,
-  }) async {
-    try {
-      final response = await _supabase
-          .from('run_sessions')
-          .select()
-          .eq('territory_id', territoryId)
-          .eq('status', 'completed')
+          .gt('average_pace_min_per_km', 0)
           .order('average_pace_min_per_km', ascending: true)
           .limit(1)
           .maybeSingle();
@@ -325,91 +496,15 @@ class RunTrackingService {
 
       return RunSession.fromJson(response);
     } catch (e, stackTrace) {
-      AppLogger.error(
-        LogLabel.supabase,
-        'Failed to fetch best run',
-        e,
-        stackTrace,
-      );
+      AppLogger.error(LogLabel.supabase, 'Failed to get user best run', e, stackTrace);
       return null;
     }
   }
 
-  // Get leaderboard for a territory (top 10 fastest paces)
-  Future<List<RunSession>> getTerritoryLeaderboard({
-    required int territoryId,
-    int limit = 10,
-  }) async {
-    try {
-      final response = await _supabase
-          .from('run_sessions')
-          .select()
-          .eq('territory_id', territoryId)
-          .eq('status', 'completed')
-          .order('average_pace_min_per_km', ascending: true)
-          .limit(limit);
-
-      return (response as List)
-          .map((json) => RunSession.fromJson(json))
-          .toList();
-    } catch (e, stackTrace) {
-      AppLogger.error(
-        LogLabel.supabase,
-        'Failed to fetch leaderboard',
-        e,
-        stackTrace,
-      );
-      return [];
-    }
-  }
-
-  // Check if user can conquer territory
-  Future<bool> canConquerTerritory({
-    required RunSession newRun,
-    required RunSession? currentBestRun,
-  }) async {
-    // If no one owns the territory, user can conquer it
-    if (currentBestRun == null) return true;
-
-    // If current owner, can't conquer own territory
-    if (currentBestRun.userId == newRun.userId) return false;
-
-    // Compare paces (lower is better)
-    return newRun.averagePaceMinPerKm < currentBestRun.averagePaceMinPerKm;
-  }
-
-  // Update territory ownership
-  Future<void> updateTerritoryOwnership({
-    required int territoryId,
-    required String newOwnerId,
-    required String? previousOwnerId,
-  }) async {
-    try {
-      await _supabase.from('territories').update({
-        'owner_id': newOwnerId,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', territoryId);
-
-      AppLogger.success(
-        LogLabel.supabase,
-        'Territory $territoryId ownership updated',
-      );
-    } catch (e, stackTrace) {
-      AppLogger.error(
-        LogLabel.supabase,
-        'Failed to update territory ownership',
-        e,
-        stackTrace,
-      );
-      rethrow;
-    }
-  }
-
-  // Dispose resources
+  /// Cleanup
   void dispose() {
-    _stopTracking();
-    _activeSession = null;
+    _timer?.cancel();
+    _gpsSubscription?.cancel();
     _recordedPoints.clear();
-    _speeds.clear();
   }
 }
