@@ -279,11 +279,10 @@ class RunningProvider extends ChangeNotifier {
 
       Color fillColor;
       Color strokeColor;
+      int strokeWidth = 2;
 
-      if (_selectedTerritory?.id == territory.id) {
-        fillColor = Colors.green.withOpacity(0.3);
-        strokeColor = Colors.green;
-      } else if (territory.isOwned) {
+      // Determine base color (owner color or grey for unclaimed)
+      if (territory.isOwned) {
         // Use owner's profile color if available
         if (territory.ownerColor != null) {
           final ownerColor = _colorFromHex(territory.ownerColor!);
@@ -295,8 +294,16 @@ class RunningProvider extends ChangeNotifier {
           strokeColor = Colors.blue;
         }
       } else {
+        // Unclaimed territory (grey)
         fillColor = Colors.grey.withOpacity(0.15);
         strokeColor = Colors.grey.shade400;
+      }
+
+      // If selected, increase stroke width and add slight brightness
+      if (_selectedTerritory?.id == territory.id) {
+        strokeWidth = 5; // Thicker border for selected
+        // Increase opacity slightly for selected
+        fillColor = fillColor.withOpacity(0.4);
       }
 
       final polygon = Polygon(
@@ -304,7 +311,7 @@ class RunningProvider extends ChangeNotifier {
         points: territory.points,
         fillColor: fillColor,
         strokeColor: strokeColor,
-        strokeWidth: _selectedTerritory?.id == territory.id ? 4 : 2,
+        strokeWidth: strokeWidth,
         consumeTapEvents: true,
         onTap: () => selectTerritory(territory),
       );
@@ -608,6 +615,87 @@ class RunningProvider extends ChangeNotifier {
     }
   }
 
+  /// Get road directions route between two points using Google Directions API
+  /// Returns list of LatLng points that follow actual roads
+  /// Fallback to smooth interpolated curve if API unavailable
+  Future<List<LatLng>> _getDirectionsRoute(LatLng origin, LatLng destination) async {
+    try {
+      AppLogger.info(LogLabel.general, '🗺️ Requesting directions from (${origin.latitude}, ${origin.longitude}) to (${destination.latitude}, ${destination.longitude})');
+
+      // Try Google Directions API with 3-second timeout
+      final directionsResult = await DirectionsService.getDirections(
+        origin: origin,
+        destination: destination,
+        mode: TravelMode.walking,
+      ).timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          AppLogger.warning(LogLabel.general, '⏱️ Directions API timeout (3s), using smooth curve fallback');
+          return null;
+        },
+      );
+
+      // If API returned good result with multiple points, use it
+      if (directionsResult != null && directionsResult.polylinePoints.length > 2) {
+        AppLogger.success(LogLabel.general, '✅ Directions received: ${directionsResult.polylinePoints.length} points, distance: ${directionsResult.distanceText}');
+        return directionsResult.polylinePoints;
+      }
+
+      // Fallback: return smooth interpolated curve
+      AppLogger.warning(LogLabel.general, '⚠️ Directions API unavailable, using smooth curve interpolation');
+      return _createSmoothCurve(origin, destination);
+    } catch (e) {
+      AppLogger.error(LogLabel.general, 'Error getting directions route', e, null);
+      // Fallback: return smooth interpolated curve
+      return _createSmoothCurve(origin, destination);
+    }
+  }
+
+  /// Create smooth interpolated curve between two points
+  /// Better than straight line, but not as accurate as actual road routing
+  List<LatLng> _createSmoothCurve(LatLng origin, LatLng destination) {
+    // Calculate distance to determine number of interpolation points
+    final distance = Geolocator.distanceBetween(
+      origin.latitude,
+      origin.longitude,
+      destination.latitude,
+      destination.longitude,
+    );
+
+    // More points for longer distances (5-20 points)
+    final numPoints = (distance / 100).clamp(5, 20).toInt();
+
+    final points = <LatLng>[];
+    points.add(origin); // Start point
+
+    // Calculate perpendicular offset for curve (10% of distance for subtle curve)
+    final latDiff = destination.latitude - origin.latitude;
+    final lngDiff = destination.longitude - origin.longitude;
+    final perpLatOffset = -lngDiff * 0.1; // Perpendicular to route (reduced from 0.2)
+    final perpLngOffset = latDiff * 0.1;
+
+    // Generate interpolated points with sine wave curve
+    for (int i = 1; i < numPoints; i++) {
+      final t = i / numPoints; // 0 to 1
+
+      // Linear interpolation
+      final lat = origin.latitude + (latDiff * t);
+      final lng = origin.longitude + (lngDiff * t);
+
+      // Add sine wave offset for smooth curve (peaks at middle)
+      final curveOffset = (t * (1 - t)) * 4; // Parabola: peaks at t=0.5
+      final curvedLat = lat + (perpLatOffset * curveOffset);
+      final curvedLng = lng + (perpLngOffset * curveOffset);
+
+      points.add(LatLng(curvedLat, curvedLng));
+    }
+
+    points.add(destination); // End point
+
+    AppLogger.info(LogLabel.general, '📐 Created smooth curve with ${points.length} interpolated points');
+    return points;
+  }
+
   // ==================== STATISTICS ====================
   int get totalTerritories => _territories.length;
   int get claimedTerritories => _territories.where((t) => t.isOwned).length;
@@ -719,48 +807,51 @@ class RunningProvider extends ChangeNotifier {
 
     final points = _selectedTerritory!.points;
     
-    // Create REMAINING route
+    // Create REMAINING territory route (SOLID line)
     final List<LatLng> remainingRoutePoints = [];
-    
+
     final startIndex = _currentCheckpointIndex.clamp(0, points.length - 1);
     for (int i = startIndex; i < points.length; i++) {
       remainingRoutePoints.add(points[i]);
     }
     remainingRoutePoints.add(points.first);
-    
+
     if (remainingRoutePoints.length >= 2) {
       final remainingPolyline = Polyline(
         polylineId: const PolylineId('remaining_route'),
         points: remainingRoutePoints,
-        color: Colors.blue.withOpacity(0.7),
-        width: 6,
+        color: Colors.red.withOpacity(0.7), // Red for territory boundary
+        width: 4,
         geodesic: true,
-        patterns: [
-          PatternItem.dash(20),
-          PatternItem.gap(10),
-        ],
+        // NO PATTERNS = SOLID LINE
       );
       _territoryGuidancePolylines.add(remainingPolyline);
     }
 
-    // Create NEXT CHECKPOINT indicator
+    // Create NEXT CHECKPOINT indicator with road routing
     if (_currentLatLng != null && _currentCheckpointIndex < points.length) {
       final nextCheckpoint = points[_currentCheckpointIndex.clamp(0, points.length - 1)];
-      final nextCheckpointLine = Polyline(
-        polylineId: const PolylineId('next_checkpoint_line'),
-        points: [_currentLatLng!, nextCheckpoint],
-        color: Colors.orange,
-        width: 4,
-        geodesic: true,
-        patterns: [
-          PatternItem.dash(10),
-          PatternItem.gap(5),
-        ],
-      );
-      _territoryGuidancePolylines.add(nextCheckpointLine);
-      AppLogger.info(LogLabel.general, '   ✅ Next checkpoint line created');
+
+      // Get road route from current position to next checkpoint
+      final routePoints = await _getDirectionsRoute(_currentLatLng!, nextCheckpoint);
+
+      if (routePoints.isNotEmpty) {
+        final nextCheckpointLine = Polyline(
+          polylineId: const PolylineId('next_checkpoint_line'),
+          points: routePoints,
+          color: Colors.orange,
+          width: 5,
+          geodesic: true,
+          patterns: [
+            PatternItem.dash(20),
+            PatternItem.gap(10),
+          ], // Dashed pattern for next checkpoint guidance
+        );
+        _territoryGuidancePolylines.add(nextCheckpointLine);
+        AppLogger.info(LogLabel.general, '   ✅ Next checkpoint route created with ${routePoints.length} points');
+      }
     }
-    
+
     AppLogger.info(LogLabel.general, '   ✅ Guidance polylines created');
 
     AppLogger.info(LogLabel.general, '   Calling _createCheckpointMarkers()...');

@@ -357,42 +357,48 @@ class TerritoryCard extends StatelessWidget {
     required MaterialColor color,
     required bool isSelected,
   }) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: 10.w,
-        vertical: 6.h,
-      ),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? Colors.white.withValues(alpha: 0.2)
-            : color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(
-          color: isSelected
-              ? Colors.white.withValues(alpha: 0.3)
-              : color.withValues(alpha: 0.3),
-          width: 1,
+    return Flexible(
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: 10.w,
+          vertical: 6.h,
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 14.sp,
-            color: isSelected ? Colors.white : color.shade700,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.white.withValues(alpha: 0.2)
+              : color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(
+            color: isSelected
+                ? Colors.white.withValues(alpha: 0.3)
+                : color.withValues(alpha: 0.3),
+            width: 1,
           ),
-          SizedBox(width: 5.w),
-          Text(
-            label,
-            style: AppStyles.body3SemiBold.copyWith(
-              color: isSelected
-                  ? Colors.white.withValues(alpha: 0.95)
-                  : color.shade700,
-              fontSize: 11.sp,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14.sp,
+              color: isSelected ? Colors.white : color.shade700,
             ),
-          ),
-        ],
+            SizedBox(width: 5.w),
+            Flexible(
+              child: Text(
+                label,
+                style: AppStyles.body3SemiBold.copyWith(
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.95)
+                      : color.shade700,
+                  fontSize: 11.sp,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
