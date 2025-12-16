@@ -9,7 +9,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/data/wrapper/auth_wrapper.dart';
 import 'package:turun/resources/colors_app.dart';
 
-import 'data/providers/user/user_provider.dart';                                                    
+import 'data/providers/user/user_provider.dart';
+import 'pages/running/run_share_screen_demo.dart'; // Demo for testing                                                    
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +42,8 @@ class MyApp extends StatelessWidget {
               useMaterial3: true,
               scaffoldBackgroundColor: AppColors.backgroundColor,
             ),
+            // TEMPORARY: Change to RunShareScreenDemo for testing
+            // home: child,
             home: child,
           );
         },
