@@ -1,47 +1,136 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:turun/app/custom_transition.dart';
 import 'package:turun/app/finite_state.dart';
-import '../../data/services/auth_service.dart';
-import '../../resources/colors_app.dart';
-import '../../resources/styles_app.dart';
-import '../../app/app_dialog.dart';
-import '../../app/app_logger.dart';
+import 'package:turun/resources/values_app.dart';
+import '../../../data/providers/user/user_provider.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../resources/colors_app.dart';
+import '../../../resources/styles_app.dart';
+import '../../../app/app_dialog.dart';
+import '../../../app/app_logger.dart';
+import '../section/profile_header.dart';
+import 'profile_edit_screen.dart';
 
-class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
-  bool _isLoggingOut = false; // ✅ FIXED: Changed from final to mutable
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isLoggingOut = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+
+    if (currentUserId != null) {
+      AppLogger.info(
+          LogLabel.provider, 'Loading profile data for user: $currentUserId');
+      await userProvider.loadUserData(currentUserId);
+    } else {
+      AppLogger.warning(LogLabel.auth, 'No authenticated user found');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Column(
-            children: [
-              const ProfileHeader(),
-              const SizedBox(height: 32),
-              const LevelProgressSection(),
-              const SizedBox(height: 32),
-              ActionButtons(
-                onLogout: _isLoggingOut ? null : () => _showLogoutDialog(context),
+        child: Consumer<UserProvider>(
+          builder: (context, userProvider, child) {
+            // Show loading state
+            if (userProvider.isLoading && userProvider.currentUser == null) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+
+            // Show error state
+            if (userProvider.error != null &&
+                userProvider.currentUser == null) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline,
+                        size: 64, color: Colors.red.shade300),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Failed to load profile',
+                      style: AppStyles.title3SemiBold.copyWith(
+                        color: AppColors.deepBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      userProvider.error ?? 'Unknown error',
+                      style: AppStyles.body2Regular.copyWith(
+                        color: AppColors.grey.shade600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: _loadUserData,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final user = userProvider.currentUser;
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Column(
+                children: [
+                  ProfileHeader(
+                    username: user?.username ?? user?.fullName ?? 'User',
+                    profileImageUrl: user?.avatarUrl,
+                    onEditProfile: () async {
+                      final result = await Navigator.push(
+                        context,
+                        SlidePageRoute(
+                          page: const ProfileEditScreen(),
+                        ),
+                      );
+
+                      // Reload user data if profile was updated
+                      if (result == true && mounted) {
+                        _loadUserData();
+                      }
+                    },
+                  ),
+                  AppGaps.kGap24,
+                  const LevelProgressSection(),
+                  AppGaps.kGap24,
+                  ActionButtons(
+                    onLogout:
+                        _isLoggingOut ? null : () => _showLogoutDialog(context),
+                  ),
+                  AppGaps.kGap24,
+                  const StatsGrid(),
+                  AppGaps.kGap24,
+                  const WeightTrackingCard(),
+                  AppGaps.kGap24,
+                  const BestRecordsSection(),
+                  AppGaps.kGap24,
+                ],
               ),
-              const SizedBox(height: 24),
-              const StatsGrid(),
-              const SizedBox(height: 24),
-              const WeightTrackingCard(),
-              const SizedBox(height: 24),
-              const BestRecordsSection(),
-              const SizedBox(height: 24),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -166,8 +255,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
     // ✅ Double-check if already logging out
     if (authService.state.isLoading) {
-      AppLogger.warning(
-          LogLabel.auth, 'Logout already in progress, skipping duplicate request');
+      AppLogger.warning(LogLabel.auth,
+          'Logout already in progress, skipping duplicate request');
       return;
     }
 
@@ -180,65 +269,6 @@ class _ProfilePageState extends State<ProfilePage> {
     } else {
       AppDialog.toastError(authService.error ?? 'Failed to logout');
     }
-  }
-}
-
-class ProfileHeader extends StatelessWidget {
-  const ProfileHeader({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 110,
-          height: 110,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFFD6E4F0),
-            border: Border.all(color: Colors.white, width: 4),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Center(
-            child: Icon(Icons.person, size: 50, color: Color(0xFF5B7C99)),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'John21',
-          style: AppStyles.title2SemiBold.copyWith(color: AppColors.black),
-        ),
-        const SizedBox(height: 16),
-        TextButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Edit Profile coming soon!')),
-            );
-          },
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            backgroundColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: const BorderSide(color: Color(0xFF5B7C99), width: 1.5),
-            ),
-          ),
-          child: Text(
-            'Edit Profile',
-            style: AppStyles.label2Medium.copyWith(
-              color: AppColors.blueDark,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -376,9 +406,8 @@ class LevelProgressSection extends StatelessWidget {
             child: const LinearProgressIndicator(
               value: 0.6,
               minHeight: 8,
-              backgroundColor:  Color(0xFFE8EDF2),
-              valueColor:
-                   AlwaysStoppedAnimation<Color>(Color(0xFF4A90E2)),
+              backgroundColor: Color(0xFFE8EDF2),
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4A90E2)),
             ),
           ),
           const SizedBox(height: 24),

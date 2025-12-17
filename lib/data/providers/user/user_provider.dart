@@ -17,13 +17,11 @@ class UserProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // Load user data
   Future<void> loadUserData(String userId) async {
     AppLogger.info(LogLabel.provider, 'Loading user data for ID: $userId');
 
     _isLoading = true;
     _error = null;
-    notifyListeners();
 
     try {
       final response =
