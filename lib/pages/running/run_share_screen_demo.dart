@@ -51,7 +51,7 @@ class RunShareScreenDemo extends StatelessWidget {
                       maxSpeed: '15.2 km/h',
                       calories: '1291 cal',
                       territoryConquered: true,
-                      territoryName: 'Kebayoran Baru',
+                      territoryName: 'Grand Harbour',
                       totalTerritories: 12,
                       userName: 'Galih Runner',
                       userLevel: 'Level 15 - Marathon Master',

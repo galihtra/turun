@@ -9,8 +9,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/data/wrapper/auth_wrapper.dart';
 import 'package:turun/resources/colors_app.dart';
 
-import 'data/providers/user/user_provider.dart';
-import 'pages/running/run_share_screen_demo.dart'; // Demo for testing                                                    
+import 'data/providers/user/user_provider.dart';                                              
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

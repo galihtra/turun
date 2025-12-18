@@ -3,9 +3,12 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:turun/resources/assets_app.dart';
+import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/values_app.dart';
 
 import '../../resources/styles_app.dart';
@@ -192,15 +195,15 @@ class _RunShareScreenState extends State<RunShareScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.orange.withValues(alpha: 0.3),
-            Colors.deepOrange.withValues(alpha: 0.2),
+            AppColors.blueLogo.withValues(alpha: 0.2),
+            AppColors.blueLogo.withValues(alpha: 0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.orange, width: 2),
+        border: Border.all(color: AppColors.blueLogo, width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withValues(alpha: 0.3),
+            color: AppColors.blueLogo.withValues(alpha: 0.1),
             blurRadius: 20,
             spreadRadius: 2,
           ),
@@ -211,7 +214,7 @@ class _RunShareScreenState extends State<RunShareScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: const BoxDecoration(
-              color: Colors.orange,
+              color: AppColors.blueLogo,
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -238,8 +241,8 @@ class _RunShareScreenState extends State<RunShareScreen> {
                 Text(
                   maxLines: 2,
                   widget.territoryName ?? 'Unknown Territory',
-                  style: TextStyle(
-                    color: Colors.orange[200],
+                  style: const TextStyle(
+                    color: AppColors.blueLogo,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -277,7 +280,7 @@ class _RunShareScreenState extends State<RunShareScreen> {
           Column(
             children: [
               Text(
-                'Distance',
+                'Sector Secured',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 14,
@@ -285,16 +288,8 @@ class _RunShareScreenState extends State<RunShareScreen> {
                   letterSpacing: 2,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                distance,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  height: 1,
-                ),
-              ),
+              // Territory route grid
+              _buildSimpleRouteGrid(),
             ],
           ),
 
@@ -329,7 +324,7 @@ class _RunShareScreenState extends State<RunShareScreen> {
                 color: Colors.white.withValues(alpha: 0.2),
               ),
               Expanded(
-                child: _buildCompactStat('WAKTU', duration, Icons.timer),
+                child: _buildCompactStat('TIME', duration, Icons.timer),
               ),
             ],
           ),
@@ -341,7 +336,7 @@ class _RunShareScreenState extends State<RunShareScreen> {
   Widget _buildCompactStat(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: Colors.orange, size: 20),
+        Icon(icon, color: AppColors.blueLogo, size: 20),
         const SizedBox(height: 8),
         Text(
           label,
@@ -361,6 +356,74 @@ class _RunShareScreenState extends State<RunShareScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSimpleRouteGrid() {
+    return SizedBox(
+      height: 100,
+      width: double.infinity,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Territory polygon background
+          SizedBox(
+            width: double.infinity,
+            height: 100,
+            child: CustomPaint(
+              painter: _SimpleRouteGridPainter(),
+            ),
+          ),
+          // Icon in the center (territory claim)
+          // Profile with flag badge
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Profile image
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white,
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                  image: const DecorationImage(
+                    image: AssetImage(AppImages.exProfile),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              // Flag badge
+              Positioned(
+                right: -5,
+                bottom: -5,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Icon(
+                    Icons.flag_rounded,
+                    color: Colors.white,
+                    size: 8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -468,24 +531,69 @@ class _RunShareScreenState extends State<RunShareScreen> {
   }
 }
 
-// Custom painter for Strava-like logo
-class _StravaLogoPainter extends CustomPainter {
+// Custom painter for territory polygon (blue theme, no background)
+class _SimpleRouteGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final textPainter = TextPainter(
-      text: const TextSpan(
-        text: 'STRAVA',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 2,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
+    // Draw only territory boundary (blue)
+    _drawTerritoryOutline(canvas, size);
+  }
+
+  void _drawTerritoryOutline(Canvas canvas, Size size) {
+    final boundaryPaint = Paint()
+      ..color = Colors.red.withValues(alpha: 0.6)
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path();
+
+    // Wider organic territory shape
+    path.moveTo(size.width * 0.08, size.height * 0.35);
+
+    // Top curve (wider spread)
+    path.quadraticBezierTo(
+      size.width * 0.35,
+      size.height * 0.12,
+      size.width * 0.7,
+      size.height * 0.18,
     );
-    textPainter.layout();
-    textPainter.paint(canvas, Offset((size.width - textPainter.width) / 2, 0));
+
+    // Right side curve (extended further right)
+    path.quadraticBezierTo(
+      size.width * 0.92,
+      size.height * 0.4,
+      size.width * 0.88,
+      size.height * 0.7,
+    );
+
+    // Bottom curve (wider spread)
+    path.quadraticBezierTo(
+      size.width * 0.55,
+      size.height * 0.88,
+      size.width * 0.15,
+      size.height * 0.78,
+    );
+
+    // Left side curve (back to start)
+    path.quadraticBezierTo(
+      size.width * 0.05,
+      size.height * 0.55,
+      size.width * 0.08,
+      size.height * 0.35,
+    );
+
+    path.close();
+
+    // Fill with transparent red
+    final fillPaint = Paint()
+      ..color = Colors.red.withValues(alpha: 0.12)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fillPaint);
+
+    // Draw outline
+    canvas.drawPath(path, boundaryPaint);
   }
 
   @override

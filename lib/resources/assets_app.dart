@@ -9,6 +9,7 @@ class AppImages {
   static const String background = '$IMAGE_PATH/background.jpg';
   static const String check = '$IMAGE_PATH/check.png';
   static const String exMapsLandmark = '$IMAGE_PATH/example_maps_landmark.png';
+  static const String exProfile = '$IMAGE_PATH/example-profile.jpg';
 }
 
 class AppLotties {
