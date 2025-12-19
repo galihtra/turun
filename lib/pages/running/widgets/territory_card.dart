@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
+import 'package:turun/resources/values_app.dart';
 
 import '../../../data/model/territory/territory_model.dart';
 
@@ -24,12 +25,10 @@ class TerritoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final displayName = territory.name ?? 'Territory #${territory.id}';
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = screenWidth * 0.85;
-    final cardHeight = cardWidth * 0.75;
+    final screenWidth = MediaQuery.of(context).size.width * 0.85;
+
     return Container(
-      width: cardWidth,
-      height: cardHeight,
+      width: screenWidth,
       margin: EdgeInsets.only(right: 12.w),
       decoration: BoxDecoration(
         gradient: isSelected
@@ -78,11 +77,14 @@ class TerritoryCard extends StatelessWidget {
           highlightColor: isSelected
               ? Colors.white.withValues(alpha: 0.1)
               : AppColors.blueLogo.withValues(alpha: 0.05),
-          child: Padding(
-            padding: EdgeInsets.all(16.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(12.w, 12.w, 12.w, 10.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                 // ==================== TOP SECTION (IMAGE + INFO) ====================
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,7 +105,7 @@ class TerritoryCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12.r),
                         child: Container(
                           width: 80.w,
-                          height: 80.w,
+                          height: 120.w,
                           decoration: BoxDecoration(
                             gradient: isSelected
                                 ? LinearGradient(
@@ -134,7 +136,7 @@ class TerritoryCard extends StatelessWidget {
                                           ? Colors.white.withValues(alpha: 0.8)
                                           : AppColors.blueLogo
                                               .withValues(alpha: 0.6),
-                                      size: 32.sp,
+                                      size: 36.sp,
                                     );
                                   },
                                 )
@@ -144,13 +146,12 @@ class TerritoryCard extends StatelessWidget {
                                       ? Colors.white.withValues(alpha: 0.8)
                                       : AppColors.blueLogo
                                           .withValues(alpha: 0.6),
-                                  size: 32.sp,
+                                  size: 36.sp,
                                 ),
                         ),
                       ),
                     ),
-
-                    SizedBox(width: 12.w),
+                    AppGaps.kGap12,
 
                     // INFO - Right side of image
                     Expanded(
@@ -174,7 +175,7 @@ class TerritoryCard extends StatelessWidget {
                                           ? Colors.white.withValues(alpha: 0.9)
                                           : AppColors.blueLogo,
                                     ),
-                                    SizedBox(width: 4.w),
+                                    AppGaps.kGap4,
                                     Text(
                                       '${(distance! / 1000).toStringAsFixed(1)}km away',
                                       style: AppStyles.body3SemiBold.copyWith(
@@ -244,8 +245,7 @@ class TerritoryCard extends StatelessWidget {
                                 ),
                             ],
                           ),
-
-                          SizedBox(height: 8.h),
+                          AppGaps.kGap8,
 
                           // Territory Name
                           Text(
@@ -261,8 +261,7 @@ class TerritoryCard extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-
-                          SizedBox(height: 6.h),
+                          AppGaps.kGap6,
 
                           // Reward & Area Size Row
                           Row(
@@ -284,8 +283,7 @@ class TerritoryCard extends StatelessWidget {
                                 ),
                             ],
                           ),
-
-                          SizedBox(height: 6.h),
+                          AppGaps.kGap6,
 
                           // Owner info
                           _buildInfoChip(
@@ -304,9 +302,8 @@ class TerritoryCard extends StatelessWidget {
                   ],
                 ),
 
-                const Spacer(),
-
                 // ==================== NAVIGATE BUTTON ====================
+                SizedBox(height: 8.h),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -317,8 +314,8 @@ class TerritoryCard extends StatelessWidget {
                       foregroundColor:
                           isSelected ? AppColors.blueLogo : Colors.white,
                       padding: EdgeInsets.symmetric(
-                        vertical: 12.h,
-                        horizontal: 16.w,
+                        vertical: 9.h,
+                        horizontal: 12.w,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12.r),
@@ -345,6 +342,7 @@ class TerritoryCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ),

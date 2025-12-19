@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
@@ -411,7 +412,7 @@ class RunningPageState extends State<RunningPage> {
                   left: 0,
                   right: 0,
                   child: SizedBox(
-                    height: 200,
+                    height: MediaQuery.of(context).size.height * 0.28,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -431,62 +432,65 @@ class RunningPageState extends State<RunningPage> {
                   bottom: 20,
                   left: 0,
                   right: 0,
-                  child: SizedBox(
-                    height: 200,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: runningProvider.territories.length,
-                      itemBuilder: (context, index) {
-                        final territory = runningProvider.territories[index];
-                        final isSelected =
-                            runningProvider.selectedTerritory?.id ==
-                                territory.id;
-                        final distance = _calculateDistance(
-                          runningProvider.currentLatLng,
-                          territory.points,
-                        );
-
-                        return TerritoryCard(
-                          territory: territory,
-                          isSelected: isSelected,
-                          distance: distance,
-                          onTap: () {
-                            runningProvider.selectTerritory(territory);
-                            // Animate camera to territory location when card is tapped
-                            if (territory.points.isNotEmpty &&
-                                mapController != null) {
-                              // Calculate center of territory
-                              double totalLat = 0;
-                              double totalLng = 0;
-                              for (var point in territory.points) {
-                                totalLat += point.latitude;
-                                totalLng += point.longitude;
-                              }
-                              final centerLat =
-                                  totalLat / territory.points.length;
-                              final centerLng =
-                                  totalLng / territory.points.length;
-                              final territoryCenter =
-                                  LatLng(centerLat, centerLng);
-
-                              // Animate camera to territory with smooth animation
-                              mapController!.animateCamera(
-                                CameraUpdate.newLatLngZoom(
-                                  territoryCenter,
-                                  16.5,
-                                ),
-                              );
-                            }
-                          },
-                          onNavigate: () => _handleTerritoryNavigate(
-                            context,
-                            runningProvider,
-                            index,
-                          ),
-                        );
-                      },
+                  child: CarouselSlider.builder(
+                    itemCount: runningProvider.territories.length,
+                    options: CarouselOptions(
+                      height: 200,
+                      enlargeCenterPage: true,
+                      enlargeFactor: 0.25,
+                      viewportFraction: 0.85,
+                      enableInfiniteScroll: false,
+                      padEnds: true,
                     ),
+                    itemBuilder: (context, index, realIndex) {
+                      final territory = runningProvider.territories[index];
+                      final isSelected =
+                          runningProvider.selectedTerritory?.id ==
+                              territory.id;
+                      final distance = _calculateDistance(
+                        runningProvider.currentLatLng,
+                        territory.points,
+                      );
+
+                      return TerritoryCard(
+                        territory: territory,
+                        isSelected: isSelected,
+                        distance: distance,
+                        onTap: () {
+                          runningProvider.selectTerritory(territory);
+                          // Animate camera to territory location when card is tapped
+                          if (territory.points.isNotEmpty &&
+                              mapController != null) {
+                            // Calculate center of territory
+                            double totalLat = 0;
+                            double totalLng = 0;
+                            for (var point in territory.points) {
+                              totalLat += point.latitude;
+                              totalLng += point.longitude;
+                            }
+                            final centerLat =
+                                totalLat / territory.points.length;
+                            final centerLng =
+                                totalLng / territory.points.length;
+                            final territoryCenter =
+                                LatLng(centerLat, centerLng);
+
+                            // Animate camera to territory with smooth animation
+                            mapController!.animateCamera(
+                              CameraUpdate.newLatLngZoom(
+                                territoryCenter,
+                                16.5,
+                              ),
+                            );
+                          }
+                        },
+                        onNavigate: () => _handleTerritoryNavigate(
+                          context,
+                          runningProvider,
+                          index,
+                        ),
+                      );
+                    },
                   ),
                 ),
 
