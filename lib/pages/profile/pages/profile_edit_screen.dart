@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:turun/app/app_dialog.dart';
 import 'package:turun/app/app_logger.dart';
 import 'package:turun/app/extensions.dart';
+import 'package:turun/base_widgets/appbar/custom_appbar.dart';
 import 'package:turun/base_widgets/button/gradient_button.dart';
 import 'package:turun/base_widgets/image/custom_image_profile.dart';
 import 'package:turun/base_widgets/text_field/custom_text_form_field.dart';
@@ -130,8 +131,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 _imageNotifier.value = null;
                 _isUsingExistingAvatar = true;
               });
-              AppLogger.info(
-                  LogLabel.provider, 'User restored current avatar');
+              AppLogger.info(LogLabel.provider, 'User restored current avatar');
             },
           ),
         ],
@@ -168,7 +168,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           _imageNotifier.value = File(pickedFile.path);
           _isUsingExistingAvatar = false;
         });
-        AppLogger.info(LogLabel.provider, 'User selected new avatar from gallery');
+        AppLogger.info(
+            LogLabel.provider, 'User selected new avatar from gallery');
       }
     } catch (e) {
       if (mounted) {
@@ -191,7 +192,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           _imageNotifier.value = File(pickedFile.path);
           _isUsingExistingAvatar = false;
         });
-        AppLogger.info(LogLabel.provider, 'User selected new avatar from camera');
+        AppLogger.info(
+            LogLabel.provider, 'User selected new avatar from camera');
       }
     } catch (e) {
       if (mounted) {
@@ -288,9 +290,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
           if (avatarUrl != null) {
             updates['avatar_url'] = avatarUrl;
-            AppLogger.success(LogLabel.provider, 'Avatar uploaded successfully');
+            AppLogger.success(
+                LogLabel.provider, 'Avatar uploaded successfully');
           } else {
-            AppLogger.warning(LogLabel.provider, 'Avatar upload failed, continuing without update');
+            AppLogger.warning(LogLabel.provider,
+                'Avatar upload failed, continuing without update');
           }
         }
       }
@@ -321,20 +325,14 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
+      backgroundColor: AppColors.white,
+      appBar: IosAppBar(
+        title: "Edit Profile",
+        backgroundColor: AppColors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.deepBlue),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Edit Profile',
-          style: AppStyles.title3SemiBold.copyWith(
-            color: AppColors.deepBlue,
-          ),
-        ),
+        onBackTap: () {
+          Navigator.pop(context);
+        },
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -490,7 +488,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       color: AppColors.blueDark,
                     ),
                     onTap: () async {
-                      final selected = await AppBottomSheet.showCustomBottomSheet(
+                      final selected =
+                          await AppBottomSheet.showCustomBottomSheet(
                         context,
                         children: [
                           GenderSelectionItem(
