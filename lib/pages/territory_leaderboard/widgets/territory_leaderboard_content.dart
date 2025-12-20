@@ -1,601 +1,239 @@
 import 'package:flutter/material.dart';
-import 'package:turun/pages/territory_leaderboard/runner_profile_page.dart';
-import 'package:turun/resources/colors_app.dart';
-import 'package:turun/resources/styles_app.dart';
-import 'package:turun/resources/values_app.dart';
+import 'package:provider/provider.dart';
+import '../../../data/providers/leaderboard/territory_leaderboard_provider.dart';
+import '../../../data/model/territory/territory_model.dart';
+import 'territory_leaderboard_card.dart';
+import 'territory_search_bar.dart';
+import '../territory_detail_page.dart';
 
 class TerritoryLeaderboardContent extends StatefulWidget {
   final ScrollController scrollController;
   final bool isExpanded;
-  final int currentPage;
-  final int totalPages;
-  final Function(int) onPageChanged;
+  final Function(Territory) onTerritoryTap;
+  final Function(String) onSearchChanged;
+  final VoidCallback onClearSearch;
 
   const TerritoryLeaderboardContent({
     super.key,
     required this.scrollController,
     required this.isExpanded,
-    this.currentPage = 1,
-    this.totalPages = 5,
-    required this.onPageChanged,
+    required this.onTerritoryTap,
+    required this.onSearchChanged,
+    required this.onClearSearch,
   });
 
   @override
-  TerritoryLeaderboardContentState createState() =>
-      TerritoryLeaderboardContentState();
+  State<TerritoryLeaderboardContent> createState() =>
+      _TerritoryLeaderboardContentState();
 }
 
-class TerritoryLeaderboardContentState
+class _TerritoryLeaderboardContentState
     extends State<TerritoryLeaderboardContent> {
-  int? _expandedIndex; // Menyimpan index item yang sedang expanded
+  int _currentPage = 1;
+  final int _itemsPerPage = 6;
 
-  void _toggleExpand(int index) {
+  int get _totalPages {
+    final provider = context.watch<TerritoryLeaderboardProvider>();
+    return (provider.territories.length / _itemsPerPage).ceil().clamp(1, 999);
+  }
+
+  List<Territory> get _currentPageTerritories {
+    final provider = context.watch<TerritoryLeaderboardProvider>();
+    final startIndex = (_currentPage - 1) * _itemsPerPage;
+    final endIndex = (startIndex + _itemsPerPage)
+        .clamp(0, provider.territories.length);
+
+    if (startIndex >= provider.territories.length) {
+      return [];
+    }
+
+    return provider.territories.sublist(startIndex, endIndex);
+  }
+
+  void _handlePageChange(int newPage) {
     setState(() {
-      if (_expandedIndex == index) {
-        _expandedIndex = null; // Collapse jika sudah expanded
-      } else {
-        _expandedIndex = index; // Expand item baru
-      }
+      _currentPage = newPage.clamp(1, _totalPages);
     });
+  }
+
+  void _onTerritoryCardTap(Territory territory) {
+    // Just move map to territory location
+    widget.onTerritoryTap(territory);
+  }
+
+  void _onTerritoryCardLongPress(Territory territory) {
+    // Open detail page on long press
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TerritoryDetailPage(territory: territory),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      controller: widget.scrollController,
-      slivers: [
-        SliverToBoxAdapter(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 8),
+          width: 40,
+          height: 4,
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
             children: [
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppDimens.w16,
-                  vertical: AppDimens.h16,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text("Leaderboard",
-                                style: AppStyles.title1SemiBold),
-                            AppGaps.kGap4,
-                            const Icon(Icons.emoji_events,
-                                color: AppColors.yellow),
-                          ],
-                        ),
-                      ],
-                    ),
-                    AppGaps.kGap10,
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.location_on,
-                              size: AppSizes.s16,
-                              color: AppColors.red,
-                            ),
-                            AppGaps.kGap4,
-                            Text(
-                              "Batam, Riau Islands",
-                              style: AppStyles.body2Medium
-                                  .copyWith(color: AppColors.grey.shade600),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
+              const Icon(
+                Icons.leaderboard_rounded,
+                color: Colors.black87,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Territory Leaderboard',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
               ),
-              AppGaps.kGap12,
             ],
           ),
         ),
-        if (widget.isExpanded)
-          SliverList(
-            delegate: SliverChildListDelegate([
-              _buildLeaderboardItem(
-                index: 0,
-                rank: 1,
-                name: "Muhammad Maulana Yusuf",
-                runs: 10,
-                area: "450 Km²",
-                isCurrentUser: false,
-                medalColor: AppColors.yellow,
-              ),
-              _buildLeaderboardItem(
-                index: 1,
-                rank: 2,
-                name: "Yuna Seo",
-                runs: 4,
-                area: "340 Km²",
-                isCurrentUser: false,
-                medalColor: AppColors.green,
-              ),
-              _buildLeaderboardItem(
-                index: 2,
-                rank: 3,
-                name: "In-seong Soo",
-                runs: 5,
-                area: "300 Km²",
-                isCurrentUser: false,
-                medalColor: AppColors.blue.shade500,
-              ),
-              _buildLeaderboardItem(
-                index: 3,
-                rank: 4,
-                name: "Hrishita Mrinal",
-                runs: 2,
-                area: "285 Km²",
-                isCurrentUser: false,
-              ),
-              _buildLeaderboardItem(
-                index: 4,
-                rank: 5,
-                name: "You",
-                runs: 3,
-                area: "100 Km²",
-                isCurrentUser: true,
-              ),
-              AppGaps.kGap16,
-              _buildPagination(),
-              AppGaps.kGap24,
-            ]),
+
+        const SizedBox(height: 16),
+
+        if (widget.isExpanded) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: TerritorySearchBar(
+              onSearchChanged: (query) {
+                widget.onSearchChanged(query);
+                setState(() {
+                  _currentPage = 1;
+                });
+              },
+              onClearSearch: () {
+                widget.onClearSearch();
+                setState(() {
+                  _currentPage = 1;
+                });
+              },
+            ),
           ),
-      ],
-    );
-  }
+          const SizedBox(height: 16),
+        ],
 
-  Widget _buildLeaderboardItem({
-    required int index,
-    required int rank,
-    required String name,
-    required int runs,
-    required String area,
-    required bool isCurrentUser,
-    Color? medalColor,
-  }) {
-    final isExpanded = _expandedIndex == index;
-
-    return Column(
-      children: [
-        // Item utama
-        GestureDetector(
-          onTap: () => _toggleExpand(index),
-          child: Container(
-            margin: EdgeInsets.symmetric(
-              vertical: AppDimens.h6,
-              horizontal: AppDimens.w16,
-            ),
-            padding: const EdgeInsets.all(AppPaddings.p16),
-            decoration: BoxDecoration(
-              color: isCurrentUser ? AppColors.blueLight : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: isCurrentUser
-                  ? Border.all(color: AppColors.blueLogo, width: 1.5)
-                  : Border.all(color: AppColors.grey.shade200, width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.black.shade50,
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: AppDimens.w26,
-                  height: AppDimens.h26,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: medalColor ?? _getRankColor(rank),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    "$rank",
-                    style: AppStyles.body3SemiBold
-                        .copyWith(color: AppColors.white),
-                  ),
-                ),
-                AppGaps.kGap12,
-                Container(
-                  width: AppDimens.w40,
-                  height: AppDimens.h40,
-                  decoration: BoxDecoration(
-                    color: AppColors.grey.shade300,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.person,
-                    color: AppColors.grey.shade600,
-                    size: AppSizes.s24,
-                  ),
-                ),
-                AppGaps.kGap12,
-                Expanded(
+        Expanded(
+          child: Consumer<TerritoryLeaderboardProvider>(
+            builder: (context, provider, child) {
+              if (provider.territories.isEmpty) {
+                return Center(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        name,
-                        style: AppStyles.body2SemiBold.copyWith(
-                          color: isCurrentUser
-                              ? AppColors.blueLogo
-                              : AppColors.black,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      Icon(
+                        Icons.search_off_rounded,
+                        size: 64,
+                        color: Colors.grey[300],
                       ),
+                      const SizedBox(height: 16),
                       Text(
-                        "Total Runs: $runs",
-                        style: AppStyles.body3Regular
-                            .copyWith(color: AppColors.deepBlueOpacity),
+                        'No territories found',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
                       ),
                     ],
                   ),
-                ),
-                AppGaps.kGap10,
-                Text(
-                  area,
-                  style: AppStyles.body1SemiBold.copyWith(
-                    color:
-                        isCurrentUser ? AppColors.blueLogo : AppColors.deepBlue,
+                );
+              }
+
+              return SingleChildScrollView(
+                controller: widget.scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: 8,
+                    bottom: 100, // Add extra padding for bottom navigation
+                  ),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.7, // Increased height for cards
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                    itemCount: _currentPageTerritories.length,
+                    itemBuilder: (context, index) {
+                      final territory = _currentPageTerritories[index];
+                      final distance = provider.getDistanceToTerritory(territory);
+
+                      return TerritoryLeaderboardCard(
+                        territory: territory,
+                        distance: distance,
+                        onTap: () => _onTerritoryCardTap(territory),
+                        onLongPress: () => _onTerritoryCardLongPress(territory),
+                      );
+                    },
                   ),
                 ),
-                Icon(
-                  isExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: AppColors.grey.shade600,
+              );
+            },
+          ),
+        ),
+
+        if (widget.isExpanded && _totalPages > 1) ...[
+          const Divider(height: 1),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  onPressed: _currentPage > 1
+                      ? () => _handlePageChange(_currentPage - 1)
+                      : null,
+                  icon: const Icon(Icons.chevron_left_rounded),
+                  color: Colors.black87,
+                  disabledColor: Colors.grey[300],
+                ),
+
+                Text(
+                  'Page $_currentPage of $_totalPages',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+
+                IconButton(
+                  onPressed: _currentPage < _totalPages
+                      ? () => _handlePageChange(_currentPage + 1)
+                      : null,
+                  icon: const Icon(Icons.chevron_right_rounded),
+                  color: Colors.black87,
+                  disabledColor: Colors.grey[300],
                 ),
               ],
             ),
           ),
-        ),
-        if (isExpanded) _buildDetailContent(name: name),
+        ],
       ],
     );
-  }
-
-  Widget _buildProfileButton({required String name}) {
-    return GestureDetector(
-      onTap: () => _navigateToRunnerProfile(name),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppDimens.w12,
-          vertical: AppDimens.h6,
-        ),
-        decoration: BoxDecoration(
-          gradient: AppColors.blueGradient,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.blueLogo.withValues(alpha: 0.3),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.person_outline,
-              color: Colors.white,
-              size: AppSizes.s16,
-            ),
-            AppGaps.kGap4,
-            Text(
-              "Profile",
-              style: AppStyles.label2SemiBold.copyWith(
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _navigateToRunnerProfile(String name) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RunnerProfilePage(
-          runnerName: name,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailContent({required String name}) {
-    return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: AppDimens.w16,
-        vertical: AppDimens.h8,
-      ),
-      padding: const EdgeInsets.all(AppPaddings.p16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.grey.shade200, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.black.shade50,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // User Info
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name,
-                        style: AppStyles.body1SemiBold
-                            .copyWith(color: AppColors.deepBlue)),
-                    SizedBox(height: AppDimens.h4),
-                    Text("27 July 2025",
-                        style: AppStyles.body2Medium
-                            .copyWith(color: AppColors.grey.shade600)),
-                  ],
-                ),
-              ),
-              SizedBox(width: AppDimens.w8),
-              _buildProfileButton(name: name),
-            ],
-          ),
-          SizedBox(height: AppDimens.h10),
-          _buildCapturedArea(),
-          SizedBox(height: AppDimens.h10),
-          _buildStat(
-            valueDuration: "03:10",
-            valueAvg: "01:00",
-            valueDistance: "0.5",
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCapturedArea() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppPaddings.p16),
-      decoration: BoxDecoration(
-        color: AppColors.yellow.shade50,
-        borderRadius: BorderRadius.circular(AppDimens.r12),
-        border: Border.all(color: AppColors.yellow.shade50),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            "0.02 km²",
-            style: AppStyles.title1SemiBold.copyWith(
-              color: AppColors.yellow,
-              fontSize: AppSizes.s24,
-            ),
-          ),
-          SizedBox(height: AppDimens.h4),
-          Text(
-            "Captured Area",
-            style: AppStyles.body2Medium.copyWith(
-              color: AppColors.grey.shade600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStat({
-    required String valueDuration,
-    required String valueAvg,
-    required String valueDistance,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppPaddings.p10),
-      child: Column(
-        children: [
-          // Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  "Duration",
-                  style: AppStyles.body3Medium.copyWith(
-                    color: AppColors.deepBlueOpacity,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  "Avg pace",
-                  style: AppStyles.body3Medium.copyWith(
-                    color: AppColors.deepBlueOpacity,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  "Distance",
-                  style: AppStyles.body3Medium.copyWith(
-                    color: AppColors.deepBlueOpacity,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-          AppGaps.kGap4,
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  valueDuration,
-                  style: AppStyles.title2SemiBold.copyWith(
-                    color: AppColors.deepBlue,
-                    fontSize: AppSizes.s18,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  valueAvg,
-                  style: AppStyles.title2SemiBold.copyWith(
-                    color: AppColors.deepBlue,
-                    fontSize: AppSizes.s18,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  valueDistance,
-                  style: AppStyles.title2SemiBold.copyWith(
-                    color: AppColors.deepBlue,
-                    fontSize: AppSizes.s18,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-          AppGaps.kGap4,
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  "min",
-                  style: AppStyles.body3Medium.copyWith(
-                    color: AppColors.deepBlue,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  "min/km",
-                  style: AppStyles.body3Medium.copyWith(
-                    color: AppColors.deepBlue,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  "km",
-                  style: AppStyles.body3Medium.copyWith(
-                    color: AppColors.deepBlue,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPagination() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppDimens.w16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios, size: AppSizes.s16),
-            onPressed: widget.currentPage > 1
-                ? () => widget.onPageChanged(widget.currentPage - 1)
-                : null,
-            color: widget.currentPage > 1 ? AppColors.deepBlue : Colors.grey,
-            padding: const EdgeInsets.all(AppPaddings.p8),
-          ),
-          _buildPageNumber(1),
-          AppGaps.kGap8,
-          _buildPageNumber(2),
-          AppGaps.kGap8,
-          _buildPageNumber(3),
-          AppGaps.kGap8,
-          Text("...",
-              style: AppStyles.body1SemiBold
-                  .copyWith(color: AppColors.grey.shade600)),
-          AppGaps.kGap8,
-          _buildPageNumber(widget.totalPages),
-          IconButton(
-            icon: const Icon(Icons.arrow_forward_ios, size: AppSizes.s16),
-            onPressed: widget.currentPage < widget.totalPages
-                ? () => widget.onPageChanged(widget.currentPage + 1)
-                : null,
-            color: widget.currentPage < widget.totalPages
-                ? AppColors.deepBlue
-                : Colors.grey,
-            padding: const EdgeInsets.all(AppPaddings.p8),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPageNumber(int page) {
-    bool isActive = page == widget.currentPage;
-    return GestureDetector(
-      onTap: () => widget.onPageChanged(page),
-      child: Container(
-        width: AppDimens.w36,
-        height: AppDimens.h36,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.deepBlue : Colors.transparent,
-          shape: BoxShape.rectangle,
-          borderRadius: BorderRadius.circular(AppDimens.r10),
-          border: isActive ? null : Border.all(color: AppColors.grey.shade500),
-        ),
-        child: Text("$page",
-            style: AppStyles.label2SemiBold.copyWith(
-              color: isActive ? AppColors.white : AppColors.grey.shade600,
-            )),
-      ),
-    );
-  }
-
-  Color _getRankColor(int rank) {
-    switch (rank) {
-      case 1:
-        return AppColors.yellow;
-      case 2:
-        return AppColors.green;
-      case 3:
-        return AppColors.blue.shade500;
-      default:
-        return AppColors.grey;
-    }
   }
 }

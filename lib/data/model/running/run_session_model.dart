@@ -88,7 +88,7 @@ class RunSession {
       }).toList();
     }
 
-    // Parse user data if joined
+    // Parse user data if joined (check both 'users' and 'user' keys for backward compatibility)
     String? userName;
     String? userUsername;
     String? userAvatarUrl;
@@ -96,6 +96,12 @@ class RunSession {
 
     if (json['users'] != null && json['users'] is Map) {
       final userData = json['users'] as Map<String, dynamic>;
+      userName = userData['full_name'] as String?;
+      userUsername = userData['username'] as String?;
+      userAvatarUrl = userData['avatar_url'] as String?;
+      userProfileColor = userData['profile_color'] as String?;
+    } else if (json['user'] != null && json['user'] is Map) {
+      final userData = json['user'] as Map<String, dynamic>;
       userName = userData['full_name'] as String?;
       userUsername = userData['username'] as String?;
       userAvatarUrl = userData['avatar_url'] as String?;

@@ -9,7 +9,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/data/wrapper/auth_wrapper.dart';
 import 'package:turun/resources/colors_app.dart';
 
-import 'data/providers/user/user_provider.dart';                                              
+import 'data/providers/user/user_provider.dart';
+import 'data/providers/leaderboard/territory_leaderboard_provider.dart';                                              
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,10 +27,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [  
+      providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => RunningProvider()),
+        ChangeNotifierProvider(create: (_) => TerritoryLeaderboardProvider()),
       ],
       child: ScreenUtilInit(
         designSize: const Size(375, 812),

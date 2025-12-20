@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/base_widgets/button/custom_badge_button.dart';
-import 'package:turun/pages/territory_leaderboard/widgets/run_history_item.dart';
 import 'package:turun/resources/assets_app.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/values_app.dart';
@@ -194,15 +193,15 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
-                      AppGaps.kGap16,
-                      const RunHistoryItem(
-                        title: "Morning Run",
-                        date: "27 July 2025 08:00 AM",
-                        distance: "0.5 km",
-                        duration: "03:10",
-                        avgPace: "06:20",
-                        landmarkImage: AppImages.exMapsLandmark,
-                      ),
+                      // AppGaps.kGap16,
+                      // const RunHistoryItem(
+                      //   title: "Morning Run",
+                      //   date: "27 July 2025 08:00 AM",
+                      //   distance: "0.5 km",
+                      //   duration: "03:10",
+                      //   avgPace: "06:20",
+                      //   landmarkImage: AppImages.exMapsLandmark,
+                      // ),
                     ],
                   ),
                 ),
