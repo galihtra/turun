@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -20,7 +20,7 @@ class RunShareScreen extends StatefulWidget {
   final String? avgSpeed; // e.g., "10.5 km/h"
   final String? maxSpeed; // e.g., "15.2 km/h"
   final String? calories; // e.g., "1291 cal"
-  final String? mapImagePath; // Path to route map image
+  final List<LatLng>? routePoints; // Real GPS route points from run session
   final bool territoryConquered;
   final String? territoryName;
   final int? totalTerritories; // Total territories owned by user
@@ -35,7 +35,7 @@ class RunShareScreen extends StatefulWidget {
     this.avgSpeed,
     this.maxSpeed,
     this.calories,
-    this.mapImagePath,
+    this.routePoints, // Pass actual route coordinates
     this.territoryConquered = false,
     this.territoryName,
     this.totalTerritories,
@@ -53,18 +53,12 @@ class _RunShareScreenState extends State<RunShareScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isGenerating = false;
 
-  // Dummy data for testing
-  static const String dummyDistance = "21.51 km";
-  static const String dummyPace = "6:01";
-  static const String dummyDuration = "2j 9m";
-
   @override
   Widget build(BuildContext context) {
-    final distance =
-        widget.distance.isNotEmpty ? widget.distance : dummyDistance;
-    final pace = widget.pace.isNotEmpty ? widget.pace : dummyPace;
-    final duration =
-        widget.duration.isNotEmpty ? widget.duration : dummyDuration;
+    // Use real data from widget, no dummy fallback
+    final distance = widget.distance;
+    final pace = widget.pace;
+    final duration = widget.duration;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -371,7 +365,7 @@ class _RunShareScreenState extends State<RunShareScreen> {
             width: double.infinity,
             height: 100,
             child: CustomPaint(
-              painter: _SimpleRouteGridPainter(),
+              painter: _SimpleRouteGridPainter(routePoints: widget.routePoints),
             ),
           ),
           // Icon in the center (territory claim)
@@ -473,15 +467,100 @@ class _RunShareScreenState extends State<RunShareScreen> {
   }
 
   Future<void> _pickBackgroundImage() async {
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
+    // Show dialog to choose between camera and gallery
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Choose Photo Source',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.blueLogo.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt_rounded,
+                    color: AppColors.blueLogo,
+                  ),
+                ),
+                title: const Text(
+                  'Camera',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  'Take a new photo',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                ),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.green[500]!.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.photo_library_rounded,
+                    color: AppColors.green[500],
+                  ),
+                ),
+                title: const Text(
+                  'Gallery',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  'Choose from gallery',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                ),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
     );
 
-    if (image != null) {
-      setState(() {
-        _backgroundImage = File(image.path);
-      });
+    if (source != null) {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          _backgroundImage = File(image.path);
+        });
+      }
     }
   }
 
@@ -533,13 +612,83 @@ class _RunShareScreenState extends State<RunShareScreen> {
 
 // Custom painter for territory polygon (blue theme, no background)
 class _SimpleRouteGridPainter extends CustomPainter {
+  final List<LatLng>? routePoints;
+
+  _SimpleRouteGridPainter({this.routePoints});
+
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw only territory boundary (blue)
-    _drawTerritoryOutline(canvas, size);
+    // Draw route using real GPS points if available
+    if (routePoints != null && routePoints!.isNotEmpty) {
+      _drawRealRoute(canvas, size);
+    } else {
+      // Fallback to dummy shape if no route data
+      _drawDummyTerritoryOutline(canvas, size);
+    }
   }
 
-  void _drawTerritoryOutline(Canvas canvas, Size size) {
+  void _drawRealRoute(Canvas canvas, Size size) {
+    if (routePoints == null || routePoints!.isEmpty) return;
+
+    // Calculate bounding box to fit route in canvas
+    double minLat = routePoints!.first.latitude;
+    double maxLat = routePoints!.first.latitude;
+    double minLng = routePoints!.first.longitude;
+    double maxLng = routePoints!.first.longitude;
+
+    for (var point in routePoints!) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    final latRange = maxLat - minLat;
+    final lngRange = maxLng - minLng;
+
+    // Add padding
+    const padding = 10.0;
+    final drawWidth = size.width - (padding * 2);
+    final drawHeight = size.height - (padding * 2);
+
+    // Convert GPS coordinates to canvas coordinates
+    Offset latLngToOffset(LatLng point) {
+      final x = padding + ((point.longitude - minLng) / lngRange) * drawWidth;
+      final y = padding + ((maxLat - point.latitude) / latRange) * drawHeight;
+      return Offset(x, y);
+    }
+
+    // Draw route path
+    final routePaint = Paint()
+      ..color = Colors.red.withValues(alpha: 0.6)
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path();
+    final firstPoint = latLngToOffset(routePoints!.first);
+    path.moveTo(firstPoint.dx, firstPoint.dy);
+
+    for (int i = 1; i < routePoints!.length; i++) {
+      final point = latLngToOffset(routePoints![i]);
+      path.lineTo(point.dx, point.dy);
+    }
+
+    // Close path to show complete route
+    path.close();
+
+    // Fill with transparent red
+    final fillPaint = Paint()
+      ..color = Colors.red.withValues(alpha: 0.12)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fillPaint);
+
+    // Draw outline
+    canvas.drawPath(path, routePaint);
+  }
+
+  void _drawDummyTerritoryOutline(Canvas canvas, Size size) {
     final boundaryPaint = Paint()
       ..color = Colors.red.withValues(alpha: 0.6)
       ..strokeWidth = 2.5
@@ -597,5 +746,10 @@ class _SimpleRouteGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    if (oldDelegate is _SimpleRouteGridPainter) {
+      return oldDelegate.routePoints != routePoints;
+    }
+    return false;
+  }
 }

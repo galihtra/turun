@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:turun/app/app_logger.dart';
+import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/values_app.dart';
 import '../../data/providers/running/running_provider.dart';
 import 'widgets/navigation_info_card.dart';
@@ -21,7 +22,7 @@ class RunningPage extends StatefulWidget {
 class RunningPageState extends State<RunningPage> {
   GoogleMapController? mapController;
   int _selectedMode = 0;
-  MapType _currentMapType = MapType.normal;
+  double _currentZoom = 16.0;
 
   @override
   void initState() {
@@ -41,11 +42,41 @@ class RunningPageState extends State<RunningPage> {
     }
   }
 
-  void _toggleMapType() {
-    setState(() {
-      _currentMapType =
-          _currentMapType == MapType.normal ? MapType.hybrid : MapType.normal;
-    });
+  void _zoomIn() {
+    if (mapController != null) {
+      setState(() {
+        _currentZoom = (_currentZoom + 1).clamp(0, 21);
+      });
+      mapController!.animateCamera(
+        CameraUpdate.zoomTo(_currentZoom),
+      );
+    }
+  }
+
+  void _zoomOut() {
+    if (mapController != null) {
+      setState(() {
+        _currentZoom = (_currentZoom - 1).clamp(0, 21);
+      });
+      mapController!.animateCamera(
+        CameraUpdate.zoomTo(_currentZoom),
+      );
+    }
+  }
+
+  void _recenterMap() async {
+    final runningProvider = context.read<RunningProvider>();
+    if (runningProvider.currentLatLng != null && mapController != null) {
+      await mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          runningProvider.currentLatLng!,
+          17.0,
+        ),
+      );
+      setState(() {
+        _currentZoom = 17.0;
+      });
+    }
   }
 
   void _handleTerritoryNavigate(
@@ -139,7 +170,7 @@ class RunningPageState extends State<RunningPage> {
                   target: initialPosition,
                   zoom: 16.0,
                 ),
-                mapType: _currentMapType,
+                mapType: MapType.normal,
                 myLocationEnabled: true,
                 myLocationButtonEnabled: false,
                 zoomControlsEnabled: false,
@@ -494,29 +525,53 @@ class RunningPageState extends State<RunningPage> {
                   ),
                 ),
 
-              // ==================== MAP TYPE TOGGLE ====================
+              // ==================== ZOOM CONTROLS ====================
               Positioned(
                 bottom: runningProvider.isNavigating ? 50 : 240,
                 left: 20,
-                child: Material(
-                  elevation: 5,
-                  shape: const CircleBorder(),
-                  shadowColor: Colors.blue.withValues(alpha: 0.3),
-                  child: CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Colors.white,
-                    child: IconButton(
-                      icon: Icon(
-                        _currentMapType == MapType.normal
-                            ? Icons.layers_rounded
-                            : Icons.map_rounded,
-                        color: Colors.blue.shade700,
-                        size: 22,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Zoom In Button
+                    Material(
+                      elevation: 5,
+                      shape: const CircleBorder(),
+                      shadowColor: Colors.blue.withValues(alpha: 0.3),
+                      child: CircleAvatar(
+                        radius: 25,
+                        backgroundColor: Colors.white,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.add_rounded,
+                            color: Colors.blue.shade700,
+                            size: 22,
+                          ),
+                          onPressed: _zoomIn,
+                          tooltip: 'Zoom In',
+                        ),
                       ),
-                      onPressed: _toggleMapType,
-                      tooltip: 'Toggle Map Type',
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    // Zoom Out Button
+                    Material(
+                      elevation: 5,
+                      shape: const CircleBorder(),
+                      shadowColor: Colors.blue.withValues(alpha: 0.3),
+                      child: CircleAvatar(
+                        radius: 25,
+                        backgroundColor: Colors.white,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.remove_rounded,
+                            color: Colors.blue.shade700,
+                            size: 22,
+                          ),
+                          onPressed: _zoomOut,
+                          tooltip: 'Zoom Out',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -537,19 +592,27 @@ class RunningPageState extends State<RunningPage> {
                           // Start run session
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Row(
+                              content: Row(
                                 children: [
-                                  Icon(Icons.celebration, color: Colors.white),
-                                  SizedBox(width: 12),
-                                  Expanded(
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.directions_run_rounded,
+                                      color: Colors.white, size: 18),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Expanded(
                                     child: Text(
-                                      '🎉 Starting run session...',
-                                      style: TextStyle(fontWeight: FontWeight.w500),
+                                      'Starting running...',
+                                      style: TextStyle(fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ],
                               ),
-                              backgroundColor: Colors.green.shade600,
+                              backgroundColor: AppColors.blue[700],
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -570,22 +633,20 @@ class RunningPageState extends State<RunningPage> {
                             );
                           }
                         },
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(25),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 40,
-                            vertical: 20,
+                            horizontal: 32,
+                            vertical: 14,
                           ),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF00E676), Color(0xFF00C853)],
-                            ),
-                            borderRadius: BorderRadius.circular(30),
+                            gradient: AppColors.blueGradient,
+                            borderRadius: BorderRadius.circular(25),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.green.withValues(alpha: 0.4),
+                                color: AppColors.blueLogo.withValues(alpha: 0.3),
                                 blurRadius: 15,
-                                offset: const Offset(0, 5),
+                                offset: const Offset(0, 6),
                               ),
                             ],
                           ),
@@ -595,23 +656,23 @@ class RunningPageState extends State<RunningPage> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.3),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
-                                  Icons.play_arrow_rounded,
+                                  Icons.directions_run_rounded,
                                   color: Colors.white,
-                                  size: 28,
+                                  size: 24,
                                 ),
                               ),
                               const SizedBox(width: 12),
                               const Text(
-                                'MULAI LARI',
+                                'Start Run',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ],
@@ -622,7 +683,7 @@ class RunningPageState extends State<RunningPage> {
                   ),
                 ),
 
-              // ==================== MY LOCATION BUTTON ====================
+              // ==================== RECENTER BUTTON ====================
               Positioned(
                 bottom: runningProvider.isNavigating ? 50 : 240,
                 right: 20,
@@ -639,29 +700,8 @@ class RunningPageState extends State<RunningPage> {
                         color: Colors.blue.shade700,
                         size: 22,
                       ),
-                      onPressed: () async {
-                        if (runningProvider.currentLatLng != null &&
-                            mapController != null) {
-                          await mapController!.animateCamera(
-                            CameraUpdate.newLatLngZoom(
-                              runningProvider.currentLatLng!,
-                              17.0,
-                            ),
-                          );
-                        } else {
-                          await runningProvider.getCurrentLocation();
-                          if (runningProvider.currentLatLng != null &&
-                              mapController != null) {
-                            await mapController!.animateCamera(
-                              CameraUpdate.newLatLngZoom(
-                                runningProvider.currentLatLng!,
-                                17.0,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      tooltip: 'My Location',
+                      onPressed: _recenterMap,
+                      tooltip: 'Recenter Map',
                     ),
                   ),
                 ),

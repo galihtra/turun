@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:turun/data/model/running/run_session_model.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:gap/gap.dart';
+import 'run_share_screen.dart';
 
 class RunCompletionScreen extends StatefulWidget {
   final RunSession session;
@@ -92,265 +93,268 @@ class _RunCompletionScreenState extends State<RunCompletionScreen>
           SafeArea(
             child: Column(
               children: [
-                const Gap(40),
-
-                // Trophy/Check icon with animation
-                FadeTransition(
-                  opacity: _animationController,
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 0.0, end: 1.0).animate(
-                      CurvedAnimation(
-                        parent: _animationController,
-                        curve: Curves.elasticOut,
-                      ),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(30),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        widget.session.territoryConquered
-                            ? Icons.emoji_events_rounded
-                            : Icons.check_circle_rounded,
-                        size: 80,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const Gap(30),
-
-                // Title
-                SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, -0.5),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(
-                      parent: _animationController,
-                      curve: Curves.easeOut,
-                    ),
-                  ),
-                  child: FadeTransition(
-                    opacity: _animationController,
-                    child: Text(
-                      widget.session.territoryConquered
-                          ? '🎉 Territory Conquered! 🎉'
-                          : 'Run Completed!',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-
-                const Gap(10),
-
-                // Subtitle
-                FadeTransition(
-                  opacity: _animationController,
-                  child: Text(
-                    widget.session.territoryConquered
-                        ? 'You are now the owner of this territory!'
-                        : 'Great job on completing your run!',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-
-                const Gap(40),
-
-                // Stats cards
+                // Scrollable content
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: FadeTransition(
-                      opacity: _animationController,
-                      child: Column(
-                        children: [
-                          // Main stats card
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(30),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
+                    padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
+                    child: Column(
+                      children: [
+                        // Trophy/Check icon with animation
+                        FadeTransition(
+                          opacity: _animationController,
+                          child: ScaleTransition(
+                            scale: Tween<double>(begin: 0.0, end: 1.0).animate(
+                              CurvedAnimation(
+                                parent: _animationController,
+                                curve: Curves.elasticOut,
+                              ),
                             ),
-                            child: Column(
-                              children: [
-                                // Distance
-                                _StatItem(
-                                  icon: Icons.straighten_rounded,
-                                  label: 'Distance',
-                                  value: widget.session.formattedDistance,
-                                  color: AppColors.blueLogo,
-                                ),
-                                const Divider(height: 32),
-
-                                // Duration
-                                _StatItem(
-                                  icon: Icons.timer_rounded,
-                                  label: 'Duration',
-                                  value: widget.session.formattedDuration,
-                                  color: AppColors.cyan,
-                                ),
-                                const Divider(height: 32),
-
-                                // Pace
-                                _StatItem(
-                                  icon: Icons.speed_rounded,
-                                  label: 'Average Pace',
-                                  value: widget.session.formattedPace,
-                                  color: AppColors.green[500]!,
-                                ),
-                                const Divider(height: 32),
-
-                                // Speed
-                                _StatItem(
-                                  icon: Icons.directions_run_rounded,
-                                  label: 'Average Speed',
-                                  value: widget.session.formattedSpeed,
-                                  color: AppColors.orange[500]!,
-                                ),
-                                const Divider(height: 32),
-
-                                // Calories
-                                _StatItem(
-                                  icon: Icons.local_fire_department_rounded,
-                                  label: 'Calories Burned',
-                                  value: '${widget.session.caloriesBurned} kcal',
-                                  color: AppColors.red[500]!,
-                                ),
-                              ],
+                            child: Container(
+                              padding: const EdgeInsets.all(30),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                widget.session.territoryConquered
+                                    ? Icons.emoji_events_rounded
+                                    : Icons.check_circle_rounded,
+                                size: 80,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
+                        ),
 
-                          const Gap(20),
+                        const Gap(30),
 
-                          // Territory conquest message
-                          if (widget.session.territoryConquered)
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                  width: 2,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber.withValues(alpha: 0.3),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.emoji_events,
-                                      color: Colors.amber,
-                                      size: 28,
-                                    ),
-                                  ),
-                                  const Gap(16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Fastest Runner!',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const Gap(4),
-                                        Text(
-                                          'You beat the previous record with your pace of ${widget.session.formattedPace}',
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.9),
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                  width: 2,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.withValues(alpha: 0.3),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.info_outline,
-                                      color: Colors.white,
-                                      size: 28,
-                                    ),
-                                  ),
-                                  const Gap(16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Keep Improving!',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const Gap(4),
-                                        Text(
-                                          'Beat the current record to claim this territory!',
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.9),
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                        // Title
+                        SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, -0.5),
+                            end: Offset.zero,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: _animationController,
+                              curve: Curves.easeOut,
                             ),
+                          ),
+                          child: FadeTransition(
+                            opacity: _animationController,
+                            child: Text(
+                              widget.session.territoryConquered
+                                  ? '🎉 Territory Conquered! 🎉'
+                                  : 'Run Completed!',
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
 
-                          const Gap(30),
-                        ],
-                      ),
+                        const Gap(10),
+
+                        // Subtitle
+                        FadeTransition(
+                          opacity: _animationController,
+                          child: Text(
+                            widget.session.territoryConquered
+                                ? 'You are now the owner of this territory!'
+                                : 'Great job on completing your run!',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withValues(alpha: 0.9),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+
+                        const Gap(40),
+
+                        // Stats cards
+                        FadeTransition(
+                          opacity: _animationController,
+                          child: Column(
+                            children: [
+                              // Main stats card
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(30),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.2),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    // Distance
+                                    _StatItem(
+                                      icon: Icons.straighten_rounded,
+                                      label: 'Distance',
+                                      value: widget.session.formattedDistance,
+                                      color: AppColors.blueLogo,
+                                    ),
+                                    const Divider(height: 32),
+
+                                    // Duration
+                                    _StatItem(
+                                      icon: Icons.timer_rounded,
+                                      label: 'Duration',
+                                      value: widget.session.formattedDuration,
+                                      color: AppColors.cyan,
+                                    ),
+                                    const Divider(height: 32),
+
+                                    // Pace
+                                    _StatItem(
+                                      icon: Icons.speed_rounded,
+                                      label: 'Average Pace',
+                                      value: widget.session.formattedPace,
+                                      color: AppColors.green[500]!,
+                                    ),
+                                    const Divider(height: 32),
+
+                                    // Speed
+                                    _StatItem(
+                                      icon: Icons.directions_run_rounded,
+                                      label: 'Average Speed',
+                                      value: widget.session.formattedSpeed,
+                                      color: AppColors.orange[500]!,
+                                    ),
+                                    const Divider(height: 32),
+
+                                    // Calories
+                                    _StatItem(
+                                      icon: Icons.local_fire_department_rounded,
+                                      label: 'Calories Burned',
+                                      value: '${widget.session.caloriesBurned} kcal',
+                                      color: AppColors.red[500]!,
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const Gap(20),
+
+                              // Territory conquest message
+                              if (widget.session.territoryConquered)
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.3),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.withValues(alpha: 0.3),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.emoji_events,
+                                          color: Colors.amber,
+                                          size: 28,
+                                        ),
+                                      ),
+                                      const Gap(16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Fastest Runner!',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const Gap(4),
+                                            Text(
+                                              'You beat the previous record with your pace of ${widget.session.formattedPace}',
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(alpha: 0.9),
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.3),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withValues(alpha: 0.3),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.info_outline,
+                                          color: Colors.white,
+                                          size: 28,
+                                        ),
+                                      ),
+                                      const Gap(16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Keep Improving!',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const Gap(4),
+                                            Text(
+                                              'Beat the current record to claim this territory!',
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(alpha: 0.9),
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              const Gap(30),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -360,34 +364,88 @@ class _RunCompletionScreenState extends State<RunCompletionScreen>
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
+                      // Share Run button - Primary action
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RunShareScreen(
+                                  distance: widget.session.formattedDistance,
+                                  pace: widget.session.formattedPace,
+                                  duration: widget.session.formattedDuration,
+                                  avgSpeed: widget.session.formattedSpeed,
+                                  calories: '${widget.session.caloriesBurned} kcal',
+                                  routePoints: widget.session.routePoints,
+                                  territoryConquered: widget.session.territoryConquered,
+                                  territoryName: widget.session.territoryId.toString(),
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppColors.blueLogo,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 6,
+                            shadowColor: Colors.black.withValues(alpha: 0.2),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.share_rounded, size: 20),
+                              Gap(10),
+                              Text(
+                                'Bagikan Lari',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const Gap(12),
+
                       // View Leaderboard button (if conquered)
                       if (widget.session.territoryConquered)
                         SizedBox(
                           width: double.infinity,
-                          height: 56,
+                          height: 54,
                           child: ElevatedButton(
                             onPressed: () {
                               // Navigate to leaderboard
                               Navigator.pop(context);
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: AppColors.blueLogo,
+                              backgroundColor: Colors.white.withValues(alpha: 0.2),
+                              foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.4),
+                                  width: 2,
+                                ),
                               ),
-                              elevation: 5,
+                              elevation: 0,
                             ),
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.leaderboard_rounded),
+                                Icon(Icons.leaderboard_rounded, size: 20),
                                 Gap(8),
                                 Text(
-                                  'View Leaderboard',
+                                  'Lihat Leaderboard',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -400,30 +458,28 @@ class _RunCompletionScreenState extends State<RunCompletionScreen>
                       // Done button
                       SizedBox(
                         width: double.infinity,
-                        height: 56,
+                        height: 54,
                         child: ElevatedButton(
                           onPressed: () {
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: widget.session.territoryConquered
-                                ? Colors.white.withValues(alpha: 0.2)
-                                : Colors.white,
+                            backgroundColor: Colors.white.withValues(alpha: 0.15),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                               side: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.5),
+                                color: Colors.white.withValues(alpha: 0.3),
                                 width: 2,
                               ),
                             ),
                             elevation: 0,
                           ),
                           child: Text(
-                            widget.session.territoryConquered ? 'Done' : 'Back to Map',
+                            widget.session.territoryConquered ? 'Selesai' : 'Kembali ke Peta',
                             style: const TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),

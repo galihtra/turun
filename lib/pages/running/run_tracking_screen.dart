@@ -19,6 +19,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
   GoogleMapController? _mapController;
   Timer? _uiUpdateTimer;
   bool _hasNavigatedToCompletion = false;
+  double _currentZoom = 17.0;
 
   // Draggable sheet controller
   final DraggableScrollableController _sheetController = DraggableScrollableController();
@@ -76,6 +77,43 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
       controller.animateCamera(
         CameraUpdate.newLatLngZoom(provider.currentLatLng!, 17.0),
       );
+    }
+  }
+
+  void _zoomIn() {
+    if (_mapController != null) {
+      setState(() {
+        _currentZoom = (_currentZoom + 1).clamp(0, 21);
+      });
+      _mapController!.animateCamera(
+        CameraUpdate.zoomTo(_currentZoom),
+      );
+    }
+  }
+
+  void _zoomOut() {
+    if (_mapController != null) {
+      setState(() {
+        _currentZoom = (_currentZoom - 1).clamp(0, 21);
+      });
+      _mapController!.animateCamera(
+        CameraUpdate.zoomTo(_currentZoom),
+      );
+    }
+  }
+
+  void _recenterMap() {
+    final provider = context.read<RunningProvider>();
+    if (provider.currentLatLng != null && _mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          provider.currentLatLng!,
+          17.0,
+        ),
+      );
+      setState(() {
+        _currentZoom = 17.0;
+      });
     }
   }
 
@@ -255,34 +293,70 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                   ),
                 ),
 
-              // Center location button
+              // Zoom controls and recenter button
               Positioned(
                 bottom: MediaQuery.of(context).size.height * 0.3,
                 right: 16,
-                child: Material(
-                  elevation: 4,
-                  shape: const CircleBorder(),
-                  child: CircleAvatar(
-                    radius: 22,
-                    backgroundColor: Colors.white,
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.my_location_rounded,
-                        color: userColor,
-                        size: 20,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Zoom In Button
+                    Material(
+                      elevation: 4,
+                      shape: const CircleBorder(),
+                      child: CircleAvatar(
+                        radius: 22,
+                        backgroundColor: Colors.white,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.add_rounded,
+                            color: userColor,
+                            size: 20,
+                          ),
+                          onPressed: _zoomIn,
+                          tooltip: 'Zoom In',
+                        ),
                       ),
-                      onPressed: () {
-                        if (runProvider.currentLatLng != null) {
-                          _mapController?.animateCamera(
-                            CameraUpdate.newLatLngZoom(
-                              runProvider.currentLatLng!,
-                              17.0,
-                            ),
-                          );
-                        }
-                      },
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    // Zoom Out Button
+                    Material(
+                      elevation: 4,
+                      shape: const CircleBorder(),
+                      child: CircleAvatar(
+                        radius: 22,
+                        backgroundColor: Colors.white,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.remove_rounded,
+                            color: userColor,
+                            size: 20,
+                          ),
+                          onPressed: _zoomOut,
+                          tooltip: 'Zoom Out',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Recenter Button
+                    Material(
+                      elevation: 4,
+                      shape: const CircleBorder(),
+                      child: CircleAvatar(
+                        radius: 22,
+                        backgroundColor: Colors.white,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.my_location_rounded,
+                            color: userColor,
+                            size: 20,
+                          ),
+                          onPressed: _recenterMap,
+                          tooltip: 'Recenter Map',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
