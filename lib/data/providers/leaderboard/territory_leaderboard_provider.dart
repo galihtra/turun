@@ -171,9 +171,9 @@ class TerritoryLeaderboardProvider with ChangeNotifier {
     );
 
     await _mapController!.animateCamera(
-      CameraUpdate.newLatLngZoom(center, 14.0),
+      CameraUpdate.newLatLngZoom(center, 17.0),
     );
-    _currentZoom = 18.0;
+    _currentZoom = 17.0;
     notifyListeners();
   }
 

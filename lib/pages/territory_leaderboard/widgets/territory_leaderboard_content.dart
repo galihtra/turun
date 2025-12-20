@@ -12,6 +12,7 @@ class TerritoryLeaderboardContent extends StatefulWidget {
   final Function(Territory) onTerritoryTap;
   final Function(String) onSearchChanged;
   final VoidCallback onClearSearch;
+  final VoidCallback? onCollapseExpand;
 
   const TerritoryLeaderboardContent({
     super.key,
@@ -20,6 +21,7 @@ class TerritoryLeaderboardContent extends StatefulWidget {
     required this.onTerritoryTap,
     required this.onSearchChanged,
     required this.onClearSearch,
+    this.onCollapseExpand,
   });
 
   @override
@@ -31,6 +33,7 @@ class _TerritoryLeaderboardContentState
     extends State<TerritoryLeaderboardContent> {
   int _currentPage = 1;
   final int _itemsPerPage = 6;
+  Territory? _selectedTerritory;
 
   int get _totalPages {
     final provider = context.watch<TerritoryLeaderboardProvider>();
@@ -57,7 +60,10 @@ class _TerritoryLeaderboardContentState
   }
 
   void _onTerritoryCardTap(Territory territory) {
-    // Just move map to territory location
+    // Set as selected and move map to territory location
+    setState(() {
+      _selectedTerritory = territory;
+    });
     widget.onTerritoryTap(territory);
   }
 
@@ -97,14 +103,39 @@ class _TerritoryLeaderboardContentState
                 size: 24,
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Territory Leaderboard',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              const Expanded(
+                child: Text(
+                  'Territory Leaderboard',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
+              // Collapse/Expand button
+              if (widget.onCollapseExpand != null)
+                GestureDetector(
+                  onTap: widget.onCollapseExpand,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.blue.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Icon(
+                      widget.isExpanded
+                          ? Icons.keyboard_arrow_down_rounded
+                          : Icons.keyboard_arrow_up_rounded,
+                      color: Colors.blue,
+                      size: 22,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -160,7 +191,7 @@ class _TerritoryLeaderboardContentState
 
               return SingleChildScrollView(
                 controller: widget.scrollController,
-                physics: const AlwaysScrollableScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 child: Padding(
                   padding: const EdgeInsets.only(
                     left: 20,
@@ -173,7 +204,7 @@ class _TerritoryLeaderboardContentState
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      childAspectRatio: 0.7, // Increased height for cards
+                      childAspectRatio: 0.55, // Increased height for cards
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                     ),
@@ -185,8 +216,10 @@ class _TerritoryLeaderboardContentState
                       return TerritoryLeaderboardCard(
                         territory: territory,
                         distance: distance,
+                        isSelected: _selectedTerritory?.id == territory.id,
                         onTap: () => _onTerritoryCardTap(territory),
                         onLongPress: () => _onTerritoryCardLongPress(territory),
+                        onViewLeaderboard: () => _onTerritoryCardLongPress(territory),
                       );
                     },
                   ),

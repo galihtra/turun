@@ -6,6 +6,8 @@ class TerritoryLeaderboardCard extends StatelessWidget {
   final double? distance;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+  final VoidCallback? onViewLeaderboard;
+  final bool isSelected;
 
   const TerritoryLeaderboardCard({
     super.key,
@@ -13,6 +15,8 @@ class TerritoryLeaderboardCard extends StatelessWidget {
     this.distance,
     required this.onTap,
     this.onLongPress,
+    this.onViewLeaderboard,
+    this.isSelected = false,
   });
 
   String _getDifficultyStars() {
@@ -59,18 +63,20 @@ class TerritoryLeaderboardCard extends StatelessWidget {
       onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isSelected ? Colors.blue.shade50 : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: territory.isOwned
-                ? _getOwnerColor()
-                : Colors.grey.withValues(alpha: 0.2),
-            width: territory.isOwned ? 2 : 1,
+            color: isSelected
+                ? Colors.blue
+                : Colors.grey.withOpacity(0.2),
+            width: isSelected ? 2.5 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 8,
+              color: isSelected 
+                  ? Colors.blue.withOpacity(0.2) 
+                  : Colors.black.withOpacity(0.08),
+              blurRadius: isSelected ? 12 : 8,
               offset: const Offset(0, 2),
             ),
           ],
@@ -86,9 +92,9 @@ class TerritoryLeaderboardCard extends StatelessWidget {
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: territory.isOwned
-                        ? _getOwnerColor().withValues(alpha: 0.1)
-                        : Colors.grey.withValues(alpha: 0.1),
+                    color: isSelected
+                        ? Colors.blue.withOpacity(0.1)
+                        : Colors.grey.withOpacity(0.1),
                   ),
                   child: territory.imageUrl != null
                       ? Image.network(
@@ -244,6 +250,65 @@ class TerritoryLeaderboardCard extends StatelessWidget {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+
+                      const SizedBox(height: 8),
+
+                      // VIEW LEADERBOARD BUTTON
+                      if (onViewLeaderboard != null)
+                        GestureDetector(
+                          onTap: onViewLeaderboard,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.amber.shade500,
+                                  Colors.orange.shade600,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.orange.withOpacity(0.3),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.leaderboard_rounded,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'LEADERBOARD',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 10,
+                                  color: Colors.white70,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                     ],

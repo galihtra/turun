@@ -146,7 +146,8 @@ class TerritoryInfoHeader extends StatelessWidget {
                     _buildStatItem(
                       icon: Icons.landscape_rounded,
                       label: 'Area',
-                      value: '${territory.areaSizeKm?.toStringAsFixed(2) ?? '0.0'} km²',
+                      value:
+                          '${territory.areaSizeKm?.toStringAsFixed(2) ?? '0.0'} km²',
                     ),
                     const SizedBox(width: 24),
                     _buildStatItem(
@@ -241,12 +242,14 @@ class TerritoryInfoHeader extends StatelessWidget {
                           size: 20,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'This territory is available to conquer!',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.green[700],
+                        Expanded(
+                          child: Text(
+                            'This territory is available to conquer!',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.green[700],
+                            ),
                           ),
                         ),
                       ],

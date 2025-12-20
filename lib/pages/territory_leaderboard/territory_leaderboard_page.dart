@@ -243,6 +243,21 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
                             provider.clearSearch();
                             _createPolygons();
                           },
+                          onCollapseExpand: () {
+                            if (_draggableController.size > 0.45) {
+                              _draggableController.animateTo(
+                                0.35,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            } else {
+                              _draggableController.animateTo(
+                                1,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            }
+                          },
                         ),
                       ),
                     );
