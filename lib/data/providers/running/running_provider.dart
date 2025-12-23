@@ -7,11 +7,15 @@ import 'package:turun/app/app_logger.dart';
 
 import '../../model/territory/territory_model.dart';
 import '../../model/running/run_session_model.dart';
+import '../../model/running/run_mode.dart';
 import '../../services/directions_service.dart';
 import '../../services/run_tracking_service.dart';
 import '../../../utils/custom_marker_helper.dart';
 
 class RunningProvider extends ChangeNotifier {
+  // Run mode properties
+  RunMode _currentMode = RunMode.territory;
+
   // Location properties
   Position? _currentPosition;
   bool _isLoading = false;
@@ -25,6 +29,16 @@ class RunningProvider extends ChangeNotifier {
   final Set<Marker> _markers = {};
   bool _isLoadingTerritories = false;
   String? _territoriesError;
+
+  // Landmark mode properties
+  final List<LatLng> _landmarkRoutePoints = [];
+  bool _isRecordingLandmark = false;
+  LatLng? _landmarkStartPoint;
+  DateTime? _landmarkStartTime;
+  Timer? _landmarkTimer;
+  int _landmarkElapsedSeconds = 0;
+  double _landmarkTotalDistance = 0.0;
+  LatLng? _landmarkLastPosition;
 
   // Navigation properties
   Territory? _selectedTerritory;
@@ -54,6 +68,11 @@ class RunningProvider extends ChangeNotifier {
 
   final SupabaseClient _supabase = Supabase.instance.client;
 
+  // Run mode getters
+  RunMode get currentMode => _currentMode;
+  bool get isTerritoryMode => _currentMode == RunMode.territory;
+  bool get isLandmarkMode => _currentMode == RunMode.landmark;
+
   // Location getters
   Position? get currentPosition => _currentPosition;
   bool get isLoading => _isLoading;
@@ -66,6 +85,22 @@ class RunningProvider extends ChangeNotifier {
   Set<Marker> get markers => _markers;
   bool get isLoadingTerritories => _isLoadingTerritories;
   String? get territoriesError => _territoriesError;
+
+  // Landmark mode getters
+  List<LatLng> get landmarkRoutePoints => _landmarkRoutePoints;
+  bool get isRecordingLandmark => _isRecordingLandmark;
+  LatLng? get landmarkStartPoint => _landmarkStartPoint;
+  bool get canStartLandmarkRun => _currentLatLng != null && !_isRunning;
+  int get landmarkElapsedSeconds => _landmarkElapsedSeconds;
+  double get landmarkTotalDistance => _landmarkTotalDistance;
+
+  /// Get landmark pace (min/km)
+  double get landmarkPace {
+    if (_landmarkTotalDistance <= 0) return 0.0;
+    final distanceKm = _landmarkTotalDistance / 1000;
+    final durationMin = _landmarkElapsedSeconds / 60;
+    return distanceKm > 0 ? durationMin / distanceKm : 0.0;
+  }
 
   // Navigation getters
   Territory? get selectedTerritory => _selectedTerritory;
@@ -92,11 +127,13 @@ class RunningProvider extends ChangeNotifier {
   Set<Polyline> get territoryGuidancePolylines => _territoryGuidancePolylines;
   Set<Marker> get runMarkers => _runMarkers;
   int get currentCheckpointIndex => _currentCheckpointIndex;
-  double get runDistance => _runTrackingService.totalDistance;
-  int get runDuration => _runTrackingService.elapsedSeconds;
-  double get currentPace => _runTrackingService.currentPace;
-  double get currentSpeed => _runTrackingService.currentSpeed;
-  bool get runCompleted => _runCompleted; // ✅ NEW: Expose completion flag
+
+  // Dynamic getters that work for both modes
+  double get runDistance => isLandmarkMode ? _landmarkTotalDistance : _runTrackingService.totalDistance;
+  int get runDuration => isLandmarkMode ? _landmarkElapsedSeconds : _runTrackingService.elapsedSeconds;
+  double get currentPace => isLandmarkMode ? landmarkPace : _runTrackingService.currentPace;
+  double get currentSpeed => isLandmarkMode ? 0.0 : _runTrackingService.currentSpeed;
+  bool get runCompleted => _runCompleted;
 
   /// Get progress percentage through territory route
   double get routeProgress {
@@ -1276,6 +1313,346 @@ class RunningProvider extends ChangeNotifier {
     return await _runTrackingService.getTerritoryLeaderboard(
       territoryId: _selectedTerritory!.id,
     );
+  }
+
+  // ==================== MODE SWITCHING ====================
+
+  /// Switch between Territory and Landmark modes
+  void switchMode(RunMode mode) {
+    if (_currentMode == mode) return;
+
+    // Don't allow mode switching during active run or navigation
+    if (_isRunning || _isNavigating) {
+      AppLogger.warning(
+        LogLabel.general,
+        'Cannot switch mode during active run or navigation',
+      );
+      return;
+    }
+
+    _currentMode = mode;
+
+    // Clear mode-specific state
+    if (mode == RunMode.territory) {
+      // Switching to Territory mode - clear landmark data
+      _clearLandmarkData();
+    } else {
+      // Switching to Landmark mode - clear navigation
+      stopNavigation();
+      _selectedTerritory = null;
+    }
+
+    AppLogger.info(
+      LogLabel.general,
+      'Switched to ${mode.displayName} mode',
+    );
+    notifyListeners();
+  }
+
+  // ==================== LANDMARK MODE METHODS ====================
+
+  /// Start a landmark run (free running without territory boundaries)
+  Future<bool> startLandmarkRun() async {
+    if (_currentLatLng == null) {
+      AppLogger.error(LogLabel.general, 'Cannot start landmark run: No location');
+      return false;
+    }
+
+    if (_isRunning) {
+      AppLogger.warning(LogLabel.general, 'Run already in progress');
+      return false;
+    }
+
+    try {
+      // Set landmark start point
+      _landmarkStartPoint = _currentLatLng;
+      _landmarkRoutePoints.clear();
+      _landmarkRoutePoints.add(_currentLatLng!);
+      _isRecordingLandmark = true;
+
+      // Create a landmark run session
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Fetch user profile
+      final userProfile = await _supabase
+          .from('users')
+          .select('name, username, avatar_url, profile_color')
+          .eq('id', userId)
+          .single();
+
+      final now = DateTime.now();
+
+      // Create run session for landmark (using territory_id = -1 to indicate landmark)
+      final runSessionData = {
+        'user_id': userId,
+        'territory_id': -1, // Special value for landmark runs
+        'status': RunSessionStatus.active.name,
+        'start_time': now.toIso8601String(),
+        'route_points': [
+          {
+            'lat': _currentLatLng!.latitude,
+            'lng': _currentLatLng!.longitude,
+          }
+        ],
+        'distance_meters': 0.0,
+        'duration_seconds': 0,
+        'average_pace_min_per_km': 0.0,
+        'max_speed': 0.0,
+        'calories_burned': 0,
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      };
+
+      final response = await _supabase
+          .from('run_sessions')
+          .insert(runSessionData)
+          .select()
+          .single();
+
+      _activeRunSession = RunSession(
+        id: response['id'],
+        userId: userId,
+        territoryId: -1, // Landmark indicator
+        userName: userProfile['name'] ?? 'Unknown',
+        userUsername: userProfile['username'] ?? 'unknown',
+        userAvatarUrl: userProfile['avatar_url'],
+        userProfileColor: userProfile['profile_color'],
+        status: RunSessionStatus.active,
+        startTime: now,
+        createdAt: now,
+        updatedAt: now,
+        routePoints: [_currentLatLng!],
+        distanceMeters: 0.0,
+        durationSeconds: 0,
+        averagePaceMinPerKm: 0.0,
+        maxSpeed: 0.0,
+        caloriesBurned: 0,
+      );
+
+      // Start tracking
+      _isRunning = true;
+      _landmarkStartTime = now;
+      _startLandmarkTimer();
+      _startLandmarkGpsTracking();
+
+      // Create start marker
+      _createLandmarkStartMarker();
+
+      AppLogger.success(LogLabel.general, 'Landmark run started');
+      notifyListeners();
+      return true;
+    } catch (e) {
+      AppLogger.error(LogLabel.general, 'Failed to start landmark run: $e');
+      _clearLandmarkData();
+      return false;
+    }
+  }
+
+  /// Start timer for landmark run
+  void _startLandmarkTimer() {
+    _landmarkTimer?.cancel();
+    _landmarkElapsedSeconds = 0;
+
+    _landmarkTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_isRecordingLandmark) {
+        _landmarkElapsedSeconds++;
+        notifyListeners();
+      }
+    });
+  }
+
+  /// Track GPS for landmark runs
+  void _startLandmarkGpsTracking() {
+    _stopRunGpsTracking(); // Stop any existing tracking
+
+    const locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 3, // High accuracy for landmark tracking
+    );
+
+    _runGpsStream = Geolocator.getPositionStream(
+      locationSettings: locationSettings,
+    ).listen((Position position) {
+      _updateLandmarkRoute(position);
+    });
+  }
+
+  /// Update landmark route as user moves
+  void _updateLandmarkRoute(Position position) {
+    if (!_isRecordingLandmark || _activeRunSession == null) return;
+
+    final currentPoint = LatLng(position.latitude, position.longitude);
+
+    // Calculate distance from last position
+    if (_landmarkLastPosition != null) {
+      final distance = Geolocator.distanceBetween(
+        _landmarkLastPosition!.latitude,
+        _landmarkLastPosition!.longitude,
+        currentPoint.latitude,
+        currentPoint.longitude,
+      );
+
+      // Only add point if movement is significant (> 3m)
+      if (distance > 3) {
+        _landmarkTotalDistance += distance;
+        _landmarkRoutePoints.add(currentPoint);
+        _landmarkLastPosition = currentPoint;
+
+        // Calculate pace (min/km)
+        final distanceKm = _landmarkTotalDistance / 1000;
+        final durationMin = _landmarkElapsedSeconds / 60;
+        final pace = distanceKm > 0 ? durationMin / distanceKm : 0.0;
+
+        // Update active run session
+        _activeRunSession = _activeRunSession!.copyWith(
+          routePoints: List.from(_landmarkRoutePoints),
+          distanceMeters: _landmarkTotalDistance,
+          durationSeconds: _landmarkElapsedSeconds,
+          averagePaceMinPerKm: pace,
+          updatedAt: DateTime.now(),
+        );
+
+        // Draw route polyline
+        _drawLandmarkRoute();
+        notifyListeners();
+      }
+    } else {
+      _landmarkLastPosition = currentPoint;
+    }
+  }
+
+  /// Draw the landmark route on map
+  void _drawLandmarkRoute() {
+    _runRoutePolylines.clear();
+
+    if (_landmarkRoutePoints.length < 2) return;
+
+    _runRoutePolylines.add(
+      Polyline(
+        polylineId: const PolylineId('landmark_route'),
+        points: _landmarkRoutePoints,
+        color: const Color(0xFF00E676), // Bright green
+        width: 6,
+        startCap: Cap.roundCap,
+        endCap: Cap.roundCap,
+        jointType: JointType.round,
+      ),
+    );
+  }
+
+  /// Create start marker for landmark run
+  void _createLandmarkStartMarker() {
+    if (_landmarkStartPoint == null) return;
+
+    _runMarkers.clear();
+    _runMarkers.add(
+      Marker(
+        markerId: const MarkerId('landmark_start'),
+        position: _landmarkStartPoint!,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        infoWindow: const InfoWindow(title: 'Start Point'),
+      ),
+    );
+  }
+
+  /// Complete landmark run
+  Future<void> completeLandmarkRun() async {
+    if (_activeRunSession == null || !_isRecordingLandmark) return;
+
+    try {
+      _runCompleted = true;
+      _isRecordingLandmark = false;
+      _stopRunGpsTracking();
+      _landmarkTimer?.cancel();
+
+      final endTime = DateTime.now();
+      final finalDistance = _landmarkTotalDistance;
+      final finalDuration = _landmarkElapsedSeconds;
+
+      // Calculate final pace (min/km)
+      final distanceKm = finalDistance / 1000;
+      final durationMin = finalDuration / 60;
+      final finalPace = distanceKm > 0 ? durationMin / distanceKm : 0.0;
+
+      final calories = (distanceKm * 60).round();
+
+      // Update run session in database
+      await _supabase.from('run_sessions').update({
+        'status': RunSessionStatus.completed.name,
+        'end_time': endTime.toIso8601String(),
+        'route_points': _landmarkRoutePoints
+            .map((point) => {
+                  'lat': point.latitude,
+                  'lng': point.longitude,
+                })
+            .toList(),
+        'distance_meters': finalDistance,
+        'duration_seconds': finalDuration,
+        'average_pace_min_per_km': finalPace,
+        'calories_burned': calories,
+        'updated_at': endTime.toIso8601String(),
+      }).eq('id', _activeRunSession!.id);
+
+      // Update local session
+      _activeRunSession = _activeRunSession!.copyWith(
+        status: RunSessionStatus.completed,
+        endTime: endTime,
+        distanceMeters: finalDistance,
+        durationSeconds: finalDuration,
+        averagePaceMinPerKm: finalPace,
+        caloriesBurned: calories,
+        updatedAt: endTime,
+      );
+
+      _isRunning = false;
+
+      AppLogger.success(LogLabel.general, 'Landmark run completed');
+      notifyListeners();
+    } catch (e) {
+      AppLogger.error(LogLabel.general, 'Failed to complete landmark run: $e');
+    }
+  }
+
+  /// Cancel landmark run
+  Future<void> cancelLandmarkRun() async {
+    if (_activeRunSession == null) return;
+
+    try {
+      // Delete the run session from database
+      await _supabase
+          .from('run_sessions')
+          .delete()
+          .eq('id', _activeRunSession!.id);
+
+      _clearLandmarkData();
+      _landmarkTimer?.cancel();
+      _stopRunGpsTracking();
+      _isRunning = false;
+      _runCompleted = false;
+
+      AppLogger.info(LogLabel.general, 'Landmark run cancelled');
+      notifyListeners();
+    } catch (e) {
+      AppLogger.error(LogLabel.general, 'Failed to cancel landmark run: $e');
+    }
+  }
+
+  /// Clear landmark-specific data
+  void _clearLandmarkData() {
+    _landmarkRoutePoints.clear();
+    _isRecordingLandmark = false;
+    _landmarkStartPoint = null;
+    _landmarkStartTime = null;
+    _landmarkTimer?.cancel();
+    _landmarkElapsedSeconds = 0;
+    _landmarkTotalDistance = 0.0;
+    _landmarkLastPosition = null;
+    _runRoutePolylines.clear();
+    _runMarkers.clear();
+    notifyListeners();
   }
 
   @override

@@ -7,6 +7,8 @@ import 'package:turun/app/app_logger.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/values_app.dart';
 import '../../data/providers/running/running_provider.dart';
+import '../../data/providers/landmark/landmark_provider.dart';
+import '../../data/model/running/run_mode.dart';
 import 'widgets/navigation_info_card.dart';
 import 'widgets/territory_card.dart';
 import 'widgets/territory_card_shimmer.dart';
@@ -21,7 +23,6 @@ class RunningPage extends StatefulWidget {
 
 class RunningPageState extends State<RunningPage> {
   GoogleMapController? mapController;
-  int _selectedMode = 0;
   double _currentZoom = 16.0;
 
   @override
@@ -224,8 +225,8 @@ class RunningPageState extends State<RunningPage> {
                   ),
                 ),
 
-              // ==================== MODE SELECTOR (Game/Solo) ====================
-              if (!runningProvider.isNavigating)
+              // ==================== MODE SELECTOR (Territory/Landmark) ====================
+              if (!runningProvider.isNavigating && !runningProvider.isRunning)
                 Positioned(
                   top: 60,
                   left: MediaQuery.of(context).size.width * 0.2,
@@ -245,12 +246,13 @@ class RunningPageState extends State<RunningPage> {
                     ),
                     child: Row(
                       children: [
+                        // Territory Mode Button
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => _selectedMode = 0),
+                            onTap: () => runningProvider.switchMode(RunMode.territory),
                             child: Container(
                               decoration: BoxDecoration(
-                                gradient: _selectedMode == 0
+                                gradient: runningProvider.isTerritoryMode
                                     ? const LinearGradient(
                                         colors: [
                                           Color(0xFF2196F3),
@@ -265,16 +267,16 @@ class RunningPageState extends State<RunningPage> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.sports_esports,
-                                        color: _selectedMode == 0
+                                    Icon(Icons.flag,
+                                        color: runningProvider.isTerritoryMode
                                             ? Colors.white
                                             : Colors.black54,
                                         size: AppSizes.s18),
                                     AppGaps.kGap5,
                                     Text(
-                                      "Game",
+                                      "Territory",
                                       style: TextStyle(
-                                        color: _selectedMode == 0
+                                        color: runningProvider.isTerritoryMode
                                             ? Colors.white
                                             : Colors.black54,
                                         fontWeight: FontWeight.bold,
@@ -286,12 +288,13 @@ class RunningPageState extends State<RunningPage> {
                             ),
                           ),
                         ),
+                        // Landmark Mode Button
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => _selectedMode = 1),
+                            onTap: () => runningProvider.switchMode(RunMode.landmark),
                             child: Container(
                               decoration: BoxDecoration(
-                                gradient: _selectedMode == 1
+                                gradient: runningProvider.isLandmarkMode
                                     ? const LinearGradient(
                                         colors: [
                                           Color(0xFF2196F3),
@@ -302,14 +305,25 @@ class RunningPageState extends State<RunningPage> {
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               child: Center(
-                                child: Text(
-                                  "Solo",
-                                  style: TextStyle(
-                                    color: _selectedMode == 1
-                                        ? Colors.white
-                                        : Colors.black54,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.explore,
+                                        color: runningProvider.isLandmarkMode
+                                            ? Colors.white
+                                            : Colors.black54,
+                                        size: AppSizes.s18),
+                                    AppGaps.kGap5,
+                                    Text(
+                                      "Landmark",
+                                      style: TextStyle(
+                                        color: runningProvider.isLandmarkMode
+                                            ? Colors.white
+                                            : Colors.black54,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -436,7 +450,8 @@ class RunningPageState extends State<RunningPage> {
                 ),
 
               // ==================== TERRITORY LIST SHIMMER (LOADING) ====================
-              if (!runningProvider.isNavigating &&
+              if (runningProvider.isTerritoryMode &&
+                  !runningProvider.isNavigating &&
                   runningProvider.isLoadingTerritories)
                 Positioned(
                   bottom: 20,
@@ -456,7 +471,8 @@ class RunningPageState extends State<RunningPage> {
                 ),
 
               // ==================== TERRITORY LIST (BOTTOM) ====================
-              if (!runningProvider.isNavigating &&
+              if (runningProvider.isTerritoryMode &&
+                  !runningProvider.isNavigating &&
                   !runningProvider.isLoadingTerritories &&
                   runningProvider.territories.isNotEmpty)
                 Positioned(
@@ -525,9 +541,111 @@ class RunningPageState extends State<RunningPage> {
                   ),
                 ),
 
+              // ==================== START LANDMARK RUN BUTTON ====================
+              if (runningProvider.isLandmarkMode &&
+                  !runningProvider.isRunning &&
+                  runningProvider.canStartLandmarkRun)
+                Positioned(
+                  bottom: 100,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Material(
+                      elevation: 8,
+                      borderRadius: BorderRadius.circular(30),
+                      child: InkWell(
+                        onTap: () async {
+                          final landmarkProvider = context.read<LandmarkProvider>();
+                          final currentLocation = runningProvider.currentLatLng;
+
+                          if (currentLocation == null) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Waiting for GPS location...'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
+                          final started = await landmarkProvider.startLandmarkRun(currentLocation);
+                          if (started && context.mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const RunTrackingScreen(),
+                              ),
+                            );
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(25),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 28,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: AppColors.blueGradient,
+                            borderRadius: BorderRadius.circular(25),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.blueLogo.withValues(alpha: 0.3),
+                                blurRadius: 15,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.explore,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Start Landmark Run',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Create your own route',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
               // ==================== ZOOM CONTROLS ====================
               Positioned(
-                bottom: runningProvider.isNavigating ? 50 : 240,
+                bottom: runningProvider.isNavigating || runningProvider.isLandmarkMode ? 180 : 240,
                 left: 20,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -685,7 +803,7 @@ class RunningPageState extends State<RunningPage> {
 
               // ==================== RECENTER BUTTON ====================
               Positioned(
-                bottom: runningProvider.isNavigating ? 50 : 240,
+                bottom: runningProvider.isNavigating || runningProvider.isLandmarkMode ? 180 : 240,
                 right: 20,
                 child: Material(
                   elevation: 5,

@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:turun/data/providers/running/running_provider.dart';
+import 'package:turun/data/providers/landmark/landmark_provider.dart';
 import 'package:turun/data/providers/user/user_provider.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:gap/gap.dart';
 import 'run_completion_screen.dart';
+import '../landmark/landmark_run_result_screen.dart';
 
 class RunTrackingScreen extends StatefulWidget {
   const RunTrackingScreen({super.key});
@@ -145,15 +147,19 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Consumer2<RunningProvider, UserProvider>(
-        builder: (context, runProvider, userProvider, child) {
+      body: Consumer3<RunningProvider, LandmarkProvider, UserProvider>(
+        builder: (context, runProvider, landmarkProvider, userProvider, child) {
           // Get user's profile color for route polyline
           final userColor = _parseColor(userProvider.currentUser?.profileColor);
 
-          // ✅ Calculate coins collected and total
-          final totalCoins = (runProvider.selectedTerritory?.points.length ?? 1) - 1;
-          final coinsCollected = (runProvider.currentCheckpointIndex - 1).clamp(0, totalCoins);
-          final allCoinsCollected = coinsCollected >= totalCoins;
+          // Determine which provider to use based on mode
+          final isLandmarkMode = runProvider.isLandmarkMode;
+
+          // ✅ Calculate coins collected and total (only for territory mode)
+          // For landmark mode, these values are not used (no checkpoints)
+          final totalCoins = isLandmarkMode ? 0 : (runProvider.selectedTerritory?.points.length ?? 1) - 1;
+          final coinsCollected = isLandmarkMode ? 0 : (runProvider.currentCheckpointIndex - 1).clamp(0, totalCoins);
+          final allCoinsCollected = !isLandmarkMode && coinsCollected >= totalCoins;
 
           return Stack(
             children: [
@@ -171,9 +177,13 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                 mapToolbarEnabled: false,
                 tiltGesturesEnabled: false,
                 rotateGesturesEnabled: false,
-                polygons: runProvider.polygons,
-                polylines: _buildAllPolylines(runProvider, userColor),
-                markers: runProvider.runMarkers,
+                polygons: isLandmarkMode ? {} : runProvider.polygons,
+                polylines: isLandmarkMode
+                    ? landmarkProvider.routePolylines
+                    : _buildAllPolylines(runProvider, userColor),
+                markers: isLandmarkMode
+                    ? landmarkProvider.markers
+                    : runProvider.runMarkers,
               ),
 
               // Top territory name badge
@@ -199,23 +209,27 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: userColor.withOpacity(0.2),
+                            color: isLandmarkMode
+                                ? const Color(0xFF00E676).withOpacity(0.2)
+                                : userColor.withOpacity(0.2),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            Icons.flag_rounded,
-                            color: userColor,
+                            isLandmarkMode ? Icons.add_location_alt : Icons.flag_rounded,
+                            color: isLandmarkMode ? const Color(0xFF00E676) : userColor,
                             size: 14,
                           ),
                         ),
                         const Gap(8),
                         Text(
-                          runProvider.selectedTerritory?.name ??
-                              'Territory ${runProvider.selectedTerritory?.id}',
+                          isLandmarkMode
+                              ? 'Landmark Run'
+                              : (runProvider.selectedTerritory?.name ??
+                                  'Territory ${runProvider.selectedTerritory?.id}'),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: userColor,
+                            color: isLandmarkMode ? const Color(0xFF00E676) : userColor,
                           ),
                         ),
                       ],
@@ -408,7 +422,14 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                           // Stats content
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: _buildStatsContent(runProvider, userColor, coinsCollected, totalCoins),
+                            child: _buildStatsContent(
+                              runProvider,
+                              landmarkProvider,
+                              isLandmarkMode,
+                              userColor,
+                              coinsCollected,
+                              totalCoins,
+                            ),
                           ),
                         ],
                       ),
@@ -424,78 +445,93 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
   }
 
   // Build stats content based on sheet size
-  Widget _buildStatsContent(RunningProvider provider, Color userColor, int coinsCollected, int totalCoins) {
+  Widget _buildStatsContent(
+    RunningProvider provider,
+    LandmarkProvider landmarkProvider,
+    bool isLandmarkMode,
+    Color userColor,
+    int coinsCollected,
+    int totalCoins,
+  ) {
     final isExpanded = _sheetSize > 0.4;
     final allCoinsCollected = coinsCollected >= totalCoins;
+
+    // Get stats from appropriate provider
+    final duration = isLandmarkMode ? landmarkProvider.elapsedSeconds : provider.runDuration;
+    final distance = isLandmarkMode ? landmarkProvider.totalDistance : provider.runDistance;
+    final pace = isLandmarkMode ? landmarkProvider.currentPace : provider.currentPace;
+    final speed = isLandmarkMode ? 0.0 : provider.currentSpeed;
 
     if (!isExpanded) {
       // COLLAPSED: Compact horizontal stats
       return Column(
         children: [
-          // Route progress bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Progress',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (allCoinsCollected) ...[
-                          const Gap(8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade100,
-                              borderRadius: BorderRadius.circular(8),
+          // Route progress bar (only for territory mode)
+          if (!isLandmarkMode) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Progress',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
                             ),
-                            child: Text(
-                              '✓ Complete!',
-                              style: TextStyle(
-                                fontSize: 9,
-                                color: Colors.green.shade700,
-                                fontWeight: FontWeight.bold,
+                          ),
+                          if (allCoinsCollected) ...[
+                            const Gap(8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '✓ Complete!',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: Colors.green.shade700,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ],
-                      ],
-                    ),
-                    Text(
-                      '$coinsCollected / $totalCoins coins',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: allCoinsCollected ? Colors.green : userColor,
-                        fontWeight: FontWeight.bold,
+                      ),
+                      Text(
+                        '$coinsCollected / $totalCoins coins',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: allCoinsCollected ? Colors.green : userColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Gap(4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: provider.routeProgress / 100,
+                      minHeight: 6,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        allCoinsCollected ? Colors.green : userColor,
                       ),
                     ),
-                  ],
-                ),
-                const Gap(4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: provider.routeProgress / 100,
-                    minHeight: 6,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      allCoinsCollected ? Colors.green : userColor,
-                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const Gap(12),
+            const Gap(12),
+          ],
 
           // Compact metrics row
           Row(
@@ -503,19 +539,19 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
             children: [
               _CompactMetric(
                 label: 'Duration',
-                value: _formatDuration(provider.runDuration),
+                value: _formatDuration(duration),
                 color: userColor,
               ),
               Container(width: 1, height: 40, color: Colors.grey[300]),
               _CompactMetric(
                 label: 'Distance',
-                value: _formatDistance(provider.runDistance),
+                value: _formatDistance(distance),
                 color: userColor,
               ),
               Container(width: 1, height: 40, color: Colors.grey[300]),
               _CompactMetric(
                 label: 'Pace',
-                value: _formatPace(provider.currentPace),
+                value: _formatPace(pace),
                 color: userColor,
               ),
             ],
@@ -530,98 +566,99 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
       // EXPANDED: Full detailed stats
       return Column(
         children: [
-          // Route progress (with coin counter)
-          Container(
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: allCoinsCollected 
-                  ? Colors.green.shade50 
-                  : userColor.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: allCoinsCollected 
-                    ? Colors.green.withOpacity(0.3) 
-                    : userColor.withOpacity(0.2),
-                width: 1.5,
+          // Route progress (with coin counter) - only for territory mode
+          if (!isLandmarkMode)
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: allCoinsCollected
+                    ? Colors.green.shade50
+                    : userColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: allCoinsCollected
+                      ? Colors.green.withOpacity(0.3)
+                      : userColor.withOpacity(0.2),
+                  width: 1.5,
+                ),
               ),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          allCoinsCollected 
-                              ? Icons.emoji_events_rounded 
-                              : Icons.monetization_on_rounded,
-                          color: allCoinsCollected ? Colors.amber : userColor,
-                          size: 20,
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            allCoinsCollected
+                                ? Icons.emoji_events_rounded
+                                : Icons.monetization_on_rounded,
+                            color: allCoinsCollected ? Colors.amber : userColor,
+                            size: 20,
+                          ),
+                          const Gap(8),
+                          Text(
+                            allCoinsCollected ? 'All Coins Collected!' : 'Coins Collected',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: allCoinsCollected
+                                  ? Colors.green.shade700
+                                  : Colors.grey[700],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: allCoinsCollected
+                              ? Colors.green
+                              : userColor,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const Gap(8),
-                        Text(
-                          allCoinsCollected ? 'All Coins Collected!' : 'Coins Collected',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: allCoinsCollected 
-                                ? Colors.green.shade700 
-                                : Colors.grey[700],
-                            fontWeight: FontWeight.w600,
+                        child: Text(
+                          '$coinsCollected / $totalCoins',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: allCoinsCollected 
-                            ? Colors.green 
-                            : userColor,
-                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
-                        '$coinsCollected / $totalCoins',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    ],
+                  ),
+                  const Gap(12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: provider.routeProgress / 100,
+                      minHeight: 10,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        allCoinsCollected ? Colors.green : userColor,
+                      ),
+                    ),
+                  ),
+                  if (allCoinsCollected) ...[
+                    const Gap(10),
+                    Text(
+                      '🏁 Return to START to finish!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
-                ),
-                const Gap(12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: provider.routeProgress / 100,
-                    minHeight: 10,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      allCoinsCollected ? Colors.green : userColor,
-                    ),
-                  ),
-                ),
-                if (allCoinsCollected) ...[
-                  const Gap(10),
-                  Text(
-                    '🏁 Return to START to finish!',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green.shade700,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
                 ],
-              ],
+              ),
             ),
-          ),
 
           // Big duration display
           Text(
-            _formatDuration(provider.runDuration),
+            _formatDuration(duration),
             style: TextStyle(
               fontSize: 56,
               fontWeight: FontWeight.bold,
@@ -646,7 +683,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                 child: _DetailedMetricCard(
                   icon: Icons.straighten_rounded,
                   label: 'Distance',
-                  value: _formatDistance(provider.runDistance),
+                  value: _formatDistance(distance),
                   color: userColor,
                 ),
               ),
@@ -655,7 +692,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                 child: _DetailedMetricCard(
                   icon: Icons.speed_rounded,
                   label: 'Pace',
-                  value: '${_formatPace(provider.currentPace)}/km',
+                  value: '${_formatPace(pace)}/km',
                   color: userColor,
                 ),
               ),
@@ -665,7 +702,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
           _DetailedMetricCard(
             icon: Icons.directions_run_rounded,
             label: 'Current Speed',
-            value: '${(provider.currentSpeed * 3.6).toStringAsFixed(1)} km/h',
+            value: '${(speed * 3.6).toStringAsFixed(1)} km/h',
             color: userColor,
             isWide: true,
           ),
@@ -771,14 +808,28 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
     );
 
     if (confirm == true && mounted) {
-      final result = await provider.completeRunSession();
-      if (result != null && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RunCompletionScreen(session: result),
-          ),
-        );
+      // Handle finish based on mode
+      if (provider.isLandmarkMode) {
+        final landmarkProvider = context.read<LandmarkProvider>();
+        final session = await landmarkProvider.completeLandmarkRun();
+        if (mounted && session != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LandmarkRunResultScreen(session: session),
+            ),
+          );
+        }
+      } else {
+        final result = await provider.completeRunSession();
+        if (result != null && mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RunCompletionScreen(session: result),
+            ),
+          );
+        }
       }
     }
   }
@@ -808,8 +859,16 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
     );
 
     if (confirm == true && mounted) {
-      provider.cancelRunSession();
-      Navigator.pop(context);
+      // Handle cancel based on mode
+      if (provider.isLandmarkMode) {
+        final landmarkProvider = context.read<LandmarkProvider>();
+        await landmarkProvider.cancelLandmarkRun();
+      } else {
+        provider.cancelRunSession();
+      }
+      if (mounted) {
+        Navigator.pop(context);
+      }
     }
   }
 

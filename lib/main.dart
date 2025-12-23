@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/data/providers/running/running_provider.dart';
+import 'package:turun/data/providers/landmark/landmark_provider.dart';
 import 'package:turun/data/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/data/wrapper/auth_wrapper.dart';
@@ -31,6 +32,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => RunningProvider()),
+        ChangeNotifierProvider(create: (_) => LandmarkProvider()),
         ChangeNotifierProvider(create: (_) => TerritoryLeaderboardProvider()),
       ],
       child: ScreenUtilInit(
