@@ -13,6 +13,7 @@ import 'package:turun/resources/colors_app.dart';
 import 'data/providers/user/user_provider.dart';
 import 'data/providers/leaderboard/territory_leaderboard_provider.dart';                                              
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();

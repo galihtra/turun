@@ -1,4 +1,7 @@
+
+
 import 'package:flutter/foundation.dart';
+import 'package:logger/logger.dart';
 
 /// Enum untuk menandai kategori atau modul log yang berbeda dalam aplikasi.
 ///
@@ -22,17 +25,21 @@ extension LogLabelExtension on LogLabel {
 }
 
 class AppLogger {
-  /// Logs general debug information useful for developers.
-  ///
-  /// Use for logging function calls, variable states, or step completions.
-  ///
-  /// Example:
-  /// ```dart
-  /// AppLogger.debug(LogLabel.auth, 'User pressed submit button');
-  /// ```
+
+  static final Logger _logger = Logger(
+    printer: PrettyPrinter(
+      methodCount: 0,
+      errorMethodCount: 5,
+      lineLength: 80,
+      colors: true,
+      printEmojis: true,
+      dateTimeFormat: DateTimeFormat.onlyTime,
+    ),
+  );
+
   static void debug(LogLabel label, String msg) {
     if (!kReleaseMode) {
-      debugPrint('🔵 [${label.value}] $msg');
+      _logger.d('🔵 [${label.value}] $msg');
     }
   }
 
@@ -46,7 +53,7 @@ class AppLogger {
   /// ```
   static void info(LogLabel label, String msg) {
     if (!kReleaseMode) {
-      debugPrint('✅ [${label.value}] $msg');
+      _logger.i('✅ [${label.value}] $msg');
     }
   }
 
@@ -60,7 +67,7 @@ class AppLogger {
   /// ```
   static void warning(LogLabel label, String msg) {
     if (!kReleaseMode) {
-      debugPrint('⚠️ [${label.value}] $msg');
+      _logger.w('⚠️ [${label.value}] $msg');
     }
   }
 
@@ -79,13 +86,7 @@ class AppLogger {
   static void error(LogLabel label, String msg,
       [Object? error, StackTrace? stack]) {
     if (!kReleaseMode) {
-      debugPrint('❌ [${label.value}] $msg');
-      if (error != null) {
-        debugPrint('   Error: $error');
-      }
-      if (stack != null) {
-        debugPrint('   Stack: $stack');
-      }
+      _logger.e('❌ [${label.value}] $msg', error: error, stackTrace: stack);
     }
   }
 
@@ -97,7 +98,7 @@ class AppLogger {
   /// ```
   static void success(LogLabel label, String msg) {
     if (!kReleaseMode) {
-      debugPrint('✨ [${label.value}] $msg');
+      _logger.i('✨ [${label.value}] $msg');
     }
   }
 
@@ -109,7 +110,7 @@ class AppLogger {
   /// ```
   static void network(LogLabel label, String msg) {
     if (!kReleaseMode) {
-      debugPrint('🌐 [${label.value}] $msg');
+      _logger.i('🌐 [${label.value}] $msg');
     }
   }
 }

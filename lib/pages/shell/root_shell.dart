@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:turun/components/bottom_navigation/bottom_nav_bar.dart';
 import 'package:turun/pages/history/history_page.dart';
 import 'package:turun/pages/home/home_page.dart';
-import 'package:turun/pages/profile/profile_page.dart';
+import 'package:turun/pages/profile/pages/profile_screen.dart';
 import 'package:turun/pages/running/running_page.dart';
 import 'package:turun/pages/territory_leaderboard/territory_leaderboard_page.dart';
 import 'package:turun/resources/values_app.dart';
@@ -20,7 +20,7 @@ class _RootShellState extends State<RootShell> {
     const HomePage(),
     const TerritoryLeaderboardPage(),
     const HistoryPage(),
-    const ProfilePage(),
+    const ProfileScreen(),
   ];
   void _onChanged(int i) => setState(() => _index = i);
   @override
