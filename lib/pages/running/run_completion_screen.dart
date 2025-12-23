@@ -382,6 +382,7 @@ class _RunCompletionScreenState extends State<RunCompletionScreen>
                                   routePoints: widget.session.routePoints,
                                   territoryConquered: widget.session.territoryConquered,
                                   territoryName: widget.session.territoryId.toString(),
+                                  userAvatarUrl: widget.session.userAvatarUrl,
                                 ),
                               ),
                             );

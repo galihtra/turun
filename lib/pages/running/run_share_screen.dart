@@ -7,7 +7,6 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:turun/resources/assets_app.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/values_app.dart';
 
@@ -26,6 +25,8 @@ class RunShareScreen extends StatefulWidget {
   final int? totalTerritories; // Total territories owned by user
   final String? userName;
   final String? userLevel; // e.g., "Level 12" or "Marathon Runner"
+  final bool isLandmark; // Whether this is a landmark (user-created) vs territory
+  final String? userAvatarUrl; // User's profile image URL
 
   const RunShareScreen({
     super.key,
@@ -41,6 +42,8 @@ class RunShareScreen extends StatefulWidget {
     this.totalTerritories,
     this.userName,
     this.userLevel,
+    this.isLandmark = false,
+    this.userAvatarUrl,
   });
 
   @override
@@ -153,7 +156,7 @@ class _RunShareScreenState extends State<RunShareScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppGaps.kGap20,
-                      if (widget.territoryConquered) ...[
+                      if (widget.territoryConquered || widget.isLandmark) ...[
                         _buildConquestBanner(),
                         AppGaps.kGap20,
                       ],
@@ -184,20 +187,28 @@ class _RunShareScreenState extends State<RunShareScreen> {
   }
 
   Widget _buildConquestBanner() {
+    // Different styling for landmarks vs territories
+    final isLandmarkMode = widget.isLandmark;
+    final bannerColor = isLandmarkMode ? const Color(0xFF00E676) : AppColors.blueLogo;
+    final bannerIcon = isLandmarkMode ? Icons.add_location_alt : Icons.military_tech;
+    final bannerText = isLandmarkMode
+        ? 'This landmark is officially'
+        : 'This territory is officially';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.blueLogo.withValues(alpha: 0.2),
-            AppColors.blueLogo.withValues(alpha: 0.1),
+            bannerColor.withValues(alpha: 0.2),
+            bannerColor.withValues(alpha: 0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.blueLogo, width: 2),
+        border: Border.all(color: bannerColor, width: 2),
         boxShadow: [
           BoxShadow(
-            color: AppColors.blueLogo.withValues(alpha: 0.1),
+            color: bannerColor.withValues(alpha: 0.1),
             blurRadius: 20,
             spreadRadius: 2,
           ),
@@ -207,12 +218,12 @@ class _RunShareScreenState extends State<RunShareScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: AppColors.blueLogo,
+            decoration: BoxDecoration(
+              color: bannerColor,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.military_tech,
+            child: Icon(
+              bannerIcon,
               color: Colors.white,
               size: 32,
             ),
@@ -222,9 +233,9 @@ class _RunShareScreenState extends State<RunShareScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'This territory is officially',
-                  style: TextStyle(
+                Text(
+                  bannerText,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -234,9 +245,9 @@ class _RunShareScreenState extends State<RunShareScreen> {
                 const SizedBox(height: 4),
                 Text(
                   maxLines: 2,
-                  widget.territoryName ?? 'Unknown Territory',
-                  style: const TextStyle(
-                    color: AppColors.blueLogo,
+                  widget.territoryName ?? (isLandmarkMode ? 'Unknown Landmark' : 'Unknown Territory'),
+                  style: TextStyle(
+                    color: bannerColor,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -365,7 +376,10 @@ class _RunShareScreenState extends State<RunShareScreen> {
             width: double.infinity,
             height: 100,
             child: CustomPaint(
-              painter: _SimpleRouteGridPainter(routePoints: widget.routePoints),
+              painter: _SimpleRouteGridPainter(
+                routePoints: widget.routePoints,
+                isLandmark: widget.isLandmark,
+              ),
             ),
           ),
           // Icon in the center (territory claim)
@@ -379,22 +393,34 @@ class _RunShareScreenState extends State<RunShareScreen> {
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
+                  color: widget.userAvatarUrl == null
+                      ? (widget.isLandmark ? const Color(0xFF00E676) : Colors.red)
+                      : null,
                   border: Border.all(
                     color: Colors.white,
                     width: 3,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.red.withValues(alpha: 0.3),
+                      color: (widget.isLandmark ? const Color(0xFF00E676) : Colors.red).withValues(alpha: 0.3),
                       blurRadius: 12,
                       spreadRadius: 2,
                     ),
                   ],
-                  image: const DecorationImage(
-                    image: AssetImage(AppImages.exProfile),
-                    fit: BoxFit.cover,
-                  ),
+                  image: widget.userAvatarUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(widget.userAvatarUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
+                child: widget.userAvatarUrl == null
+                    ? const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 24,
+                      )
+                    : null,
               ),
               // Flag badge
               Positioned(
@@ -613,8 +639,12 @@ class _RunShareScreenState extends State<RunShareScreen> {
 // Custom painter for territory polygon (blue theme, no background)
 class _SimpleRouteGridPainter extends CustomPainter {
   final List<LatLng>? routePoints;
+  final bool isLandmark;
 
-  _SimpleRouteGridPainter({this.routePoints});
+  _SimpleRouteGridPainter({
+    this.routePoints,
+    this.isLandmark = false,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -658,10 +688,13 @@ class _SimpleRouteGridPainter extends CustomPainter {
       return Offset(x, y);
     }
 
+    // Different colors for landmark vs territory
+    final routeColor = isLandmark ? const Color(0xFF00E676) : Colors.red;
+
     // Draw route path
     final routePaint = Paint()
-      ..color = Colors.red.withValues(alpha: 0.6)
-      ..strokeWidth = 2.5
+      ..color = routeColor.withValues(alpha: 0.6)
+      ..strokeWidth = isLandmark ? 3.0 : 2.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
@@ -675,17 +708,54 @@ class _SimpleRouteGridPainter extends CustomPainter {
       path.lineTo(point.dx, point.dy);
     }
 
-    // Close path to show complete route
-    path.close();
+    // For landmarks (polyline), don't close the path
+    // For territories (polygon), close it
+    if (!isLandmark) {
+      path.close();
 
-    // Fill with transparent red
-    final fillPaint = Paint()
-      ..color = Colors.red.withValues(alpha: 0.12)
-      ..style = PaintingStyle.fill;
-    canvas.drawPath(path, fillPaint);
+      // Fill with transparent color only for territories
+      final fillPaint = Paint()
+        ..color = routeColor.withValues(alpha: 0.12)
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(path, fillPaint);
+    }
 
     // Draw outline
     canvas.drawPath(path, routePaint);
+
+    // For landmarks, draw start and end markers
+    if (isLandmark && routePoints!.length >= 2) {
+      final startMarkerPaint = Paint()
+        ..color = const Color(0xFF00E676)
+        ..style = PaintingStyle.fill;
+
+      final endMarkerPaint = Paint()
+        ..color = Colors.red
+        ..style = PaintingStyle.fill;
+
+      // Start point (green)
+      canvas.drawCircle(firstPoint, 4, startMarkerPaint);
+      canvas.drawCircle(
+        firstPoint,
+        4,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
+
+      // End point (red)
+      final lastPoint = latLngToOffset(routePoints!.last);
+      canvas.drawCircle(lastPoint, 4, endMarkerPaint);
+      canvas.drawCircle(
+        lastPoint,
+        4,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
+    }
   }
 
   void _drawDummyTerritoryOutline(Canvas canvas, Size size) {
@@ -748,7 +818,8 @@ class _SimpleRouteGridPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     if (oldDelegate is _SimpleRouteGridPainter) {
-      return oldDelegate.routePoints != routePoints;
+      return oldDelegate.routePoints != routePoints ||
+             oldDelegate.isLandmark != isLandmark;
     }
     return false;
   }

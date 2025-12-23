@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:turun/data/providers/landmark/landmark_provider.dart';
+import 'package:turun/pages/running/run_share_screen.dart';
 import 'package:turun/resources/colors_app.dart';
 
 /// Screen for creating a landmark from a completed run
@@ -31,6 +33,13 @@ class _CreateLandmarkScreenState extends State<CreateLandmarkScreen> {
 
     final landmarkProvider = context.read<LandmarkProvider>();
 
+    // Save run data BEFORE creating territory (because createTerritory clears the data)
+    final savedDistance = landmarkProvider.formattedDistance;
+    final savedPace = landmarkProvider.currentPace;
+    final savedDuration = landmarkProvider.formattedDuration;
+    final savedRoutePoints = List<LatLng>.from(landmarkProvider.routePoints);
+    final savedUserAvatarUrl = landmarkProvider.activeRunSession?.userAvatarUrl;
+
     try {
       final territory = await landmarkProvider.createTerritory(
         name: _nameController.text.trim(),
@@ -38,34 +47,108 @@ class _CreateLandmarkScreenState extends State<CreateLandmarkScreen> {
       );
 
       if (territory != null && mounted) {
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
+        // Show success dialog with share option
+        final shouldShare = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Territory "${territory.name}" created successfully!',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF00E676),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Colors.white,
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Landmark Created!',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.blue[700],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '"${territory.name}" has been created successfully!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Would you like to share your run?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
-            backgroundColor: const Color(0xFF00C853),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            margin: const EdgeInsets.all(16),
-            duration: const Duration(seconds: 3),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(
+                  'Later',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00E676),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Share Now',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
         );
 
-        // Navigate back to home
         if (mounted) {
-          Navigator.popUntil(context, (route) => route.isFirst);
+          if (shouldShare == true) {
+            // Navigate to share screen using saved data
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RunShareScreen(
+                  distance: savedDistance,
+                  pace: '${savedPace.toStringAsFixed(1)} min/km',
+                  duration: savedDuration,
+                  routePoints: savedRoutePoints,
+                  isLandmark: true,
+                  territoryName: territory.name,
+                  userAvatarUrl: savedUserAvatarUrl,
+                ),
+              ),
+            );
+          } else {
+            // Navigate back to home
+            Navigator.popUntil(context, (route) => route.isFirst);
+          }
         }
       } else {
         if (mounted) {

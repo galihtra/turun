@@ -422,7 +422,7 @@ class LandmarkProvider extends ChangeNotifier {
         'owner_id': userId,
         'owner_name': userProfile['full_name'], // Store owner name directly
         'owner_color': userProfile['profile_color'], // Store owner color directly
-        // 'difficulty': _calculateDifficulty(_totalDistance), // Temporarily commented out
+        'difficulty': _calculateDifficulty(_totalDistance),
         'reward_points': _calculateRewardPoints(_totalDistance),
         'area_size_km': _totalDistance / 1000, // Convert meters to kilometers
         'image_url': null, // User-created territories don't have images initially
@@ -527,8 +527,8 @@ class LandmarkProvider extends ChangeNotifier {
   /// Calculate difficulty based on distance
   String _calculateDifficulty(double distanceMeters) {
     final distanceKm = distanceMeters / 1000;
-    if (distanceKm < 2) return 'Easy';
-    if (distanceKm < 5) return 'Medium';
+    if (distanceKm < 3) return 'Easy';
+    if (distanceKm < 10) return 'Medium';
     return 'Hard';
   }
 
