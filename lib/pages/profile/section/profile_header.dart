@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 
+import '../../../resources/assets_app.dart';
 import '../../../resources/colors_app.dart';
 import '../../../resources/styles_app.dart';
 
@@ -19,46 +21,78 @@ class ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          width: 110,
-          height: 110,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFFD6E4F0),
-            border: Border.all(color: Colors.white, width: 4),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Center(
-            child: ClipOval(
-              child: profileImageUrl != null && profileImageUrl!.isNotEmpty
-                  ? Image.network(
-                      profileImageUrl!,
+        // Banner with Lottie Animation - Full Width tanpa margin/padding
+        Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.bottomCenter,
+          children: [
+            // Banner Background dengan Lottie
+            Container(
+              width: double.infinity,
+              height: 200,
+              color: AppColors.blueDark,
+              child: Stack(
+                children: [
+                  // Lottie Animation
+                  Positioned.fill(
+                    child: Lottie.asset(
+                      AppLotties.profile,
                       fit: BoxFit.cover,
-                      width: 110,
-                      height: 110,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.person,
-                          size: 50,
-                          color: AppColors.grey.shade400,
-                        );
-                      },
-                    )
-                  : Icon(
-                      Icons.person,
-                      size: 50,
-                      color: AppColors.grey.shade400,
+                      repeat: true,
                     ),
+                  ),
+                  // Gradient overlay untuk visibility
+                 
+                ],
+              ),
             ),
-          ),
+            // Profile Picture (overlapping the banner)
+            Positioned(
+              bottom: -55,
+              child: Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppColors.blueGradient,
+                  border: Border.all(color: AppColors.white, width: 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: ClipOval(
+                    child: profileImageUrl != null && profileImageUrl!.isNotEmpty
+                        ? Image.network(
+                            profileImageUrl!,
+                            fit: BoxFit.cover,
+                            width: 110,
+                            height: 110,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: AppColors.white,
+                              );
+                            },
+                          )
+                        : const Icon(
+                            Icons.person,
+                            size: 50,
+                            color: AppColors.white ,
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
+        // Spacing untuk foto profil yang overlap
+        const SizedBox(height: 65),
         Text(
           username,
           style: AppStyles.title2SemiBold.copyWith(color: AppColors.black),

@@ -13,6 +13,7 @@ class AppImages {
 
 class AppLotties {
   static const String rocket = '$LOTTIE_PATH/rocket.json';
+  static const String profile = '$LOTTIE_PATH/profile.json';
 }
 
 class AppIcons {
