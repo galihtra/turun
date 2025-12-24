@@ -1,23 +1,23 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/data/model/running/run_session_model.dart';
 import 'package:turun/data/providers/goals/goal_provider.dart';
 import 'package:turun/pages/goals/goal_setting_screen.dart';
 import 'package:turun/resources/colors_app.dart';
+import 'package:intl/intl.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class MyGoalsScreen extends StatefulWidget {
+  const MyGoalsScreen({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<MyGoalsScreen> createState() => _MyGoalsScreenState();
 }
 
-class _HomePageState extends State<HomePage> {
-  final SupabaseClient supabase = Supabase.instance.client;
+class _MyGoalsScreenState extends State<MyGoalsScreen> {
+  final SupabaseClient _supabase = Supabase.instance.client;
   List<RunSession> _latestActivities = [];
   bool _isLoadingActivities = false;
 
@@ -34,10 +34,10 @@ class _HomePageState extends State<HomePage> {
     setState(() => _isLoadingActivities = true);
 
     try {
-      final userId = supabase.auth.currentUser?.id;
+      final userId = _supabase.auth.currentUser?.id;
       if (userId == null) return;
 
-      final response = await supabase
+      final response = await _supabase
           .from('run_sessions')
           .select()
           .eq('user_id', userId)
@@ -104,8 +104,7 @@ class _HomePageState extends State<HomePage> {
                               final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      const GoalSettingScreen(),
+                                  builder: (context) => const GoalSettingScreen(),
                                 ),
                               );
                               if (result == true && mounted) {
@@ -114,8 +113,7 @@ class _HomePageState extends State<HomePage> {
                             },
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFF0D1B2A),
-                              side: const BorderSide(
-                                  color: Color(0xFF0D1B2A), width: 1.5),
+                              side: const BorderSide(color: Color(0xFF0D1B2A), width: 1.5),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
