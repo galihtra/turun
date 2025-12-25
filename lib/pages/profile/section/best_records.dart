@@ -1,49 +1,164 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
+import 'package:gap/gap.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:turun/data/model/running/run_session_model.dart';
 
-import '../../../resources/styles_app.dart';
-
-class BestRecords extends StatelessWidget {
+class BestRecords extends StatefulWidget {
   const BestRecords({super.key});
 
   @override
+  State<BestRecords> createState() => _BestRecordsState();
+}
+
+class _BestRecordsState extends State<BestRecords> {
+  final SupabaseClient _supabase = Supabase.instance.client;
+  bool _isLoading = true;
+  double _longestDistance = 0.0;
+  double _bestPace = 0.0;
+  int _longestDuration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBestRecords();
+  }
+
+  Future<void> _loadBestRecords() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final response = await _supabase
+          .from('run_sessions')
+          .select()
+          .eq('user_id', userId)
+          .eq('status', 'completed');
+
+      final runs = (response as List)
+          .map((json) => RunSession.fromJson(json as Map<String, dynamic>))
+          .toList();
+
+      if (runs.isNotEmpty) {
+        // Longest distance
+        final longestRun = runs.reduce((a, b) => a.distanceKm > b.distanceKm ? a : b);
+        _longestDistance = longestRun.distanceKm;
+
+        // Best pace (fastest = lowest pace value)
+        final fastestRun = runs.reduce((a, b) =>
+          a.averagePaceMinPerKm < b.averagePaceMinPerKm ? a : b
+        );
+        _bestPace = fastestRun.averagePaceMinPerKm;
+
+        // Longest duration
+        final longestDurationRun = runs.reduce((a, b) =>
+          a.durationSeconds > b.durationSeconds ? a : b
+        );
+        _longestDuration = longestDurationRun.durationSeconds;
+      }
+
+      setState(() {});
+    } catch (e) {
+      // Handle error silently
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  String _formatDuration(int seconds) {
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    final secs = seconds % 60;
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  String _formatPace(double paceMinPerKm) {
+    if (paceMinPerKm == 0) return '0:00';
+    final minutes = paceMinPerKm.floor();
+    final seconds = ((paceMinPerKm - minutes) * 60).round();
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 16),
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 16),
           child: Text(
             'Best Records',
-            style: AppStyles.title2SemiBold.copyWith(
-              color: const Color(0xFF1A2B3C),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0D1B2A),
             ),
           ),
         ),
-        _buildRecordCard(context, Icons.polyline, 'LONGEST DISTANCE', '90',
-            'km', const Color(0xFF4A90E2)),
-        const SizedBox(height: 12),
-        _buildRecordCard(context, Icons.speed, 'BEST PACE', '0.0', 'min/km',
-            const Color(0xFF4A90E2)),
-        const SizedBox(height: 12),
-        _buildRecordCard(context, Icons.timer_outlined, 'LONGEST DURATION',
-            '01:30:15', null, const Color(0xFF4A90E2)),
+        _buildRecordCard(
+          Icons.polyline,
+          'LONGEST DISTANCE',
+          _longestDistance.toStringAsFixed(1),
+          'km',
+          const LinearGradient(
+            colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+          ),
+        ),
+        const Gap(12),
+        _buildRecordCard(
+          Icons.speed,
+          'BEST PACE',
+          _formatPace(_bestPace),
+          'min/km',
+          const LinearGradient(
+            colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+          ),
+        ),
+        const Gap(12),
+        _buildRecordCard(
+          Icons.timer_outlined,
+          'LONGEST DURATION',
+          _formatDuration(_longestDuration),
+          null,
+          const LinearGradient(
+            colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildRecordCard(BuildContext context, IconData icon, String title,
-      String value, String? unit, Color color) {
+  Widget _buildRecordCard(
+    IconData icon,
+    String title,
+    String value,
+    String? unit,
+    Gradient gradient,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFE5E7EB),
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 12,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -53,43 +168,47 @@ class BestRecords extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              gradient: gradient,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(icon, color: color, size: 28),
+            child: Icon(icon, color: Colors.white, size: 28),
           ),
-          const SizedBox(width: 20),
+          const Gap(20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: AppStyles.label2SemiBold.copyWith(
-                    color: const Color(0xFF4A90E2),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF6B7280),
                     letterSpacing: 0.8,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const Gap(6),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       value,
-                      style: AppStyles.title1SemiBold.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A2B3C),
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0D1B2A),
                         height: 1,
                       ),
                     ),
                     if (unit != null) ...[
-                      const SizedBox(width: 4),
+                      const Gap(6),
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
+                        padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
                           unit,
-                          style: AppStyles.label3Medium.copyWith(
-                            color: const Color(0xFF8896A6),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF6B7280),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -98,6 +217,18 @@ class BestRecords extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: gradient,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.emoji_events,
+              color: Color(0xFFFFD700),
+              size: 20,
             ),
           ),
         ],

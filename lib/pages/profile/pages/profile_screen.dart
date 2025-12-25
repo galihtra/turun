@@ -7,6 +7,7 @@ import 'package:turun/pages/profile/section/level_progress.dart';
 import 'package:turun/resources/values_app.dart';
 
 import '../../../data/providers/user/user_provider.dart';
+import '../../../data/providers/achievement/achievement_provider.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../resources/colors_app.dart';
 import '../../../resources/styles_app.dart';
@@ -37,12 +38,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserData() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final achievementProvider =
+        Provider.of<AchievementProvider>(context, listen: false);
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
     if (currentUserId != null) {
       AppLogger.info(
           LogLabel.provider, 'Loading profile data for user: $currentUserId');
-      await userProvider.loadUserData(currentUserId);
+      await Future.wait([
+        userProvider.loadUserData(currentUserId),
+        achievementProvider.loadUserAchievements(),
+      ]);
     } else {
       AppLogger.warning(LogLabel.auth, 'No authenticated user found');
     }
@@ -128,8 +134,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const LevelProgress(),
                         AppGaps.kGap24,
                         ActionButtons(
-                          onLogout:
-                              _isLoggingOut ? null : () => _showLogoutDialog(context),
+                          onLogout: _isLoggingOut
+                              ? null
+                              : () => _showLogoutDialog(context),
                         ),
                         AppGaps.kGap24,
                         const StatsGrid(),
@@ -153,7 +160,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      barrierDismissible: false, 
+      barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
