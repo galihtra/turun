@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/data/providers/running/running_provider.dart';
 import 'package:turun/data/providers/landmark/landmark_provider.dart';
 import 'package:turun/data/providers/goals/goal_provider.dart';
+import 'package:turun/data/providers/achievement/achievement_provider.dart';
 import 'package:turun/data/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/data/wrapper/auth_wrapper.dart';
@@ -37,6 +38,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LandmarkProvider()),
         ChangeNotifierProvider(create: (_) => TerritoryLeaderboardProvider()),
         ChangeNotifierProvider(create: (_) => GoalProvider()),
+        ChangeNotifierProvider(create: (_) => AchievementProvider()),
       ],
       child: ScreenUtilInit(
         designSize: const Size(375, 812),
