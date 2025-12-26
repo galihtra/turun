@@ -1,11 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:turun/app/app_logger.dart';
+import 'package:turun/data/services/notification_service.dart';
 import '../../model/achievement/achievement_model.dart';
 
 class AchievementProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final NotificationService _notificationService = NotificationService();
+  static const _logLabel = LogLabel.provider;
 
   List<UserAchievement> _userAchievements = [];
+  List<String> _previouslyUnlockedIds = [];
+  int? _previousTotalPoints;
   bool _isLoading = false;
   String? _error;
 
@@ -52,7 +58,7 @@ class AchievementProvider with ChangeNotifier {
       final stats = await _calculateUserStats(userId);
 
       // Initialize achievements with progress
-      _userAchievements = Achievement.all.map((achievement) {
+      final newAchievements = Achievement.all.map((achievement) {
         final currentProgress = _getProgressForAchievement(achievement, stats);
         final isUnlocked = currentProgress >= achievement.targetValue;
 
@@ -64,6 +70,58 @@ class AchievementProvider with ChangeNotifier {
           unlockedAt: isUnlocked ? DateTime.now() : null,
         );
       }).toList();
+
+      // Detect newly unlocked achievements and send notifications
+      final currentUnlockedIds = newAchievements
+          .where((ua) => ua.isUnlocked)
+          .map((ua) => ua.achievementId)
+          .toList();
+
+      // Only send notifications if we have previous state (not first load)
+      // This prevents sending notifications for already-unlocked achievements on app startup
+      if (_previouslyUnlockedIds.isNotEmpty) {
+        for (final ua in newAchievements) {
+          if (ua.isUnlocked &&
+              !_previouslyUnlockedIds.contains(ua.achievementId)) {
+            // This is a newly unlocked achievement!
+            final achievement = ua.achievement;
+            if (achievement != null) {
+              try {
+                await _notificationService.generateMissionCompleteNotification(
+                  userId: userId,
+                  missionDescription: achievement.name,
+                  rewardPoints: achievement.points,
+                );
+
+                AppLogger.success(
+                  _logLabel,
+                  '🏅 Sent mission complete notification for: ${achievement.name}',
+                );
+              } catch (e) {
+                AppLogger.warning(
+                  _logLabel,
+                  'Failed to send achievement notification: $e',
+                );
+              }
+            }
+          }
+        }
+      } else {
+        AppLogger.debug(
+          _logLabel,
+          'Skipped achievement notifications on first load (${currentUnlockedIds.length} already unlocked)',
+        );
+      }
+
+      // Update previously unlocked IDs
+      _previouslyUnlockedIds = currentUnlockedIds;
+      _userAchievements = newAchievements;
+
+      // Update user's total points in database (triggers rival activity check)
+      await _updateUserTotalPoints(userId);
+
+      // Check for level up based on total points
+      await _checkLevelUp(userId);
 
       // Sort: unlocked first, then by tier
       _userAchievements.sort((a, b) {
@@ -184,6 +242,78 @@ class AchievementProvider with ChangeNotifier {
         return stats['landmarksDiscovered'] ?? 0.0;
       case AchievementType.special:
         return 0.0;
+    }
+  }
+
+  // Track previous level for detecting level ups
+  int? _previousLevel;
+
+  // Check for level up and send notification
+  Future<void> _checkLevelUp(String userId) async {
+    try {
+      // Calculate current level based on total points
+      final currentPoints = totalPoints;
+      final currentLevel = _calculateLevel(currentPoints);
+      final levelName = _getLevelName(currentLevel);
+
+      // Send notification if level increased
+      if (_previousLevel != null && currentLevel > _previousLevel!) {
+        await _notificationService.generateLevelUpNotification(
+          userId: userId,
+          newLevel: currentLevel,
+          levelName: levelName,
+        );
+
+        AppLogger.success(
+          _logLabel,
+          '🆙 Sent level up notification: Level $currentLevel ($levelName)',
+        );
+      }
+
+      _previousLevel = currentLevel;
+    } catch (e) {
+      AppLogger.warning(_logLabel, 'Failed to check level up: $e');
+    }
+  }
+
+  // Calculate level based on points
+  int _calculateLevel(int points) {
+    // Level system: Every 100 points = 1 level
+    return (points ~/ 100) + 1;
+  }
+
+  // Get level name based on level number
+  String _getLevelName(int level) {
+    if (level >= 50) return 'Legend';
+    if (level >= 40) return 'Master';
+    if (level >= 30) return 'Champion';
+    if (level >= 20) return 'Expert';
+    if (level >= 10) return 'Runner';
+    if (level >= 5) return 'Sprinter';
+    return 'Beginner';
+  }
+
+  // Update user's total points in database
+  // This triggers the rival activity database trigger
+  Future<void> _updateUserTotalPoints(String userId) async {
+    try {
+      final currentPoints = totalPoints;
+
+      // Only update if points actually changed to avoid unnecessary database triggers
+      if (_previousTotalPoints != null && currentPoints == _previousTotalPoints) {
+        AppLogger.debug(_logLabel, 'Total points unchanged ($currentPoints), skipping database update');
+        return;
+      }
+
+      await _supabase
+          .from('users')
+          .update({'total_points': currentPoints})
+          .eq('id', userId);
+
+      AppLogger.info(_logLabel, 'Updated user total points: $_previousTotalPoints → $currentPoints');
+      _previousTotalPoints = currentPoints;
+    } catch (e) {
+      AppLogger.warning(_logLabel, 'Failed to update user total points: $e');
     }
   }
 

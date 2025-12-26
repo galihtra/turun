@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/app/app_logger.dart';
+import 'package:turun/data/services/notification_service.dart';
 import '../model/running/run_session_model.dart';
 
 /// Service untuk tracking run dan territory conquest
@@ -12,6 +13,7 @@ import '../model/running/run_session_model.dart';
 /// - User dengan pace terendah di territory tersebut adalah owner
 class RunTrackingService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final NotificationService _notificationService = NotificationService();
 
   // Run tracking state
   RunSession? _currentSession;
@@ -342,6 +344,46 @@ class RunTrackingService {
         '⚔️ Pace comparison: New ${newPace.toStringAsFixed(2)} vs Best ${currentBestPace.toStringAsFixed(2)}',
       );
 
+      // Send "Under Attack" notification to current territory owner
+      if (newRun.userId != currentBestRun.userId) {
+        try {
+          // Get territory name and attacker username
+          final territoryResponse = await _supabase
+              .from('territories')
+              .select('name')
+              .eq('id', newRun.territoryId)
+              .maybeSingle();
+
+          final userResponse = await _supabase
+              .from('users')
+              .select('username, full_name')
+              .eq('id', newRun.userId)
+              .maybeSingle();
+
+          final territoryName = territoryResponse?['name'] ?? 'Unknown Territory';
+          final attackerUsername = userResponse?['username'] ??
+                                  userResponse?['full_name'] ??
+                                  'Unknown';
+
+          await _notificationService.generateUnderAttackNotification(
+            userId: currentBestRun.userId,
+            territoryId: newRun.territoryId,
+            territoryName: territoryName,
+            attackerUsername: attackerUsername,
+          );
+
+          AppLogger.info(
+            LogLabel.general,
+            '📬 Sent Under Attack notification to ${currentBestRun.userId}',
+          );
+        } catch (e) {
+          AppLogger.warning(
+            LogLabel.general,
+            'Failed to send under attack notification: $e',
+          );
+        }
+      }
+
       // New run must be STRICTLY faster to conquer
       if (newPace < currentBestPace) {
         AppLogger.success(
@@ -426,6 +468,38 @@ class RunTrackingService {
         LogLabel.supabase,
         '✅ Territory $territoryId now owned by ${ownerName ?? newOwnerId}',
       );
+
+      // Send Territory Lost notification to previous owner
+      if (previousOwnerId != null && previousOwnerId != newOwnerId) {
+        try {
+          // Get territory name
+          final territoryResponse = await _supabase
+              .from('territories')
+              .select('name')
+              .eq('id', territoryId)
+              .maybeSingle();
+
+          final territoryName = territoryResponse?['name'] ?? 'Unknown Territory';
+          final newOwnerUsername = ownerName ?? 'Unknown';
+
+          await _notificationService.generateTerritoryLostNotification(
+            userId: previousOwnerId,
+            territoryId: territoryId,
+            territoryName: territoryName,
+            newOwnerUsername: newOwnerUsername,
+          );
+
+          AppLogger.info(
+            LogLabel.general,
+            '📬 Sent Territory Lost notification to $previousOwnerId',
+          );
+        } catch (e) {
+          AppLogger.warning(
+            LogLabel.general,
+            'Failed to send territory lost notification: $e',
+          );
+        }
+      }
 
       return true;
     } catch (e, stackTrace) {

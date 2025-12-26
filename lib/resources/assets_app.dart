@@ -25,6 +25,8 @@ class AppIcons {
   static const String profileActive = '$ICON_PATH/ic_profile_active.svg';
   static const String history = '$ICON_PATH/ic_history.svg';
   static const String historyActive = '$ICON_PATH/ic_history_active.svg';
+  static const String notification = '$ICON_PATH/ic_notification.svg';
+  static const String notificationActive = '$ICON_PATH/ic_notification_active.svg';
   static const String territory = '$ICON_PATH/ic_territory.svg';
   static const String territoryActive = '$ICON_PATH/ic_territory_active.svg';
   static const String peopleRunning = '$ICON_PATH/ic_people_running.svg';

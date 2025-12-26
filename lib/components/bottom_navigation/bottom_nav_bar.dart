@@ -34,10 +34,10 @@ class BottomNavBar extends StatelessWidget {
         const SizedBox(width: 72),
         _NavItem(
           isActive: currentIndex == 2,
-          activePath: AppIcons.historyActive,
-          inactivePath: AppIcons.history,
+          activePath: AppIcons.notificationActive,
+          inactivePath: AppIcons.notification,
           onTap: () => onChanged(2),
-          semantic: 'History',
+          semantic: 'Notification',
         ),
         _NavItem(
           isActive: currentIndex == 3,
