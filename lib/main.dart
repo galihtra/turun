@@ -48,6 +48,7 @@ class MyApp extends StatelessWidget {
         builder: (context, child) {
           return MaterialApp(
             title: 'TuRun',
+            debugShowCheckedModeBanner: false,
             theme: ThemeData(
               useMaterial3: true,
               scaffoldBackgroundColor: AppColors.backgroundColor,

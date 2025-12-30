@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:turun/components/bottom_navigation/bottom_nav_bar.dart';
-import 'package:turun/pages/history/history_page.dart';
 import 'package:turun/pages/home/home_page.dart';
 import 'package:turun/pages/notification/notification_page.dart';
 import 'package:turun/pages/profile/pages/profile_screen.dart';

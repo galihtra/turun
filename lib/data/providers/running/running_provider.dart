@@ -232,15 +232,27 @@ class RunningProvider extends ChangeNotifier {
 
   // ==================== GPS TRACKING FOR RUNNING ====================
   /// ✅ NEW: Start dedicated GPS tracking for run with checkpoint detection
+  /// Uses Foreground Service to keep tracking even when screen is locked
   void _startRunGpsTracking() {
-    AppLogger.info(LogLabel.general, '🏃 Starting GPS tracking for run...');
+    AppLogger.info(LogLabel.general, '🏃 Starting GPS tracking for run with foreground service...');
 
     _runGpsStream?.cancel(); // Cancel any existing stream
 
+    // ✅ Use AndroidSettings with ForegroundNotificationConfig for background tracking
     _runGpsStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+      locationSettings: AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 3, // Update every 3 meters for accurate checkpoint detection
+        forceLocationManager: false,
+        intervalDuration: Duration(seconds: 2),
+        // ✅ FOREGROUND SERVICE - Keeps GPS running when screen is locked
+        foregroundNotificationConfig: ForegroundNotificationConfig(
+          notificationText: "You Are Running Now - Active Territory Route",
+          notificationTitle: "TURUN Running 🏃",
+          enableWakeLock: true,
+          setOngoing: true,
+          notificationIcon: AndroidResource(name: 'launcher_icon', defType: 'mipmap'),
+        ),
       ),
     ).listen(
       (Position position) {

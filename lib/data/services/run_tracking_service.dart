@@ -111,10 +111,21 @@ class RunTrackingService {
   void _startGpsTracking() {
     _gpsSubscription?.cancel();
     
+    // ✅ Use AndroidSettings with ForegroundNotificationConfig for background tracking
     _gpsSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+      locationSettings: AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 5, // Update every 5 meters
+        forceLocationManager: false,
+        intervalDuration: Duration(seconds: 2),
+        // ✅ FOREGROUND SERVICE - Keeps GPS running when screen is locked
+        foregroundNotificationConfig: ForegroundNotificationConfig(
+          notificationText: "You Are Running Now - Distance and Time Are Being Recorded",
+          notificationTitle: "TURUN Running 🏃",
+          enableWakeLock: true,
+          setOngoing: true,
+          notificationIcon: AndroidResource(name: 'launcher_icon', defType: 'mipmap'),
+        ),
       ),
     ).listen((Position position) {
       if (_isPaused || _currentSession == null) return;
