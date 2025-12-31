@@ -193,11 +193,11 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withValues(alpha:0.95),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -210,8 +210,8 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: isLandmarkMode
-                                ? const Color(0xFF00E676).withOpacity(0.2)
-                                : userColor.withOpacity(0.2),
+                                ? const Color(0xFF00E676).withValues(alpha:0.2)
+                                : userColor.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -253,7 +253,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.green.withOpacity(0.4),
+                          color: Colors.green.withValues(alpha:0.4),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -264,7 +264,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha:0.2),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -290,7 +290,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                               Text(
                                 'Return to START to finish the run',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha:0.9),
                                   fontSize: 12,
                                 ),
                               ),
@@ -396,7 +396,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withValues(alpha:0.15),
                             blurRadius: 20,
                             offset: const Offset(0, -5),
                           ),
@@ -574,12 +574,12 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
               decoration: BoxDecoration(
                 color: allCoinsCollected
                     ? Colors.green.shade50
-                    : userColor.withOpacity(0.08),
+                    : userColor.withValues(alpha:0.08),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: allCoinsCollected
-                      ? Colors.green.withOpacity(0.3)
-                      : userColor.withOpacity(0.2),
+                      ? Colors.green.withValues(alpha:0.3)
+                      : userColor.withValues(alpha:0.2),
                   width: 1.5,
                 ),
               ),
@@ -968,10 +968,10 @@ class _DetailedMetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha:0.08),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: color.withOpacity(0.2),
+          color: color.withValues(alpha:0.2),
           width: 1.5,
         ),
       ),
@@ -981,7 +981,7 @@ class _DetailedMetricCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withValues(alpha:0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: color, size: 20),
@@ -1018,7 +1018,7 @@ class _DetailedMetricCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withValues(alpha:0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: color, size: 20),
@@ -1067,10 +1067,10 @@ class _CompactButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha:0.1),
           shape: BoxShape.circle,
           border: Border.all(
-            color: color.withOpacity(0.3),
+            color: color.withValues(alpha:0.3),
             width: 2,
           ),
         ),
@@ -1109,7 +1109,7 @@ class _ControlButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha:0.3),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -1120,7 +1120,7 @@ class _ControlButton extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha:0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 28),

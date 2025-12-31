@@ -11,7 +11,7 @@ class CustomMarkerHelper {
       painter: (canvas, size) {
         // Pulse effect (outer glow)
         final outerPaint = Paint()
-          ..color = Colors.green.withOpacity(0.2)
+          ..color = Colors.green.withValues(alpha: 0.2)
           ..style = PaintingStyle.fill;
         canvas.drawCircle(
           Offset(size.width / 2, 40),
@@ -21,7 +21,7 @@ class CustomMarkerHelper {
 
         // Middle glow
         final middlePaint = Paint()
-          ..color = Colors.green.withOpacity(0.4)
+          ..color = Colors.green.withValues(alpha: 0.4)
           ..style = PaintingStyle.fill;
         canvas.drawCircle(
           Offset(size.width / 2, 40),
@@ -33,7 +33,7 @@ class CustomMarkerHelper {
         final gradient = ui.Gradient.linear(
           Offset(size.width / 2, 15),
           Offset(size.width / 2, 65),
-          [Color(0xFF00E676), Color(0xFF00C853)],
+          [const Color(0xFF00E676), const Color(0xFF00C853)],
         );
         final coinPaint = Paint()
           ..shader = gradient
@@ -42,14 +42,14 @@ class CustomMarkerHelper {
 
         // Coin border (gold ring)
         final borderPaint = Paint()
-          ..color = Color(0xFFFFD700)
+          ..color = const Color(0xFFFFD700)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3;
         canvas.drawCircle(Offset(size.width / 2, 40), 25, borderPaint);
 
         // Inner ring
         final innerRingPaint = Paint()
-          ..color = Colors.white.withOpacity(0.3)
+          ..color = Colors.white.withValues(alpha: 0.3)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2;
         canvas.drawCircle(Offset(size.width / 2, 40), 20, innerRingPaint);
@@ -67,11 +67,11 @@ class CustomMarkerHelper {
           textDirection: TextDirection.ltr,
         );
         iconPainter.layout();
-        iconPainter.paint(canvas, Offset(26, 26));
+        iconPainter.paint(canvas, const Offset(26, 26));
 
         // Draw "START" text below coin
         final textPainter = TextPainter(
-          text: TextSpan(
+          text: const TextSpan(
             text: 'START',
             style: TextStyle(
               color: Color(0xFF00C853),
@@ -82,7 +82,7 @@ class CustomMarkerHelper {
           textDirection: TextDirection.ltr,
         );
         textPainter.layout();
-        textPainter.paint(canvas, Offset(23, 72));
+        textPainter.paint(canvas, const Offset(23, 72));
       },
     );
   }
@@ -94,7 +94,7 @@ class CustomMarkerHelper {
       painter: (canvas, size) {
         // Shadow/glow effect
         final glowPaint = Paint()
-          ..color = Color(0xFFFFD700).withOpacity(0.3)
+          ..color = const Color(0xFFFFD700).withValues(alpha:0.3)
           ..style = PaintingStyle.fill;
         canvas.drawCircle(
           Offset(size.width / 2, 30),
@@ -106,7 +106,7 @@ class CustomMarkerHelper {
         final gradient = ui.Gradient.linear(
           Offset(size.width / 2, 10),
           Offset(size.width / 2, 50),
-          [Color(0xFFFFD700), Color(0xFFFFA000)],
+          [const Color(0xFFFFD700), const Color(0xFFFFA000)],
         );
         final coinPaint = Paint()
           ..shader = gradient
@@ -115,21 +115,21 @@ class CustomMarkerHelper {
 
         // Coin outer border (dark gold)
         final outerBorderPaint = Paint()
-          ..color = Color(0xFFB8860B)
+          ..color = const Color(0xFFB8860B)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.5;
         canvas.drawCircle(Offset(size.width / 2, 30), 22, outerBorderPaint);
 
         // Inner ring (light shine effect)
         final innerRingPaint = Paint()
-          ..color = Colors.white.withOpacity(0.5)
+          ..color = Colors.white.withValues(alpha:0.5)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5;
         canvas.drawCircle(Offset(size.width / 2, 30), 18, innerRingPaint);
 
         // Center highlight (top-left shine)
         final highlightPaint = Paint()
-          ..color = Colors.white.withOpacity(0.4)
+          ..color = Colors.white.withValues(alpha:0.4)
           ..style = PaintingStyle.fill;
         canvas.drawCircle(Offset(size.width / 2 - 6, 24), 6, highlightPaint);
 
@@ -137,7 +137,7 @@ class CustomMarkerHelper {
         final numberPainter = TextPainter(
           text: TextSpan(
             text: '$number',
-            style: TextStyle(
+            style: const TextStyle(
               color: Color(0xFF8B4513), // Dark brown
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -159,7 +159,7 @@ class CustomMarkerHelper {
       painter: (canvas, size) {
         // Glow effect
         final glowPaint = Paint()
-          ..color = Colors.red.withOpacity(0.2)
+          ..color = Colors.red.withValues(alpha:0.2)
           ..style = PaintingStyle.fill;
         canvas.drawCircle(
           Offset(size.width / 2, 35),
@@ -169,13 +169,13 @@ class CustomMarkerHelper {
 
         // Trophy container with gradient
         final rect = RRect.fromRectAndRadius(
-          Rect.fromLTWH(10, 10, 60, 80),
-          Radius.circular(30),
+          const Rect.fromLTWH(10, 10, 60, 80),
+          const Radius.circular(30),
         );
         final gradient = ui.Gradient.linear(
-          Offset(40, 10),
-          Offset(40, 90),
-          [Color(0xFFFF5252), Color(0xFFD32F2F)],
+          const Offset(40, 10),
+          const Offset(40, 90),
+          [const Color(0xFFFF5252), const  Color(0xFFD32F2F)],
         );
         final containerPaint = Paint()
           ..shader = gradient
@@ -184,8 +184,8 @@ class CustomMarkerHelper {
 
         // Shadow
         final shadowPaint = Paint()
-          ..color = Colors.red.withOpacity(0.3)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 6);
+          ..color = Colors.red.withValues(alpha:0.3)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
         canvas.drawRRect(rect, shadowPaint);
 
         // Draw trophy icon (gold)
@@ -195,17 +195,17 @@ class CustomMarkerHelper {
             style: TextStyle(
               fontFamily: Icons.emoji_events_rounded.fontFamily,
               fontSize: 32,
-              color: Color(0xFFFFD700), // Gold
+              color: const Color(0xFFFFD700), // Gold
             ),
           ),
           textDirection: TextDirection.ltr,
         );
         trophyPainter.layout();
-        trophyPainter.paint(canvas, Offset(24, 25));
+        trophyPainter.paint(canvas, const Offset(24, 25));
 
         // Draw "FINISH" text
         final textPainter = TextPainter(
-          text: TextSpan(
+          text: const TextSpan(
             text: 'FINISH',
             style: TextStyle(
               color: Colors.white,
@@ -216,7 +216,7 @@ class CustomMarkerHelper {
           textDirection: TextDirection.ltr,
         );
         textPainter.layout();
-        textPainter.paint(canvas, Offset(23, 63));
+        textPainter.paint(canvas, const Offset(23, 63));
       },
     );
   }

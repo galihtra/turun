@@ -163,7 +163,7 @@ class _MyGoalsScreenState extends State<MyGoalsScreen> {
   }
 
   Widget _buildHeader() {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -175,8 +175,8 @@ class _MyGoalsScreenState extends State<MyGoalsScreen> {
             letterSpacing: -0.5,
           ),
         ),
-        const Gap(4),
-        const Text(
+         Gap(4),
+         Text(
           'Track, Unlocked, Run!',
           style: TextStyle(
             fontSize: 14,
@@ -327,7 +327,7 @@ class _MyGoalsScreenState extends State<MyGoalsScreen> {
                 minimumSize: const Size(50, 30),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: Text(
+              child: const Text(
                 'See all',
                 style: TextStyle(
                   fontSize: 13,
@@ -424,7 +424,7 @@ class _MyGoalsScreenState extends State<MyGoalsScreen> {
               color: const Color(0xFFF3F4F6),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(
+            child: const Center(
               child: Icon(
                 Icons.directions_run,
                 color: AppColors.blueLogo,

@@ -142,7 +142,7 @@ class _UserRunsDetailPageState extends State<UserRunsDetailPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -161,7 +161,7 @@ class _UserRunsDetailPageState extends State<UserRunsDetailPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -190,7 +190,7 @@ class _UserRunsDetailPageState extends State<UserRunsDetailPage> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.15),
+                      color: Colors.amber.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(

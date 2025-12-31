@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../../app/app_logger.dart';
 import '../../model/territory/territory_model.dart';
 import '../../services/territory_leaderboard_service.dart';
 
@@ -110,7 +111,7 @@ class TerritoryLeaderboardProvider with ChangeNotifier {
       _userLocation = LatLng(position.latitude, position.longitude);
       notifyListeners();
     } catch (e) {
-      print('Error getting user location: $e');
+      AppLogger.error(LogLabel.navigation, "Error getting user location: $e");
       _userLocation = const LatLng(1.18376, 104.01703); // Default location
       notifyListeners();
     }

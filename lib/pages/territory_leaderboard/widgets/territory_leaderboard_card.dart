@@ -68,14 +68,14 @@ class TerritoryLeaderboardCard extends StatelessWidget {
           border: Border.all(
             color: isSelected
                 ? Colors.blue
-                : Colors.grey.withOpacity(0.2),
+                : Colors.grey.withValues(alpha:0.2),
             width: isSelected ? 2.5 : 1,
           ),
           boxShadow: [
             BoxShadow(
               color: isSelected 
-                  ? Colors.blue.withOpacity(0.2) 
-                  : Colors.black.withOpacity(0.08),
+                  ? Colors.blue.withValues(alpha:.2) 
+                  : Colors.black.withValues(alpha:0.08),
               blurRadius: isSelected ? 12 : 8,
               offset: const Offset(0, 2),
             ),
@@ -93,8 +93,8 @@ class TerritoryLeaderboardCard extends StatelessWidget {
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? Colors.blue.withOpacity(0.1)
-                        : Colors.grey.withOpacity(0.1),
+                        ? Colors.blue.withValues(alpha:0.1)
+                        : Colors.grey.withValues(alpha:0.1),
                   ),
                   child: territory.imageUrl != null
                       ? Image.network(
@@ -277,22 +277,22 @@ class TerritoryLeaderboardCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.orange.withOpacity(0.3),
+                                  color: Colors.orange.withValues(alpha:0.3),
                                   blurRadius: 4,
                                   offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                            child: Row(
+                            child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(
+                                 Icon(
                                   Icons.leaderboard_rounded,
                                   size: 12,
                                   color: Colors.white,
                                 ),
-                                const SizedBox(width: 4),
-                                const Text(
+                                 SizedBox(width: 4),
+                                 Text(
                                   'LEADERBOARD',
                                   style: TextStyle(
                                     fontSize: 9,
@@ -301,8 +301,8 @@ class TerritoryLeaderboardCard extends StatelessWidget {
                                     letterSpacing: 0.3,
                                   ),
                                 ),
-                                const SizedBox(width: 2),
-                                const Icon(
+                                 SizedBox(width: 2),
+                                 Icon(
                                   Icons.arrow_forward_ios_rounded,
                                   size: 10,
                                   color: Colors.white70,

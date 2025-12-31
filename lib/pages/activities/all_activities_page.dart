@@ -391,8 +391,8 @@ class _AllActivitiesPageState extends State<AllActivitiesPage> {
         children: [
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
+            decoration: const BoxDecoration(
+              color:  Color(0xFFF3F4F6),
               shape: BoxShape.circle,
             ),
             child: Icon(

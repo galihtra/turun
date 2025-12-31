@@ -17,7 +17,8 @@ class LandmarkRunResultScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final landmarkProvider = context.watch<LandmarkProvider>();
-    final isValid = landmarkProvider.totalDistance >= LandmarkProvider.minDistanceMeters;
+    final isValid =
+        landmarkProvider.totalDistance >= LandmarkProvider.minDistanceMeters;
 
     return Scaffold(
       body: Container(
@@ -147,7 +148,8 @@ class LandmarkRunResultScreen extends StatelessWidget {
                           const SizedBox(height: 40),
 
                           // Progress Bar
-                          _buildProgressIndicator(landmarkProvider.totalDistance),
+                          _buildProgressIndicator(
+                              landmarkProvider.totalDistance),
 
                           const SizedBox(height: 40),
 
@@ -160,7 +162,8 @@ class LandmarkRunResultScreen extends StatelessWidget {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const CreateLandmarkScreen(),
+                                    builder: (context) =>
+                                        const CreateLandmarkScreen(),
                                   ),
                                 );
                               },
@@ -168,17 +171,18 @@ class LandmarkRunResultScreen extends StatelessWidget {
                                 backgroundColor: const Color(0xFF00E676),
                                 foregroundColor: Colors.white,
                                 elevation: 8,
-                                shadowColor: const Color(0xFF00E676).withValues(alpha: 0.5),
+                                shadowColor: const Color(0xFF00E676)
+                                    .withValues(alpha: 0.5),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
-                              child: Row(
+                              child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.add_location_alt, size: 24),
-                                  const SizedBox(width: 12),
-                                  const Text(
+                                  Icon(Icons.add_location_alt, size: 24),
+                                  SizedBox(width: 12),
+                                  Text(
                                     'Create Landmark',
                                     style: TextStyle(
                                       fontSize: 18,
@@ -202,7 +206,8 @@ class LandmarkRunResultScreen extends StatelessWidget {
                                 backgroundColor: Colors.orange,
                                 foregroundColor: Colors.white,
                                 elevation: 8,
-                                shadowColor: Colors.orange.withValues(alpha: 0.5),
+                                shadowColor:
+                                    Colors.orange.withValues(alpha: 0.5),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
@@ -223,7 +228,8 @@ class LandmarkRunResultScreen extends StatelessWidget {
                         // Skip Button
                         TextButton(
                           onPressed: () {
-                            Navigator.popUntil(context, (route) => route.isFirst);
+                            Navigator.popUntil(
+                                context, (route) => route.isFirst);
                           },
                           child: const Text(
                             'Back to Home',
@@ -245,7 +251,8 @@ class LandmarkRunResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -295,7 +302,8 @@ class LandmarkRunResultScreen extends StatelessWidget {
   }
 
   Widget _buildProgressIndicator(double distance) {
-    final progress = (distance / LandmarkProvider.minDistanceMeters).clamp(0.0, 1.0);
+    final progress =
+        (distance / LandmarkProvider.minDistanceMeters).clamp(0.0, 1.0);
     final percentage = (progress * 100).toInt();
 
     return Column(

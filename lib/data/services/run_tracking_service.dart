@@ -117,9 +117,9 @@ class RunTrackingService {
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 5, // Update every 5 meters
         forceLocationManager: false,
-        intervalDuration: Duration(seconds: 2),
+        intervalDuration: const Duration(seconds: 2),
         // ✅ FOREGROUND SERVICE - Keeps GPS running when screen is locked
-        foregroundNotificationConfig: ForegroundNotificationConfig(
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationText: "You Are Running Now - Distance and Time Are Being Recorded",
           notificationTitle: "TURUN Running 🏃",
           enableWakeLock: true,

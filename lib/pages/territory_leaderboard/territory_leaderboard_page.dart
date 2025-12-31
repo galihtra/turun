@@ -59,7 +59,7 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
       if (territory.points.isEmpty) continue;
 
       // Use owner color if available, otherwise use default color
-      Color fillColor = const Color(0xFF2196F3).withOpacity(0.3);
+      Color fillColor = const Color(0xFF2196F3).withValues(alpha: 0.3);
       Color strokeColor = const Color(0xFF2196F3);
 
       if (territory.ownerColor != null) {
@@ -67,7 +67,7 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
           final colorValue = int.parse(
             territory.ownerColor!.replaceAll('#', '0xFF'),
           );
-          fillColor = Color(colorValue).withOpacity(0.3);
+          fillColor = Color(colorValue).withValues(alpha: 0.3);
           strokeColor = Color(colorValue);
         } catch (e) {
           // Use default color if parsing fails
@@ -223,7 +223,7 @@ class _TerritoryLeaderboardPageState extends State<TerritoryLeaderboardPage> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, -2),
                           ),

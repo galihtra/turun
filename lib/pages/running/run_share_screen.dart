@@ -140,9 +140,9 @@ class _RunShareScreenState extends State<RunShareScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withOpacity(0.4),
+                      Colors.black.withValues(alpha:0.4),
                       Colors.transparent,
-                      Colors.black.withOpacity(0.7),
+                      Colors.black.withValues(alpha:0.7),
                     ],
                   ),
                 ),
@@ -454,7 +454,7 @@ class _RunShareScreenState extends State<RunShareScreen> {
         color: Colors.grey[900],
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
