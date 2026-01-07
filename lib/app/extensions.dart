@@ -42,7 +42,8 @@ extension ColorExtensions on Color {
   Color lighten([double amount = 0.1]) {
     assert(amount >= 0 && amount <= 1);
     final hsl = HSLColor.fromColor(this);
-    final hslLight = hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
+    final hslLight =
+        hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
     return hslLight.toColor();
   }
 
@@ -79,16 +80,16 @@ extension ColorFromHex on String {
   /// Example: "#0000FF".toColor() -> Color(0xFF0000FF)
   Color toColor() {
     String hex = replaceAll('#', '');
-    
+
     // Add alpha if not present
     if (hex.length == 6) {
       hex = 'FF$hex';
     }
-    
+
     if (hex.length != 8) {
       throw FormatException('Invalid hex color format: $this');
     }
-    
+
     return Color(int.parse('0x$hex'));
   }
 
@@ -101,4 +102,35 @@ extension ColorFromHex on String {
       return null;
     }
   }
+}
+
+extension FormattingRun on String {
+  // ========== Format duration in seconds to HH:MM:SS or MM:SS format ==========
+  static String formatDuration(int seconds) {
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    final secs = seconds % 60;
+
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  // ========== Format distance in meters to "X m" or "X.XX km" ==========
+  static String formatDistance(double meters) {
+    if (meters < 1000) {
+      return '${meters.toStringAsFixed(0)} m';
+    }
+    return '${(meters / 1000).toStringAsFixed(2)} km';
+  }
+
+  // ========== Format pace in min/km to "M'SS\"" ==========
+  static String formatPace(double paceMinPerKm) {
+    if (paceMinPerKm == 0 || paceMinPerKm.isInfinite) return "--'--\"";
+    final minutes = paceMinPerKm.floor();
+    final seconds = ((paceMinPerKm - minutes) * 60).round();
+    return "$minutes'${seconds.toString().padLeft(2, '0')}\"";
+  }
+
 }

@@ -7,8 +7,13 @@ import 'package:turun/data/providers/landmark/landmark_provider.dart';
 import 'package:turun/data/providers/user/user_provider.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:gap/gap.dart';
+import '../../app/extensions.dart';
 import 'run_completion_screen.dart';
 import '../landmark/landmark_run_result_screen.dart';
+import 'widgets/compact_button.dart';
+import 'widgets/compact_metric.dart';
+import 'widgets/control_button.dart';
+import 'widgets/detail_metric_card.dart';
 
 class RunTrackingScreen extends StatefulWidget {
   const RunTrackingScreen({super.key});
@@ -17,14 +22,16 @@ class RunTrackingScreen extends StatefulWidget {
   State<RunTrackingScreen> createState() => _RunTrackingScreenState();
 }
 
-class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTickerProviderStateMixin {
+class _RunTrackingScreenState extends State<RunTrackingScreen>
+    with SingleTickerProviderStateMixin {
   GoogleMapController? _mapController;
   Timer? _uiUpdateTimer;
   bool _hasNavigatedToCompletion = false;
   double _currentZoom = 17.0;
 
   // Draggable sheet controller
-  final DraggableScrollableController _sheetController = DraggableScrollableController();
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
   double _sheetSize = 0.25;
   final double _minSheetSize = 0.25;
   final double _maxSheetSize = 0.7;
@@ -44,20 +51,23 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
   /// Check if run was auto-finished and navigate to completion screen
   void _checkAutoFinish() {
     if (_hasNavigatedToCompletion) return;
-    
+
     final provider = context.read<RunningProvider>();
-    
+
     // ✅ Check both runCompleted flag AND if we have a completed session
-    if (provider.runCompleted && provider.activeRunSession != null && !provider.isRunning) {
+    if (provider.runCompleted &&
+        provider.activeRunSession != null &&
+        !provider.isRunning) {
       _hasNavigatedToCompletion = true;
-      
+
       // Navigate to completion screen
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && provider.activeRunSession != null) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => RunCompletionScreen(session: provider.activeRunSession!),
+              builder: (context) =>
+                  RunCompletionScreen(session: provider.activeRunSession!),
             ),
           );
         }
@@ -119,31 +129,6 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
     }
   }
 
-  String _formatDuration(int seconds) {
-    final hours = seconds ~/ 3600;
-    final minutes = (seconds % 3600) ~/ 60;
-    final secs = seconds % 60;
-
-    if (hours > 0) {
-      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
-    }
-    return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
-  }
-
-  String _formatDistance(double meters) {
-    if (meters < 1000) {
-      return '${meters.toStringAsFixed(0)} m';
-    }
-    return '${(meters / 1000).toStringAsFixed(2)} km';
-  }
-
-  String _formatPace(double paceMinPerKm) {
-    if (paceMinPerKm == 0 || paceMinPerKm.isInfinite) return "--'--\"";
-    final minutes = paceMinPerKm.floor();
-    final seconds = ((paceMinPerKm - minutes) * 60).round();
-    return "$minutes'${seconds.toString().padLeft(2, '0')}\"";
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -157,9 +142,14 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
 
           // ✅ Calculate coins collected and total (only for territory mode)
           // For landmark mode, these values are not used (no checkpoints)
-          final totalCoins = isLandmarkMode ? 0 : (runProvider.selectedTerritory?.points.length ?? 1) - 1;
-          final coinsCollected = isLandmarkMode ? 0 : (runProvider.currentCheckpointIndex - 1).clamp(0, totalCoins);
-          final allCoinsCollected = !isLandmarkMode && coinsCollected >= totalCoins;
+          final totalCoins = isLandmarkMode
+              ? 0
+              : (runProvider.selectedTerritory?.points.length ?? 1) - 1;
+          final coinsCollected = isLandmarkMode
+              ? 0
+              : (runProvider.currentCheckpointIndex - 1).clamp(0, totalCoins);
+          final allCoinsCollected =
+              !isLandmarkMode && coinsCollected >= totalCoins;
 
           return Stack(
             children: [
@@ -167,7 +157,8 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
               GoogleMap(
                 onMapCreated: _onMapCreated,
                 initialCameraPosition: CameraPosition(
-                  target: runProvider.currentLatLng ?? const LatLng(1.18376, 104.01703),
+                  target: runProvider.currentLatLng ??
+                      const LatLng(1.18376, 104.01703),
                   zoom: 17.0,
                 ),
                 myLocationEnabled: true,
@@ -191,13 +182,14 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withValues(alpha: 0.95),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -210,13 +202,17 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: isLandmarkMode
-                                ? const Color(0xFF00E676).withOpacity(0.2)
-                                : userColor.withOpacity(0.2),
+                                ? const Color(0xFF00E676).withValues(alpha: 0.2)
+                                : userColor.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            isLandmarkMode ? Icons.add_location_alt : Icons.flag_rounded,
-                            color: isLandmarkMode ? const Color(0xFF00E676) : userColor,
+                            isLandmarkMode
+                                ? Icons.add_location_alt
+                                : Icons.flag_rounded,
+                            color: isLandmarkMode
+                                ? const Color(0xFF00E676)
+                                : userColor,
                             size: 14,
                           ),
                         ),
@@ -229,7 +225,9 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: isLandmarkMode ? const Color(0xFF00E676) : userColor,
+                            color: isLandmarkMode
+                                ? const Color(0xFF00E676)
+                                : userColor,
                           ),
                         ),
                       ],
@@ -245,7 +243,8 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                   left: 16,
                   right: 16,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Colors.green.shade600, Colors.green.shade800],
@@ -253,7 +252,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.green.withOpacity(0.4),
+                          color: Colors.green.withValues(alpha: 0.4),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -264,7 +263,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -290,7 +289,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                               Text(
                                 'Return to START to finish the run',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   fontSize: 12,
                                 ),
                               ),
@@ -322,9 +321,9 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                         radius: 22,
                         backgroundColor: Colors.white,
                         child: IconButton(
-                          icon: Icon(
+                          icon: const Icon(
                             Icons.add_rounded,
-                            color: userColor,
+                            color: AppColors.blueLogo,
                             size: 20,
                           ),
                           onPressed: _zoomIn,
@@ -341,9 +340,9 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                         radius: 22,
                         backgroundColor: Colors.white,
                         child: IconButton(
-                          icon: Icon(
+                          icon: const Icon(
                             Icons.remove_rounded,
-                            color: userColor,
+                            color: AppColors.blueLogo,
                             size: 20,
                           ),
                           onPressed: _zoomOut,
@@ -360,9 +359,9 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                         radius: 22,
                         backgroundColor: Colors.white,
                         child: IconButton(
-                          icon: Icon(
+                          icon: const Icon(
                             Icons.my_location_rounded,
-                            color: userColor,
+                            color: AppColors.blueLogo,
                             size: 20,
                           ),
                           onPressed: _recenterMap,
@@ -396,7 +395,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withValues(alpha: 0.15),
                             blurRadius: 20,
                             offset: const Offset(0, -5),
                           ),
@@ -457,9 +456,12 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
     final allCoinsCollected = coinsCollected >= totalCoins;
 
     // Get stats from appropriate provider
-    final duration = isLandmarkMode ? landmarkProvider.elapsedSeconds : provider.runDuration;
-    final distance = isLandmarkMode ? landmarkProvider.totalDistance : provider.runDistance;
-    final pace = isLandmarkMode ? landmarkProvider.currentPace : provider.currentPace;
+    final duration =
+        isLandmarkMode ? landmarkProvider.elapsedSeconds : provider.runDuration;
+    final distance =
+        isLandmarkMode ? landmarkProvider.totalDistance : provider.runDistance;
+    final pace =
+        isLandmarkMode ? landmarkProvider.currentPace : provider.currentPace;
     final speed = isLandmarkMode ? 0.0 : provider.currentSpeed;
 
     if (!isExpanded) {
@@ -488,7 +490,8 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                           if (allCoinsCollected) ...[
                             const Gap(8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.green.shade100,
                                 borderRadius: BorderRadius.circular(8),
@@ -509,7 +512,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                         '$coinsCollected / $totalCoins coins',
                         style: TextStyle(
                           fontSize: 10,
-                          color: allCoinsCollected ? Colors.green : userColor,
+                          color: allCoinsCollected ? Colors.green : AppColors.blueLogo,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -537,22 +540,19 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _CompactMetric(
+              CompactMetric(
                 label: 'Duration',
-                value: _formatDuration(duration),
-                color: userColor,
+                value: FormattingRun.formatDuration(duration),
               ),
               Container(width: 1, height: 40, color: Colors.grey[300]),
-              _CompactMetric(
+              CompactMetric(
                 label: 'Distance',
-                value: _formatDistance(distance),
-                color: userColor,
+                value: FormattingRun.formatDistance(distance),
               ),
               Container(width: 1, height: 40, color: Colors.grey[300]),
-              _CompactMetric(
+              CompactMetric(
                 label: 'Pace',
-                value: _formatPace(pace),
-                color: userColor,
+                value: FormattingRun.formatPace(pace),
               ),
             ],
           ),
@@ -574,12 +574,12 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
               decoration: BoxDecoration(
                 color: allCoinsCollected
                     ? Colors.green.shade50
-                    : userColor.withOpacity(0.08),
+                    : AppColors.blueLogo.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: allCoinsCollected
-                      ? Colors.green.withOpacity(0.3)
-                      : userColor.withOpacity(0.2),
+                      ? Colors.green.withValues(alpha: 0.3)
+                      : AppColors.blueLogo.withValues(alpha: 0.2),
                   width: 1.5,
                 ),
               ),
@@ -594,12 +594,14 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                             allCoinsCollected
                                 ? Icons.emoji_events_rounded
                                 : Icons.monetization_on_rounded,
-                            color: allCoinsCollected ? Colors.amber : userColor,
+                            color: allCoinsCollected ? Colors.amber : AppColors.blueLogo,
                             size: 20,
                           ),
                           const Gap(8),
                           Text(
-                            allCoinsCollected ? 'All Coins Collected!' : 'Coins Collected',
+                            allCoinsCollected
+                                ? 'All Coins Collected!'
+                                : 'Coins Collected',
                             style: TextStyle(
                               fontSize: 12,
                               color: allCoinsCollected
@@ -611,11 +613,10 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
                         ],
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: allCoinsCollected
-                              ? Colors.green
-                              : userColor,
+                          color: allCoinsCollected ? Colors.green : AppColors.blueLogo,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -658,7 +659,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
 
           // Big duration display
           Text(
-            _formatDuration(duration),
+            FormattingRun.formatDuration(duration),
             style: TextStyle(
               fontSize: 56,
               fontWeight: FontWeight.bold,
@@ -680,30 +681,27 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
           Row(
             children: [
               Expanded(
-                child: _DetailedMetricCard(
+                child: DetailedMetricCard(
                   icon: Icons.straighten_rounded,
                   label: 'Distance',
-                  value: _formatDistance(distance),
-                  color: userColor,
+                  value: FormattingRun.formatDistance(distance),
                 ),
               ),
               const Gap(12),
               Expanded(
-                child: _DetailedMetricCard(
+                child: DetailedMetricCard(
                   icon: Icons.speed_rounded,
                   label: 'Pace',
-                  value: '${_formatPace(pace)}/km',
-                  color: userColor,
+                  value: '${FormattingRun.formatPace(pace)}/km',
                 ),
               ),
             ],
           ),
           const Gap(12),
-          _DetailedMetricCard(
+          DetailedMetricCard(
             icon: Icons.directions_run_rounded,
             label: 'Current Speed',
             value: '${(speed * 3.6).toStringAsFixed(1)} km/h',
-            color: userColor,
             isWide: true,
           ),
           const Gap(24),
@@ -721,7 +719,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _CompactButton(
+        CompactButton(
           icon: provider.activeRunSession?.status.name == 'active'
               ? Icons.pause_rounded
               : Icons.play_arrow_rounded,
@@ -734,12 +732,12 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
             }
           },
         ),
-        _CompactButton(
+        CompactButton(
           icon: Icons.check_circle_rounded,
           color: AppColors.green[500]!,
           onTap: () => _handleFinishRun(provider),
         ),
-        _CompactButton(
+        CompactButton(
           icon: Icons.close_rounded,
           color: AppColors.red[500]!,
           onTap: () => _handleCancelRun(provider),
@@ -753,11 +751,13 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _ControlButton(
+        ControlButton(
           icon: provider.activeRunSession?.status.name == 'active'
               ? Icons.pause_rounded
               : Icons.play_arrow_rounded,
-          label: provider.activeRunSession?.status.name == 'active' ? 'Pause' : 'Resume',
+          label: provider.activeRunSession?.status.name == 'active'
+              ? 'Pause'
+              : 'Resume',
           color: AppColors.yellow[500]!,
           onTap: () {
             if (provider.activeRunSession?.status.name == 'active') {
@@ -767,13 +767,13 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
             }
           },
         ),
-        _ControlButton(
+        ControlButton(
           icon: Icons.check_circle_rounded,
           label: 'Finish',
           color: AppColors.green[500]!,
           onTap: () => _handleFinishRun(provider),
         ),
-        _ControlButton(
+        ControlButton(
           icon: Icons.close_rounded,
           label: 'Cancel',
           color: AppColors.red[500]!,
@@ -799,7 +799,8 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.green[500],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('Finish'),
           ),
@@ -850,7 +851,8 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.red[500],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('Yes, Cancel'),
           ),
@@ -905,238 +907,5 @@ class _RunTrackingScreenState extends State<RunTrackingScreen> with SingleTicker
     } catch (e) {
       return AppColors.blueLogo;
     }
-  }
-}
-
-// Compact Metric Widget
-class _CompactMetric extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _CompactMetric({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        const Gap(4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// Detailed Metric Card
-class _DetailedMetricCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-  final bool isWide;
-
-  const _DetailedMetricCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-    this.isWide = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1.5,
-        ),
-      ),
-      child: isWide
-          ? Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-                const Gap(12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const Gap(4),
-                      Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          : Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-                const Gap(10),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const Gap(4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-    );
-  }
-}
-
-// Compact Button Widget
-class _CompactButton extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _CompactButton({
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: color.withOpacity(0.3),
-            width: 2,
-          ),
-        ),
-        child: Icon(
-          icon,
-          color: color,
-          size: 26,
-        ),
-      ),
-    );
-  }
-}
-
-// Control Button Widget
-class _ControlButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ControlButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const Gap(8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
