@@ -46,7 +46,6 @@ class AchievementProvider with ChangeNotifier {
   Future<void> loadUserAchievements() async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
 
     try {
       final userId = _supabase.auth.currentUser?.id;
