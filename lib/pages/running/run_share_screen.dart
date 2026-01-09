@@ -7,26 +7,27 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/values_app.dart';
-
 import '../../resources/styles_app.dart';
+import 'sections/share_achievement_card.dart';
+import 'sections/share_bottom_actions.dart';
+import 'widgets/share_conquest_banner.dart';
 
 class RunShareScreen extends StatefulWidget {
-  final String distance; // e.g., "21.51 km"
-  final String pace; // e.g., "6:01 /km"
-  final String duration; // e.g., "2j 9m"
-  final String? avgSpeed; // e.g., "10.5 km/h"
-  final String? maxSpeed; // e.g., "15.2 km/h"
-  final String? calories; // e.g., "1291 cal"
-  final List<LatLng>? routePoints; // Real GPS route points from run session
+  final String distance;
+  final String pace;
+  final String duration;
+  final String? avgSpeed;
+  final String? maxSpeed;
+  final String? calories;
+  final List<LatLng>? routePoints;
   final bool territoryConquered;
   final String? territoryName;
-  final int? totalTerritories; // Total territories owned by user
+  final int? totalTerritories;
   final String? userName;
-  final String? userLevel; // e.g., "Level 12" or "Marathon Runner"
-  final bool isLandmark; // Whether this is a landmark (user-created) vs territory
-  final String? userAvatarUrl; // User's profile image URL
+  final String? userLevel;
+  final bool isLandmark;
+  final String? userAvatarUrl;
 
   const RunShareScreen({
     super.key,
@@ -36,7 +37,7 @@ class RunShareScreen extends StatefulWidget {
     this.avgSpeed,
     this.maxSpeed,
     this.calories,
-    this.routePoints, // Pass actual route coordinates
+    this.routePoints,
     this.territoryConquered = false,
     this.territoryName,
     this.totalTerritories,
@@ -52,17 +53,12 @@ class RunShareScreen extends StatefulWidget {
 
 class _RunShareScreenState extends State<RunShareScreen> {
   final GlobalKey _cardKey = GlobalKey();
-  File? _backgroundImage;
   final ImagePicker _picker = ImagePicker();
+  File? _backgroundImage;
   bool _isGenerating = false;
 
   @override
   Widget build(BuildContext context) {
-    // Use real data from widget, no dummy fallback
-    final distance = widget.distance;
-    final pace = widget.pace;
-    final duration = widget.duration;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -84,22 +80,22 @@ class _RunShareScreenState extends State<RunShareScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: RepaintBoundary(
                   key: _cardKey,
-                  child: _buildShareCard(distance, pace, duration),
+                  child: _buildShareCard(),
                 ),
               ),
             ),
           ),
-          _buildBottomActions(),
+          ShareBottomActions(
+            backgroundImage: _backgroundImage,
+            onPickImage: _pickBackgroundImage,
+            onRemoveImage: _removeBackgroundImage,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildShareCard(
-    String distance,
-    String pace,
-    String duration,
-  ) {
+  Widget _buildShareCard() {
     return AspectRatio(
       aspectRatio: 9 / 16,
       child: Container(
@@ -112,63 +108,78 @@ class _RunShareScreenState extends State<RunShareScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Background image or default gradient
-              if (_backgroundImage != null)
-                Image.file(
-                  _backgroundImage!,
-                  fit: BoxFit.cover,
-                )
-              else
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        const Color(0xFF1a1a2e),
-                        const Color(0xFF16213e),
-                        Colors.grey[900]!,
-                      ],
-                    ),
-                  ),
-                ),
-
-              // Animated gradient overlay
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.4),
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.7),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Content
-              SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AppGaps.kGap20,
-                      if (widget.territoryConquered || widget.isLandmark) ...[
-                        _buildConquestBanner(),
-                        AppGaps.kGap20,
-                      ],
-                      _buildMainAchievementCard(distance, pace, duration),
-                      AppGaps.kGap20,
-                      _buildHeader(),
-                    ],
-                  ),
-                ),
-              ),
+              _buildBackground(),
+              _buildGradientOverlay(),
+              _buildContent(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackground() {
+    if (_backgroundImage != null) {
+      return Image.file(_backgroundImage!, fit: BoxFit.cover);
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF1a1a2e),
+            const Color(0xFF16213e),
+            Colors.grey[900]!,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGradientOverlay() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.4),
+            Colors.transparent,
+            Colors.black.withValues(alpha: 0.7),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppGaps.kGap20,
+            if (widget.territoryConquered || widget.isLandmark) ...[
+              ShareConquestBanner(
+                isLandmark: widget.isLandmark,
+                territoryName: widget.territoryName,
+              ),
+              AppGaps.kGap20,
+            ],
+            ShareAchievementCard(
+              distance: widget.distance,
+              pace: widget.pace,
+              duration: widget.duration,
+              routePoints: widget.routePoints,
+              isLandmark: widget.isLandmark,
+              userAvatarUrl: widget.userAvatarUrl,
+            ),
+            AppGaps.kGap20,
+            _buildHeader(),
+          ],
         ),
       ),
     );
@@ -178,403 +189,13 @@ class _RunShareScreenState extends State<RunShareScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          'TuRun',
-          style: AppStyles.titleLogo,
-        ),
+        Text('TuRun', style: AppStyles.titleLogo),
       ],
-    );
-  }
-
-  Widget _buildConquestBanner() {
-    // Different styling for landmarks vs territories
-    final isLandmarkMode = widget.isLandmark;
-    final bannerColor = isLandmarkMode ? const Color(0xFF00E676) : AppColors.blueLogo;
-    final bannerIcon = isLandmarkMode ? Icons.add_location_alt : Icons.military_tech;
-    final bannerText = isLandmarkMode
-        ? 'This landmark is officially'
-        : 'This territory is officially';
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            bannerColor.withValues(alpha: 0.2),
-            bannerColor.withValues(alpha: 0.1),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: bannerColor, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: bannerColor.withValues(alpha: 0.1),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: bannerColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              bannerIcon,
-              color: Colors.white,
-              size: 32,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  bannerText,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  maxLines: 2,
-                  widget.territoryName ?? (isLandmarkMode ? 'Unknown Landmark' : 'Unknown Territory'),
-                  style: TextStyle(
-                    color: bannerColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMainAchievementCard(
-      String distance, String pace, String duration) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.3),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withValues(alpha: 0.1),
-            blurRadius: 30,
-            spreadRadius: 5,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Main stat - Distance
-          Column(
-            children: [
-              Text(
-                'Sector Secured',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
-              // Territory route grid
-              _buildSimpleRouteGrid(),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // Divider
-          Container(
-            height: 1,
-            color: Colors.white.withValues(alpha: 0.2),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Secondary main stats
-          Row(
-            children: [
-              Expanded(
-                child: _buildCompactStat(
-                    'DISTANCE', distance, Icons.directions_walk),
-              ),
-              Container(
-                width: 1,
-                height: 50,
-                color: Colors.white.withValues(alpha: 0.2),
-              ),
-              Expanded(
-                child: _buildCompactStat('PACE', pace, Icons.speed),
-              ),
-              Container(
-                width: 1,
-                height: 50,
-                color: Colors.white.withValues(alpha: 0.2),
-              ),
-              Expanded(
-                child: _buildCompactStat('TIME', duration, Icons.timer),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompactStat(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: AppColors.blueLogo, size: 20),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSimpleRouteGrid() {
-    return SizedBox(
-      height: 100,
-      width: double.infinity,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Territory polygon background
-          SizedBox(
-            width: double.infinity,
-            height: 100,
-            child: CustomPaint(
-              painter: _SimpleRouteGridPainter(
-                routePoints: widget.routePoints,
-                isLandmark: widget.isLandmark,
-              ),
-            ),
-          ),
-          // Icon in the center (territory claim)
-          // Profile with flag badge
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // Profile image
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: widget.userAvatarUrl == null
-                      ? (widget.isLandmark ? const Color(0xFF00E676) : Colors.red)
-                      : null,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 3,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (widget.isLandmark ? const Color(0xFF00E676) : Colors.red).withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                  image: widget.userAvatarUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(widget.userAvatarUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: widget.userAvatarUrl == null
-                    ? const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 24,
-                      )
-                    : null,
-              ),
-              // Flag badge
-              Positioned(
-                right: -5,
-                bottom: -5,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Icon(
-                    Icons.flag_rounded,
-                    color: Colors.white,
-                    size: 8,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomActions() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: _pickBackgroundImage,
-              icon: const Icon(Icons.image),
-              label: const Text('Change Background'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-          ),
-          if (_backgroundImage != null) ...[
-            const SizedBox(width: 12),
-            OutlinedButton(
-              onPressed: _removeBackgroundImage,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: const BorderSide(color: Colors.red),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              ),
-              child: const Icon(Icons.delete),
-            ),
-          ],
-        ],
-      ),
     );
   }
 
   Future<void> _pickBackgroundImage() async {
-    // Show dialog to choose between camera and gallery
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[900],
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Choose Photo Source',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.blueLogo.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt_rounded,
-                    color: AppColors.blueLogo,
-                  ),
-                ),
-                title: const Text(
-                  'Camera',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(
-                  'Take a new photo',
-                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                ),
-                onTap: () => Navigator.pop(context, ImageSource.camera),
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.green[500]!.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.photo_library_rounded,
-                    color: AppColors.green[500],
-                  ),
-                ),
-                title: const Text(
-                  'Gallery',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(
-                  'Choose from gallery',
-                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                ),
-                onTap: () => Navigator.pop(context, ImageSource.gallery),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    );
+    final source = await ShareBottomActions.showImageSourceDialog(context);
 
     if (source != null) {
       final XFile? image = await _picker.pickImage(
@@ -583,26 +204,19 @@ class _RunShareScreenState extends State<RunShareScreen> {
       );
 
       if (image != null) {
-        setState(() {
-          _backgroundImage = File(image.path);
-        });
+        setState(() => _backgroundImage = File(image.path));
       }
     }
   }
 
   void _removeBackgroundImage() {
-    setState(() {
-      _backgroundImage = null;
-    });
+    setState(() => _backgroundImage = null);
   }
 
   Future<void> _shareImage() async {
-    setState(() {
-      _isGenerating = true;
-    });
+    setState(() => _isGenerating = true);
 
     try {
-      // Capture the widget as an image
       final RenderRepaintBoundary boundary =
           _cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
@@ -610,14 +224,12 @@ class _RunShareScreenState extends State<RunShareScreen> {
           await image.toByteData(format: ui.ImageByteFormat.png);
       final Uint8List pngBytes = byteData!.buffer.asUint8List();
 
-      // Save to temporary directory
       final tempDir = await getTemporaryDirectory();
       final file = await File(
-              '${tempDir.path}/run_share_${DateTime.now().millisecondsSinceEpoch}.png')
-          .create();
+        '${tempDir.path}/run_share_${DateTime.now().millisecondsSinceEpoch}.png',
+      ).create();
       await file.writeAsBytes(pngBytes);
 
-      // Share the image
       await Share.shareXFiles(
         [XFile(file.path)],
         text: 'Check out my run! 🏃‍♂️💪 #TuRun #Running',
@@ -629,198 +241,7 @@ class _RunShareScreenState extends State<RunShareScreen> {
         );
       }
     } finally {
-      setState(() {
-        _isGenerating = false;
-      });
+      setState(() => _isGenerating = false);
     }
-  }
-}
-
-// Custom painter for territory polygon (blue theme, no background)
-class _SimpleRouteGridPainter extends CustomPainter {
-  final List<LatLng>? routePoints;
-  final bool isLandmark;
-
-  _SimpleRouteGridPainter({
-    this.routePoints,
-    this.isLandmark = false,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Draw route using real GPS points if available
-    if (routePoints != null && routePoints!.isNotEmpty) {
-      _drawRealRoute(canvas, size);
-    } else {
-      // Fallback to dummy shape if no route data
-      _drawDummyTerritoryOutline(canvas, size);
-    }
-  }
-
-  void _drawRealRoute(Canvas canvas, Size size) {
-    if (routePoints == null || routePoints!.isEmpty) return;
-
-    // Calculate bounding box to fit route in canvas
-    double minLat = routePoints!.first.latitude;
-    double maxLat = routePoints!.first.latitude;
-    double minLng = routePoints!.first.longitude;
-    double maxLng = routePoints!.first.longitude;
-
-    for (var point in routePoints!) {
-      if (point.latitude < minLat) minLat = point.latitude;
-      if (point.latitude > maxLat) maxLat = point.latitude;
-      if (point.longitude < minLng) minLng = point.longitude;
-      if (point.longitude > maxLng) maxLng = point.longitude;
-    }
-
-    final latRange = maxLat - minLat;
-    final lngRange = maxLng - minLng;
-
-    // Add padding
-    const padding = 10.0;
-    final drawWidth = size.width - (padding * 2);
-    final drawHeight = size.height - (padding * 2);
-
-    // Convert GPS coordinates to canvas coordinates
-    Offset latLngToOffset(LatLng point) {
-      final x = padding + ((point.longitude - minLng) / lngRange) * drawWidth;
-      final y = padding + ((maxLat - point.latitude) / latRange) * drawHeight;
-      return Offset(x, y);
-    }
-
-    // Different colors for landmark vs territory
-    final routeColor = isLandmark ? const Color(0xFF00E676) : Colors.red;
-
-    // Draw route path
-    final routePaint = Paint()
-      ..color = routeColor.withValues(alpha: 0.6)
-      ..strokeWidth = isLandmark ? 3.0 : 2.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final path = Path();
-    final firstPoint = latLngToOffset(routePoints!.first);
-    path.moveTo(firstPoint.dx, firstPoint.dy);
-
-    for (int i = 1; i < routePoints!.length; i++) {
-      final point = latLngToOffset(routePoints![i]);
-      path.lineTo(point.dx, point.dy);
-    }
-
-    // For landmarks (polyline), don't close the path
-    // For territories (polygon), close it
-    if (!isLandmark) {
-      path.close();
-
-      // Fill with transparent color only for territories
-      final fillPaint = Paint()
-        ..color = routeColor.withValues(alpha: 0.12)
-        ..style = PaintingStyle.fill;
-      canvas.drawPath(path, fillPaint);
-    }
-
-    // Draw outline
-    canvas.drawPath(path, routePaint);
-
-    // For landmarks, draw start and end markers
-    if (isLandmark && routePoints!.length >= 2) {
-      final startMarkerPaint = Paint()
-        ..color = const Color(0xFF00E676)
-        ..style = PaintingStyle.fill;
-
-      final endMarkerPaint = Paint()
-        ..color = Colors.red
-        ..style = PaintingStyle.fill;
-
-      // Start point (green)
-      canvas.drawCircle(firstPoint, 4, startMarkerPaint);
-      canvas.drawCircle(
-        firstPoint,
-        4,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
-      );
-
-      // End point (red)
-      final lastPoint = latLngToOffset(routePoints!.last);
-      canvas.drawCircle(lastPoint, 4, endMarkerPaint);
-      canvas.drawCircle(
-        lastPoint,
-        4,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
-      );
-    }
-  }
-
-  void _drawDummyTerritoryOutline(Canvas canvas, Size size) {
-    final boundaryPaint = Paint()
-      ..color = Colors.red.withValues(alpha: 0.6)
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final path = Path();
-
-    // Wider organic territory shape
-    path.moveTo(size.width * 0.08, size.height * 0.35);
-
-    // Top curve (wider spread)
-    path.quadraticBezierTo(
-      size.width * 0.35,
-      size.height * 0.12,
-      size.width * 0.7,
-      size.height * 0.18,
-    );
-
-    // Right side curve (extended further right)
-    path.quadraticBezierTo(
-      size.width * 0.92,
-      size.height * 0.4,
-      size.width * 0.88,
-      size.height * 0.7,
-    );
-
-    // Bottom curve (wider spread)
-    path.quadraticBezierTo(
-      size.width * 0.55,
-      size.height * 0.88,
-      size.width * 0.15,
-      size.height * 0.78,
-    );
-
-    // Left side curve (back to start)
-    path.quadraticBezierTo(
-      size.width * 0.05,
-      size.height * 0.55,
-      size.width * 0.08,
-      size.height * 0.35,
-    );
-
-    path.close();
-
-    // Fill with transparent red
-    final fillPaint = Paint()
-      ..color = Colors.red.withValues(alpha: 0.12)
-      ..style = PaintingStyle.fill;
-    canvas.drawPath(path, fillPaint);
-
-    // Draw outline
-    canvas.drawPath(path, boundaryPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    if (oldDelegate is _SimpleRouteGridPainter) {
-      return oldDelegate.routePoints != routePoints ||
-             oldDelegate.isLandmark != isLandmark;
-    }
-    return false;
   }
 }

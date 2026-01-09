@@ -14,8 +14,7 @@ import 'package:turun/data/wrapper/auth_wrapper.dart';
 import 'package:turun/resources/colors_app.dart';
 
 import 'data/providers/user/user_provider.dart';
-import 'data/providers/leaderboard/territory_leaderboard_provider.dart';                                              
-
+import 'data/providers/leaderboard/territory_leaderboard_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

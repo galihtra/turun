@@ -4,10 +4,10 @@ import 'package:turun/data/providers/landmark/landmark_provider.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:gap/gap.dart';
 import '../../../app/extensions.dart';
-import 'compact_metric.dart';
-import 'compact_button.dart';
-import 'control_button.dart';
-import 'detail_metric_card.dart';
+import '../widgets/compact_button.dart';
+import '../widgets/compact_metric.dart';
+import '../widgets/control_button.dart';
+import '../widgets/detail_metric_card.dart';
 
 class RunStatsPanel extends StatelessWidget {
   final double sheetSize;

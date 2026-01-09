@@ -8,11 +8,11 @@ import 'package:turun/data/providers/user/user_provider.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'run_completion_screen.dart';
 import '../landmark/landmark_run_result_screen.dart';
-import 'widgets/run_stats_panel.dart';
-import 'widgets/progress_banner.dart';
+import 'sections/run_stats_panel.dart';
+import 'sections/progress_banner.dart';
 import 'widgets/territory_badge.dart';
-import 'widgets/map_controls.dart';
-import 'widgets/run_dialogs.dart';
+import 'sections/map_controls.dart';
+import 'sections/run_dialogs.dart';
 import 'constants/run_constants.dart';
 
 class RunTrackingScreen extends StatefulWidget {
