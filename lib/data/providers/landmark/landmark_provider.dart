@@ -43,6 +43,7 @@ class LandmarkProvider extends ChangeNotifier {
   // Constants
   static const double minDistanceMeters = 500.0; // Minimum 500m for valid landmark
   static const int gpsDistanceFilter = 3; // 3 meters for high accuracy
+  static const double territoryProximityMeters = 1000.0; // 1km proximity check for existing territories
 
   // Getters
   List<LatLng> get routePoints => List.unmodifiable(_routePoints);
@@ -91,6 +92,54 @@ class LandmarkProvider extends ChangeNotifier {
   }
 
   // ==================== LANDMARK RUN METHODS ====================
+
+  /// Check if user is near any existing territory
+  /// Returns the nearest territory if within proximity, null otherwise
+  Future<Territory?> checkTerritoryProximity(LatLng currentLocation) async {
+    try {
+      // Load territories if not already loaded
+      if (_userTerritories.isEmpty) {
+        await loadUserTerritories();
+      }
+
+      // Check each territory's center point
+      for (final territory in _userTerritories) {
+        if (territory.points.isEmpty) continue;
+
+        // Calculate center of territory
+        double totalLat = 0;
+        double totalLng = 0;
+        for (var point in territory.points) {
+          totalLat += point.latitude;
+          totalLng += point.longitude;
+        }
+        final centerLat = totalLat / territory.points.length;
+        final centerLng = totalLng / territory.points.length;
+
+        // Calculate distance from current location to territory center
+        final distance = Geolocator.distanceBetween(
+          currentLocation.latitude,
+          currentLocation.longitude,
+          centerLat,
+          centerLng,
+        );
+
+        // If within proximity, return this territory
+        if (distance <= territoryProximityMeters) {
+          AppLogger.info(
+            LogLabel.general,
+            'User is near territory: ${territory.name} (${distance.toStringAsFixed(0)}m away)',
+          );
+          return territory;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      AppLogger.error(LogLabel.general, 'Failed to check territory proximity: $e');
+      return null;
+    }
+  }
 
   /// Start a new landmark run
   Future<bool> startLandmarkRun(LatLng currentLocation) async {

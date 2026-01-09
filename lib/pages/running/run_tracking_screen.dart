@@ -12,7 +12,7 @@ import 'widgets/run_stats_panel.dart';
 import 'widgets/progress_banner.dart';
 import 'widgets/territory_badge.dart';
 import 'widgets/map_controls.dart';
-import 'utils/run_dialogs.dart';
+import 'widgets/run_dialogs.dart';
 import 'constants/run_constants.dart';
 
 class RunTrackingScreen extends StatefulWidget {

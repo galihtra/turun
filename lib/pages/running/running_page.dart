@@ -13,6 +13,7 @@ import 'widgets/navigation_info_card.dart';
 import 'widgets/territory_card.dart';
 import 'widgets/territory_card_shimmer.dart';
 import 'run_tracking_screen.dart';
+import 'widgets/territory_collision_dialog.dart';
 
 class RunningPage extends StatefulWidget {
   const RunningPage({super.key});
@@ -226,7 +227,7 @@ class RunningPageState extends State<RunningPage> {
                 ),
 
               // ==================== MODE SELECTOR (Territory/Landmark) ====================
-              if (!runningProvider.isNavigating && !runningProvider.isRunning)
+              if (!runningProvider.isRunning)
                 Positioned(
                   top: 60,
                   left: MediaQuery.of(context).size.width * 0.2,
@@ -340,7 +341,7 @@ class RunningPageState extends State<RunningPage> {
                   runningProvider.selectedTerritory != null &&
                   !runningProvider.hasArrivedAtStartPoint)
                 Positioned(
-                  top: 60,
+                  top: 115, // Moved down to avoid overlap with mode selector
                   left: 0,
                   right: 0,
                   child: NavigationInfoCard(
@@ -544,6 +545,7 @@ class RunningPageState extends State<RunningPage> {
               // ==================== START LANDMARK RUN BUTTON ====================
               if (runningProvider.isLandmarkMode &&
                   !runningProvider.isRunning &&
+                  !runningProvider.isNavigating &&
                   runningProvider.canStartLandmarkRun)
                 Positioned(
                   bottom: 100,
@@ -570,6 +572,40 @@ class RunningPageState extends State<RunningPage> {
                             return;
                           }
 
+                          // ✅ Check if user is near any existing territory (within 1km)
+                          final nearbyTerritory = await landmarkProvider.checkTerritoryProximity(currentLocation);
+
+                          if (nearbyTerritory != null && context.mounted) {
+                            // ⚠️ User is near an existing territory - cannot create landmark here!
+                            // Show dialog and auto-redirect to challenge the territory
+                            await TerritoryCollisionDialog.show(
+                              context,
+                              nearbyTerritory,
+                            );
+
+                            if (context.mounted) {
+                              // ✅ Switch to territory mode first
+                              runningProvider.switchMode(RunMode.territory);
+
+                              // Automatically select this territory and start navigation
+                              runningProvider.selectTerritory(nearbyTerritory);
+
+                              // Find the index of this territory in the list
+                              final territoryIndex = runningProvider.territories.indexWhere(
+                                (t) => t.id == nearbyTerritory.id,
+                              );
+
+                              if (territoryIndex != -1) {
+                                _handleTerritoryNavigate(context, runningProvider, territoryIndex);
+                              } else {
+                                // Territory not in current list, just start navigation
+                                runningProvider.startNavigation(nearbyTerritory);
+                              }
+                            }
+                            return;
+                          }
+
+                          // ✅ No nearby territory, user can start landmark run
                           final started = await landmarkProvider.startLandmarkRun(currentLocation);
                           if (started && context.mounted) {
                             Navigator.push(
