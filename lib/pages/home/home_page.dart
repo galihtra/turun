@@ -11,7 +11,7 @@ import 'package:turun/pages/achievements/achievements_page.dart';
 import 'package:turun/pages/activities/all_activities_page.dart';
 import 'package:turun/pages/activities/activity_detail_page.dart';
 import 'package:turun/resources/colors_app.dart';
-
+import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import '../../resources/styles_app.dart';
 import '../../resources/values_app.dart';
 
@@ -177,20 +177,85 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               );
             }
 
-            return RefreshIndicator(
+            return LiquidPullToRefresh(
               onRefresh: () async {
-                await goalProvider.loadActiveGoals();
-                await _loadLatestActivities();
-                await _loadUserStats();
+                if (!context.mounted) return;
+
+                // Show loading feedback
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+                await Future.wait([
+                  goalProvider.loadActiveGoals(),
+                  context.read<AchievementProvider>().loadUserAchievements(),
+                  _loadLatestActivities(),
+                  _loadUserStats(),
+                ]);
+
                 _progressController.reset();
                 _progressController.forward();
+
+                // Show success feedback with gamified message
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(
+                    content: Row(
+                      children: <Widget>[
+                        Icon(
+                          Icons.emoji_events,
+                          color: Color(0xFFFFD700),
+                          size: 24,
+                        ),
+                        Gap(12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                'Stats Updated!',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Gap(2),
+                              Text(
+                                'Keep grinding those achievements! 🔥',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: AppColors.blueLogo,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
+                    margin: EdgeInsets.all(16),
+                    duration: Duration(milliseconds: 2000),
+                    elevation: 8,
+                  ),
+                );
               },
+              color: AppColors.blueLogo,
+              backgroundColor: const Color(0xFFF8F9FA),
+              height: 100,
+              animSpeedFactor: 2.0,
+              showChildOpacityTransition: false,
+              springAnimationDurationInMilliseconds: 600,
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header with gradient background
+                    // Original Header
                     Center(
                       child: Text(
                         'TuRun',
