@@ -26,12 +26,12 @@ class NotificationCard extends StatelessWidget {
           border: Border.all(
             color: notification.isRead
                 ? AppColors.grey[200]!
-                : _getTypeColor().withOpacity(0.3),
+                : _getTypeColor().withValues(alpha: 0.3),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: _getTypeColor().withOpacity(0.1),
+              color: _getTypeColor().withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -52,7 +52,7 @@ class NotificationCard extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       _getTypeColor(),
-                      _getTypeColor().withOpacity(0.5),
+                      _getTypeColor().withValues(alpha: 0.5),
                     ],
                   ),
                   borderRadius: BorderRadius.only(
@@ -137,13 +137,13 @@ class NotificationCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             _getTypeColor(),
-            _getTypeColor().withOpacity(0.7),
+            _getTypeColor().withValues(alpha: 0.7),
           ],
         ),
         borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
-            color: _getTypeColor().withOpacity(0.3),
+            color: _getTypeColor().withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

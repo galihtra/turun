@@ -17,7 +17,6 @@ class LandmarkProvider extends ChangeNotifier {
   final List<LatLng> _routePoints = [];
   bool _isRecording = false;
   LatLng? _startPoint;
-  DateTime? _startTime;
   Timer? _timer;
   int _elapsedSeconds = 0;
   double _totalDistance = 0.0;
@@ -165,7 +164,6 @@ class LandmarkProvider extends ChangeNotifier {
 
       // Initialize tracking
       _startPoint = currentLocation;
-      _startTime = now;
       _routePoints.clear();
       _routePoints.add(currentLocation);
       _lastPosition = currentLocation;
@@ -660,7 +658,6 @@ class LandmarkProvider extends ChangeNotifier {
     _routePoints.clear();
     _isRecording = false;
     _startPoint = null;
-    _startTime = null;
     _timer?.cancel();
     _elapsedSeconds = 0;
     _totalDistance = 0.0;

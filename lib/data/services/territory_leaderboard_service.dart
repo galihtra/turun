@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:turun/app/app_logger.dart';
 import '../model/territory/territory_model.dart';
 import '../model/running/run_session_model.dart';
 
@@ -17,7 +18,7 @@ class TerritoryLeaderboardService {
           .map((territory) => Territory.fromJson(territory))
           .toList();
     } catch (e) {
-      print('Error fetching territories: $e');
+      AppLogger.error(LogLabel.network, "Error fetching territories: $e");
       rethrow;
     }
   }
@@ -39,7 +40,7 @@ class TerritoryLeaderboardService {
           .map((territory) => Territory.fromJson(territory))
           .toList();
     } catch (e) {
-      print('Error searching territories: $e');
+      AppLogger.error(LogLabel.network, "Error searching territories: $e");
       rethrow;
     }
   }
@@ -115,7 +116,7 @@ class TerritoryLeaderboardService {
             runData['users'] = userResponse;
           }
         } catch (e) {
-          print('Error fetching user for run ${run['id']}: $e');
+          AppLogger.error(LogLabel.network, "Error fetching user for run ${run['id']}: $e");
           // Continue without user data
         }
 
@@ -124,7 +125,7 @@ class TerritoryLeaderboardService {
 
       return result;
     } catch (e) {
-      print('Error fetching territory leaderboard: $e');
+      AppLogger.error(LogLabel.network, "Error fetching territory leaderboard: $e");
       rethrow;
     }
   }
@@ -162,13 +163,13 @@ class TerritoryLeaderboardService {
           runData['users'] = userResponse;
         }
       } catch (e) {
-        print('Error fetching user data: $e');
+        AppLogger.error(LogLabel.network, "Error fetching user data: $e");
         // Continue without user data
       }
 
       return RunSession.fromJson(runData);
     } catch (e) {
-      print('Error fetching user best run: $e');
+      AppLogger.error(LogLabel.network, "Error fetching user best run: $e");
       rethrow;
     }
   }
@@ -203,7 +204,7 @@ class TerritoryLeaderboardService {
 
         userData = userResponse;
       } catch (e) {
-        print('Error fetching user data: $e');
+        AppLogger.error(LogLabel.network, "Error fetching user data: $e");
       }
 
       // Combine run data with user data
@@ -215,7 +216,7 @@ class TerritoryLeaderboardService {
         return RunSession.fromJson(runData);
       }).toList();
     } catch (e) {
-      print('Error fetching user runs in territory: $e');
+      AppLogger.error(LogLabel.network, "Error fetching user runs in territory: $e");
       rethrow;
     }
   }
@@ -238,7 +239,7 @@ class TerritoryLeaderboardService {
         uniqueRunners: uniqueRunners,
       );
     } catch (e) {
-      print('Error fetching territory stats: $e');
+      AppLogger.error(LogLabel.network, "Error fetching territory stats: $e");
       return null;
     }
   }
@@ -256,7 +257,7 @@ class TerritoryLeaderboardService {
           .map((territory) => Territory.fromJson(territory))
           .toList();
     } catch (e) {
-      print('Error fetching user territories: $e');
+      AppLogger.error(LogLabel.network, "Error fetching user territories: $e");
       rethrow;
     }
   }
@@ -274,7 +275,7 @@ class TerritoryLeaderboardService {
           .map((territory) => Territory.fromJson(territory))
           .toList();
     } catch (e) {
-      print('Error fetching territories by difficulty: $e');
+      AppLogger.error(LogLabel.network, "Error fetching territories by difficulty: $e");
       rethrow;
     }
   }

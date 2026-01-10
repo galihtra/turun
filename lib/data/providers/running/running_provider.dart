@@ -34,7 +34,6 @@ class RunningProvider extends ChangeNotifier {
   final List<LatLng> _landmarkRoutePoints = [];
   bool _isRecordingLandmark = false;
   LatLng? _landmarkStartPoint;
-  DateTime? _landmarkStartTime;
   Timer? _landmarkTimer;
   int _landmarkElapsedSeconds = 0;
   double _landmarkTotalDistance = 0.0;
@@ -244,9 +243,9 @@ class RunningProvider extends ChangeNotifier {
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 3, // Update every 3 meters for accurate checkpoint detection
         forceLocationManager: false,
-        intervalDuration: Duration(seconds: 2),
+        intervalDuration: const Duration(seconds: 2),
         // ✅ FOREGROUND SERVICE - Keeps GPS running when screen is locked
-        foregroundNotificationConfig: ForegroundNotificationConfig(
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationText: "You Are Running Now - Active Territory Route",
           notificationTitle: "TURUN Running 🏃",
           enableWakeLock: true,
@@ -335,16 +334,16 @@ class RunningProvider extends ChangeNotifier {
         // Use owner's profile color if available
         if (territory.ownerColor != null) {
           final ownerColor = _colorFromHex(territory.ownerColor!);
-          fillColor = ownerColor.withOpacity(0.3);
+          fillColor = ownerColor.withValues(alpha: 0.3);
           strokeColor = ownerColor;
         } else {
           // Fallback to blue if no color specified
-          fillColor = Colors.blue.withOpacity(0.2);
+          fillColor = Colors.blue.withValues(alpha: 0.2);
           strokeColor = Colors.blue;
         }
       } else {
         // Unclaimed territory (grey)
-        fillColor = Colors.grey.withOpacity(0.15);
+        fillColor = Colors.grey.withValues(alpha: 0.15);
         strokeColor = Colors.grey.shade400;
       }
 
@@ -352,7 +351,7 @@ class RunningProvider extends ChangeNotifier {
       if (_selectedTerritory?.id == territory.id) {
         strokeWidth = 5; // Thicker border for selected
         // Increase opacity slightly for selected
-        fillColor = fillColor.withOpacity(0.4);
+        fillColor = fillColor.withValues(alpha: 0.4);
       }
 
       final polygon = Polygon(
@@ -869,7 +868,7 @@ class RunningProvider extends ChangeNotifier {
       final remainingPolyline = Polyline(
         polylineId: const PolylineId('remaining_route'),
         points: remainingRoutePoints,
-        color: Colors.red.withOpacity(0.7), // Red for territory boundary
+        color: Colors.red.withValues(alpha: 0.7), // Red for territory boundary
         width: 4,
         geodesic: true,
         // NO PATTERNS = SOLID LINE
@@ -1128,7 +1127,7 @@ class RunningProvider extends ChangeNotifier {
         final remainingPolyline = Polyline(
           polylineId: const PolylineId('remaining_route'),
           points: remainingRoutePoints,
-          color: Colors.blue.withOpacity(0.7),
+          color: Colors.blue.withValues(alpha: 0.7),
           width: 6,
           geodesic: true,
           patterns: [
@@ -1446,7 +1445,6 @@ class RunningProvider extends ChangeNotifier {
 
       // Start tracking
       _isRunning = true;
-      _landmarkStartTime = now;
       _startLandmarkTimer();
       _startLandmarkGpsTracking();
 
@@ -1657,7 +1655,6 @@ class RunningProvider extends ChangeNotifier {
     _landmarkRoutePoints.clear();
     _isRecordingLandmark = false;
     _landmarkStartPoint = null;
-    _landmarkStartTime = null;
     _landmarkTimer?.cancel();
     _landmarkElapsedSeconds = 0;
     _landmarkTotalDistance = 0.0;

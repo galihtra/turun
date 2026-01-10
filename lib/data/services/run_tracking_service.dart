@@ -21,13 +21,11 @@ class RunTrackingService {
   double _totalDistance = 0;
   int _elapsedSeconds = 0;
   DateTime? _startTime;
-  DateTime? _pauseTime;
   Timer? _timer;
   bool _isPaused = false;
 
   // Speed tracking
   double _currentSpeed = 0;
-  LatLng? _lastPosition;
   DateTime? _lastPositionTime;
 
   // Getters
@@ -61,7 +59,6 @@ class RunTrackingService {
       _elapsedSeconds = 0;
       _isPaused = false;
       _currentSpeed = 0;
-      _lastPosition = startLocation;
       _lastPositionTime = _startTime;
 
       // Insert ke database
@@ -117,9 +114,9 @@ class RunTrackingService {
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 5, // Update every 5 meters
         forceLocationManager: false,
-        intervalDuration: Duration(seconds: 2),
+        intervalDuration: const Duration(seconds: 2),
         // ✅ FOREGROUND SERVICE - Keeps GPS running when screen is locked
-        foregroundNotificationConfig: ForegroundNotificationConfig(
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationText: "You Are Running Now - Distance and Time Are Being Recorded",
           notificationTitle: "TURUN Running 🏃",
           enableWakeLock: true,
@@ -155,7 +152,6 @@ class RunTrackingService {
               _currentSpeed = distance / timeDiffSeconds; // m/s
             }
           }
-          _lastPosition = newPoint;
           _lastPositionTime = now;
         }
       }
@@ -165,21 +161,19 @@ class RunTrackingService {
   /// Pause run session
   void pauseRunSession() {
     if (_currentSession == null || _isPaused) return;
-    
+
     _isPaused = true;
-    _pauseTime = DateTime.now();
     _currentSpeed = 0;
-    
+
     AppLogger.info(LogLabel.general, '⏸️ Run paused');
   }
 
   /// Resume run session
   void resumeRunSession() {
     if (_currentSession == null || !_isPaused) return;
-    
+
     _isPaused = false;
-    _pauseTime = null;
-    
+
     AppLogger.info(LogLabel.general, '▶️ Run resumed');
   }
 

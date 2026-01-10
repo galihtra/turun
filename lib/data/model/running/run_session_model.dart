@@ -236,7 +236,7 @@ class RunSession {
   }
 
   /// Formatted pace with label (e.g., "5'30\"/km")
-  String get formattedPaceWithUnit => '${formattedPace}/km';
+  String get formattedPaceWithUnit => '$formattedPace/km';
 
   /// Average speed in km/h
   double get averageSpeedKmh {

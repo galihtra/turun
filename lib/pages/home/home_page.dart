@@ -407,7 +407,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       },
       {
         'label': 'Total Distance',
-        'value': '${_totalDistance.toStringAsFixed(1)}',
+        'value': _totalDistance.toStringAsFixed(1),
         'unit': 'km',
         'icon': Icons.route,
         'color': const Color(0xFF10B981),

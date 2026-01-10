@@ -173,12 +173,12 @@ class LandmarkRunResultScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
-                              child: Row(
+                              child: const  Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.add_location_alt, size: 24),
-                                  const SizedBox(width: 12),
-                                  const Text(
+                                 Icon(Icons.add_location_alt, size: 24),
+                                 SizedBox(width: 12),
+                                 Text(
                                     'Create Landmark',
                                     style: TextStyle(
                                       fontSize: 18,

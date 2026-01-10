@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:provider/provider.dart';
+import 'package:turun/app/app_logger.dart';
 import 'package:turun/data/providers/achievement/achievement_provider.dart';
 
 class LevelProgress extends StatelessWidget {
@@ -49,17 +50,17 @@ class LevelProgress extends StatelessWidget {
         final pointsNeeded = nextLevelPoints - currentLevelPoints;
 
         // Debug
-        print('DEBUG Level Progress:');
-        print('Total Points: $totalPoints');
-        print('Level: $level');
-        print('Current Level Points: $currentLevelPoints');
-        print('Next Level Points: $nextLevelPoints');
-        print('Points in Level: $pointsInLevel');
-        print('Points Needed: $pointsNeeded');
+        // print('DEBUG Level Progress:');
+        // print('Total Points: $totalPoints');
+        // print('Level: $level');
+        // print('Current Level Points: $currentLevelPoints');
+        // print('Next Level Points: $nextLevelPoints');
+        // print('Points in Level: $pointsInLevel');
+        // print('Points Needed: $pointsNeeded');
 
         final progress =
             pointsNeeded > 0 ? (pointsInLevel / pointsNeeded) : 1.0;
-        print('Progress: $progress');
+        AppLogger.error(LogLabel.general, "Progress: $progress");
 
         return TweenAnimationBuilder<double>(
           key: ValueKey('level_progress_$totalPoints'),
