@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:turun/app/custom_transition.dart';
 
 import '../../../resources/styles_app.dart';
+import '../../settings/settings_screen.dart';
 
 class ActionButtons extends StatelessWidget {
   final VoidCallback? onLogout; // ✅ FIXED: Changed to nullable
@@ -18,8 +20,8 @@ class ActionButtons extends StatelessWidget {
           'Settings',
           const Color(0xFF4A90E2),
           () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Settings coming soon!')),
+            Navigator.of(context).push(
+              SlidePageRoute(page: const SettingsScreen()),
             );
           },
         ),

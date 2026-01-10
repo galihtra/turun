@@ -51,6 +51,7 @@ dependencies:
   liquid_pull_to_refresh: ^3.0.1
   logger: ^2.6.2
   lottie: null
+  package_info_plus: ^8.3.0
   path_provider: ^2.1.5
   pedometer: ^4.1.1
   permission_handler: ^12.0.1
@@ -59,6 +60,7 @@ dependencies:
   shared_preferences: ^2.5.3
   shimmer: ^3.0.0
   supabase_flutter: ^2.9.1
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_lints: ^4.0.0
