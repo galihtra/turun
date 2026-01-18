@@ -2,6 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.392657528338-l6jkm0kah6lm5qsquslpggku02b87ric</string>
+			</array>
+		</dict>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -22,6 +35,18 @@
 	<string>We need camera access to take profile photos</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We need photo library access to select profile photos</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Turun needs your location to track your running route, calculate distance, and show your position on the map.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Turun needs continuous location access to track your run even when the app is in the background.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Turun needs background location to continue tracking when you're not actively using the app.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Turun uses motion data to count your steps and improve tracking accuracy.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
