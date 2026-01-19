@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/app/custom_transition.dart';
 import 'package:turun/app/finite_state.dart';
 import 'package:turun/pages/profile/section/level_progress.dart';
+import 'package:turun/pages/profile/section/nutrition_status_widget.dart';
 import 'package:turun/resources/values_app.dart';
 
 import '../../../data/providers/user/user_provider.dart';
@@ -132,6 +133,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       children: [
                         const LevelProgress(),
+                        AppGaps.kGap24,
+                        const NutritionStatusWidget(),
                         AppGaps.kGap24,
                         ActionButtons(
                           onLogout: _isLoggingOut

@@ -16,6 +16,7 @@ import 'package:turun/resources/colors_app.dart';
 import 'data/providers/user/user_provider.dart';
 import 'data/providers/leaderboard/territory_leaderboard_provider.dart';
 import 'data/providers/weight/weight_provider.dart';
+import 'data/providers/nutrition/nutrition_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +43,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AchievementProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => WeightProvider()),
+        ChangeNotifierProvider(create: (_) => NutritionProvider()),
       ],
       child: ScreenUtilInit(
         designSize: const Size(375, 812),
