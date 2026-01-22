@@ -5,6 +5,7 @@ import 'package:turun/app/custom_transition.dart';
 import 'package:turun/app/finite_state.dart';
 import 'package:turun/pages/profile/section/level_progress.dart';
 import 'package:turun/pages/profile/section/nutrition_status_widget.dart';
+import 'package:turun/data/providers/nutrition/nutrition_provider.dart';
 import 'package:turun/resources/values_app.dart';
 
 import '../../../data/providers/user/user_provider.dart';
@@ -41,6 +42,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final achievementProvider =
         Provider.of<AchievementProvider>(context, listen: false);
+    final nutritionProvider =
+        Provider.of<NutritionProvider>(context, listen: false);
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
     if (currentUserId != null) {
@@ -49,6 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await Future.wait([
         userProvider.loadUserData(currentUserId),
         achievementProvider.loadUserAchievements(),
+        nutritionProvider.loadAllNutritionData(),
       ]);
     } else {
       AppLogger.warning(LogLabel.auth, 'No authenticated user found');
