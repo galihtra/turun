@@ -116,7 +116,7 @@ class NutritionStatusWidget extends StatelessWidget {
                   Center(
                     child: Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         gradient: AppColors.blueGradient,
                         shape: BoxShape.circle,
                       ),

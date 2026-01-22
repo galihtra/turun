@@ -346,19 +346,19 @@ class _NutritionDashboardScreenState extends State<NutritionDashboardScreen> {
                     height: 48,
                     decoration: BoxDecoration(
                       color: isCompleted
-                          ? _getStatusColor(mealLog!.status)
+                          ? _getStatusColor(mealLog.status)
                               .withValues(alpha: 0.1)
                           : AppColors.grey.shade100,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(
                       isCompleted
-                          ? (mealLog!.status == MealStatus.pass
+                          ? (mealLog.status == MealStatus.pass
                               ? Icons.check_circle
                               : Icons.warning)
                           : Icons.lock_outlined,
                       color: isCompleted
-                          ? _getStatusColor(mealLog!.status)
+                          ? _getStatusColor(mealLog.status)
                           : AppColors.grey.shade400,
                     ),
                   ),
@@ -379,7 +379,7 @@ class _NutritionDashboardScreenState extends State<NutritionDashboardScreen> {
                         const Gap(2),
                         Text(
                           isCompleted
-                              ? mealLog!.foodName
+                              ? mealLog.foodName
                               : 'Scheduled for ${mealType.scheduledTime}',
                           style: TextStyle(
                             fontSize: 13,
@@ -397,7 +397,7 @@ class _NutritionDashboardScreenState extends State<NutritionDashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '${mealLog!.calories}',
+                          '${mealLog.calories}',
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,

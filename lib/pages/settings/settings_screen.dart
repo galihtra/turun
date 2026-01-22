@@ -595,7 +595,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppColors.blueLogo,
+            activeThumbColor: AppColors.blueLogo,
             activeTrackColor: AppColors.blueLogo.withValues(alpha: 0.5),
           ),
         ],
@@ -628,7 +628,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 color: AppColors.blueLogo.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.clear_all,
                 color: AppColors.blueLogo,
                 size: 24,
