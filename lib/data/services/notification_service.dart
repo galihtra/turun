@@ -197,6 +197,57 @@ class NotificationService {
     }
   }
 
+  /// Generate run completed with territory conquest notification
+  /// User successfully claimed the territory with fastest pace
+  Future<void> generateRunCompletedWithConquestNotification({
+    required String userId,
+    required int territoryId,
+    required String territoryName,
+    required String pace,
+  }) async {
+    try {
+      await _supabase.from('notifications').insert({
+        'user_id': userId,
+        'title': '🏆 TERRITORY CLAIMED!',
+        'message':
+            'Selamat! Kamu berhasil menguasai $territoryName dengan pace $pace! Tetap pertahankan rekormu!',
+        'type': 'runCompletedConquest',
+        'territory_id': territoryId,
+        'territory_name': territoryName,
+      });
+
+      AppLogger.success(_logLabel, 'Created run completed with conquest notification for $territoryName');
+    } catch (e) {
+      AppLogger.error(_logLabel, 'Error creating run completed with conquest notification', e);
+    }
+  }
+
+  /// Generate run completed without territory conquest notification
+  /// User ran in someone else's territory but didn't claim it
+  Future<void> generateRunCompletedNoConquestNotification({
+    required String userId,
+    required int territoryId,
+    required String territoryName,
+    required String userPace,
+    required String targetPace,
+  }) async {
+    try {
+      await _supabase.from('notifications').insert({
+        'user_id': userId,
+        'title': '🏃 LARI SELESAI!',
+        'message':
+            'Bagus! Kamu menyelesaikan lari di $territoryName dengan pace $userPace. Kalahkan pace $targetPace untuk mengklaim territory ini!',
+        'type': 'runCompletedNoConquest',
+        'territory_id': territoryId,
+        'territory_name': territoryName,
+      });
+
+      AppLogger.success(_logLabel, 'Created run completed no conquest notification for $territoryName');
+    } catch (e) {
+      AppLogger.error(_logLabel, 'Error creating run completed no conquest notification', e);
+    }
+  }
+
   /// Delete old read notifications (cleanup)
   Future<void> cleanupOldNotifications() async {
     try {

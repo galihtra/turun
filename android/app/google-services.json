@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "627677212354",
+    "project_id": "turun-7d6d0",
+    "storage_bucket": "turun-7d6d0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:627677212354:android:08479e2c1187f1b1bed55b",
+        "android_client_info": {
+          "package_name": "com.tehobenk.turun"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrUKcP3fe7yEbI-5woT7mS367WmLRirpI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

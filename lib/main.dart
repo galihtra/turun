@@ -1,6 +1,7 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/data/providers/running/running_provider.dart';
@@ -21,9 +22,18 @@ import 'data/providers/nutrition/nutrition_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();
+  
+  // Initialize Firebase
+  await Firebase.initializeApp();
+  
+  // Initialize Supabase
   String supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
   String supabaseKey = dotenv.env['SUPABASE_KEY'] ?? '';
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseKey);
+  
+  // Initialize Push Notifications (after auth is available)
+  // This will be called again in AuthWrapper when user is authenticated
+  
   runApp(const MyApp());
 }
 

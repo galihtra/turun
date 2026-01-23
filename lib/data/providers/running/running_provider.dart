@@ -10,6 +10,8 @@ import '../../model/running/run_session_model.dart';
 import '../../model/running/run_mode.dart';
 import '../../services/directions_service.dart';
 import '../../services/run_tracking_service.dart';
+import '../../services/push_notification_service.dart';
+import '../../services/notification_service.dart';
 import '../../../utils/custom_marker_helper.dart';
 
 class RunningProvider extends ChangeNotifier {
@@ -52,6 +54,8 @@ class RunningProvider extends ChangeNotifier {
 
   // Run tracking properties
   final RunTrackingService _runTrackingService = RunTrackingService();
+  final PushNotificationService _pushNotificationService = PushNotificationService();
+  final NotificationService _notificationService = NotificationService();
   RunSession? _activeRunSession;
   bool _isRunning = false;
   final Set<Polyline> _runRoutePolylines = {};
@@ -1259,6 +1263,19 @@ class RunningProvider extends ChangeNotifier {
     try {
       AppLogger.info(LogLabel.general, '🔍 Checking territory conquest for run ${newRun.id}...');
 
+      // Get territory name for notifications
+      String territoryName = 'Unknown Territory';
+      try {
+        final territoryResponse = await _supabase
+            .from('territories')
+            .select('name')
+            .eq('id', newRun.territoryId)
+            .maybeSingle();
+        territoryName = territoryResponse?['name'] ?? 'Unknown Territory';
+      } catch (e) {
+        AppLogger.warning(LogLabel.general, 'Could not fetch territory name: $e');
+      }
+
       // Get best run EXCLUDING the current run
       final currentBestRun = await _runTrackingService.getBestRunForTerritory(
         territoryId: newRun.territoryId,
@@ -1284,10 +1301,51 @@ class RunningProvider extends ChangeNotifier {
           '🏆 Territory conquered! Pace: ${newRun.formattedPace}',
         );
 
+        // Show push notification for successful territory claim
+        await _pushNotificationService.showRunCompletedNotification(
+          title: '🏆 TERRITORY CLAIMED!',
+          body: 'Selamat! Kamu berhasil menguasai $territoryName dengan pace ${newRun.formattedPace}!',
+          data: {
+            'type': 'runCompletedConquest',
+            'territory_id': newRun.territoryId,
+            'territory_name': territoryName,
+          },
+        );
+
+        // Also save to notification history
+        await _notificationService.generateRunCompletedWithConquestNotification(
+          userId: newRun.userId,
+          territoryId: newRun.territoryId,
+          territoryName: territoryName,
+          pace: newRun.formattedPace,
+        );
+
         return true;
       }
 
       AppLogger.info(LogLabel.general, '❌ Cannot conquer territory');
+
+      // Show push notification for run completed but no conquest
+      final targetPace = currentBestRun?.formattedPace ?? 'unknown';
+      await _pushNotificationService.showRunCompletedNotification(
+        title: '🏃 LARI SELESAI!',
+        body: 'Bagus! Kamu menyelesaikan lari di $territoryName. Kalahkan pace $targetPace untuk mengklaim territory ini!',
+        data: {
+          'type': 'runCompletedNoConquest',
+          'territory_id': newRun.territoryId,
+          'territory_name': territoryName,
+        },
+      );
+
+      // Also save to notification history
+      await _notificationService.generateRunCompletedNoConquestNotification(
+        userId: newRun.userId,
+        territoryId: newRun.territoryId,
+        territoryName: territoryName,
+        userPace: newRun.formattedPace,
+        targetPace: targetPace,
+      );
+
       return false;
     } catch (e, stackTrace) {
       AppLogger.error(

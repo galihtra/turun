@@ -4,10 +4,12 @@ import 'package:turun/app/app_logger.dart';
 import 'package:turun/app/finite_state.dart';
 import 'package:turun/data/model/notification/notification_model.dart';
 import 'package:turun/data/services/notification_service.dart';
+import 'package:turun/data/services/push_notification_service.dart';
 
 class NotificationProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
   final NotificationService _notificationService = NotificationService();
+  final PushNotificationService _pushNotificationService = PushNotificationService();
   static const _logLabel = LogLabel.provider;
 
   List<NotificationModel> _notifications = [];
@@ -180,6 +182,18 @@ class NotificationProvider extends ChangeNotifier {
               _notifications.insert(0, newNotification);
               notifyListeners();
               AppLogger.info(_logLabel, 'Added new real-time notification: ${newNotification.title}');
+              
+              // Show local push notification
+              _pushNotificationService.showLocalNotification(
+                title: newNotification.title,
+                body: newNotification.message,
+                data: {
+                  'type': newNotification.type.name,
+                  'notification_id': newNotification.id,
+                  if (newNotification.territoryId != null) 
+                    'territory_id': newNotification.territoryId.toString(),
+                },
+              );
             } else {
               AppLogger.debug(_logLabel, 'Skipped duplicate notification: ${newNotification.id}');
             }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:turun/data/services/push_notification_service.dart';
 import 'package:turun/pages/auth/auth_page.dart';
 import 'package:turun/pages/shell/root_shell.dart';
 import '../../pages/auth/onboarding/onboarding_page.dart';
@@ -14,6 +15,7 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final PushNotificationService _pushNotificationService = PushNotificationService();
   
   User? _user;
   bool _isLoading = true;
@@ -38,8 +40,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
       if (user != null && _user?.id != user.id) {
         AppLogger.info(LogLabel.auth, 'New user logged in: ${user.email}');
         await _checkOnboardingStatus(user.id);
+        // Initialize push notifications for the logged-in user
+        await _pushNotificationService.initialize();
       } else if (user == null && _user != null) {
         AppLogger.info(LogLabel.auth, 'User logged out');
+        // Delete FCM token on logout
+        await _pushNotificationService.deleteToken();
         if (mounted) {
           setState(() {
             _user = null;
@@ -62,6 +68,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (user != null) {
       AppLogger.info(LogLabel.auth, 'Current user found: ${user.email}');
       await _checkOnboardingStatus(user.id);
+      // Initialize push notifications for existing user
+      await _pushNotificationService.initialize();
     } else {
       AppLogger.debug(LogLabel.auth, 'No current user');
     }
