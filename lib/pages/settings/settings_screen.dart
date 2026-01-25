@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:provider/provider.dart';
+import 'package:turun/data/services/auth_service.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,7 +15,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  String _appVersion = '';
 
   @override
   void initState() {
@@ -26,7 +24,6 @@ class _SettingsScreenState extends State<SettingsScreen>
       duration: const Duration(milliseconds: 800),
     );
     _animationController.forward();
-    _loadAppVersion();
   }
 
   @override
@@ -35,12 +32,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     super.dispose();
   }
 
-  Future<void> _loadAppVersion() async {
-    final packageInfo = await PackageInfo.fromPlatform();
-    setState(() {
-      _appVersion = '${packageInfo.version} (${packageInfo.buildNumber})';
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +40,6 @@ class _SettingsScreenState extends State<SettingsScreen>
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(),
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -58,30 +48,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionTitle('Running Preferences', Icons.directions_run),
-                      const Gap(12),
-                      _buildRunningPreferences(),
-
-                      const Gap(28),
                       _buildSectionTitle('Notifications', Icons.notifications_active),
                       const Gap(12),
                       _buildNotifications(),
-
-                      const Gap(28),
-                      _buildSectionTitle('Map & Display', Icons.map),
-                      const Gap(12),
-                      _buildMapDisplay(),
-
                       const Gap(28),
                       _buildSectionTitle('Privacy & Data', Icons.security),
                       const Gap(12),
                       _buildPrivacyData(),
-
-                      const Gap(28),
-                      _buildSectionTitle('About & Support', Icons.info),
-                      const Gap(12),
-                      _buildAboutSupport(),
-
                       const Gap(40),
                     ],
                   ),
@@ -90,68 +63,6 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.blueLogo,
-            AppColors.blueLogo.withValues(alpha: 0.8),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.blueLogo.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.settings,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
-          const Gap(16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Settings',
-                  style: AppStyles.title2SemiBold.copyWith(
-                    color: Colors.white,
-                    fontSize: 24,
-                  ),
-                ),
-                const Gap(4),
-                Text(
-                  'Customize your running experience',
-                  style: AppStyles.body2Regular.copyWith(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -180,59 +91,6 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildRunningPreferences() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildSettingTile(
-            icon: Icons.straighten,
-            title: 'Units of Measurement',
-            subtitle: 'Kilometers, Kilograms',
-            trailing: Icons.chevron_right,
-            onTap: () {
-              // Navigate to units settings
-            },
-          ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.pause_circle,
-            title: 'Auto-pause',
-            subtitle: 'Pause when you stop moving',
-            value: true,
-            onChanged: (value) {},
-          ),
-          _buildDivider(),
-          _buildSettingTile(
-            icon: Icons.gps_fixed,
-            title: 'GPS Accuracy',
-            subtitle: 'Best for Navigation',
-            trailing: Icons.chevron_right,
-            onTap: () {},
-          ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.volume_up,
-            title: 'Voice Coach',
-            subtitle: 'Audio feedback during runs',
-            value: false,
-            onChanged: (value) {},
-          ),
-        ],
-      ),
     );
   }
 
@@ -277,71 +135,12 @@ class _SettingsScreenState extends State<SettingsScreen>
             onChanged: (value) {},
             iconColor: const Color(0xFFFFD700),
           ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.leaderboard,
-            title: 'Leaderboard Updates',
-            subtitle: 'Weekly ranking changes',
-            value: false,
-            onChanged: (value) {},
-            iconColor: const Color(0xFF10B981),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildMapDisplay() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildSettingTile(
-            icon: Icons.map,
-            title: 'Map Style',
-            subtitle: 'Standard',
-            trailing: Icons.chevron_right,
-            onTap: () {},
-          ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.route,
-            title: 'Show Route Lines',
-            subtitle: 'Display your running path',
-            value: true,
-            onChanged: (value) {},
-          ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.dark_mode,
-            title: 'Dark Mode',
-            subtitle: 'System default',
-            value: false,
-            onChanged: (value) {},
-            iconColor: const Color(0xFF2563EB),
-          ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.brightness_high,
-            title: 'Keep Screen On',
-            subtitle: 'Stay awake during runs',
-            value: true,
-            onChanged: (value) {},
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildPrivacyData() {
     return Container(
@@ -359,12 +158,12 @@ class _SettingsScreenState extends State<SettingsScreen>
       child: Column(
         children: [
           _buildSettingTile(
-            icon: Icons.visibility,
-            title: 'Activity Visibility',
-            subtitle: 'Public',
+            icon: Icons.delete_forever,
+            title: 'Delete Account',
+            subtitle: 'Delete my account permanently',
             trailing: Icons.chevron_right,
-            onTap: () {},
-            iconColor: const Color(0xFF8B5CF6),
+            onTap: () => _showDeleteAccountDialog(),
+            iconColor: const Color(0xFFEF4444),
           ),
           _buildDivider(),
           _buildSwitchTile(
@@ -377,14 +176,6 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
           _buildDivider(),
           _buildSettingTile(
-            icon: Icons.download,
-            title: 'Export Data',
-            subtitle: 'Download all your running data',
-            trailing: Icons.chevron_right,
-            onTap: () {},
-          ),
-          _buildDivider(),
-          _buildSettingTile(
             icon: Icons.clear_all,
             title: 'Clear Cache',
             subtitle: 'Free up storage space',
@@ -392,87 +183,6 @@ class _SettingsScreenState extends State<SettingsScreen>
             onTap: () {
               _showClearCacheDialog();
             },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAboutSupport() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildSettingTile(
-            icon: Icons.info_outline,
-            title: 'App Version',
-            subtitle: _appVersion.isEmpty ? 'Loading...' : _appVersion,
-            trailing: null,
-            iconColor: AppColors.blueLogo,
-          ),
-          _buildDivider(),
-          _buildSettingTile(
-            icon: Icons.description,
-            title: 'Terms of Service',
-            trailing: Icons.open_in_new,
-            onTap: () async {
-              final url = Uri.parse('https://turun.app/terms');
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
-          _buildDivider(),
-          _buildSettingTile(
-            icon: Icons.privacy_tip,
-            title: 'Privacy Policy',
-            trailing: Icons.open_in_new,
-            onTap: () async {
-              final url = Uri.parse('https://turun.app/privacy');
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
-          _buildDivider(),
-          _buildSettingTile(
-            icon: Icons.help_outline,
-            title: 'Help & FAQ',
-            trailing: Icons.chevron_right,
-            onTap: () {},
-          ),
-          _buildDivider(),
-          _buildSettingTile(
-            icon: Icons.star,
-            title: 'Rate TuRun',
-            subtitle: 'Support us with 5 stars ⭐',
-            trailing: Icons.chevron_right,
-            onTap: () {},
-            iconColor: const Color(0xFFFFD700),
-          ),
-          _buildDivider(),
-          _buildSettingTile(
-            icon: Icons.share,
-            title: 'Share App',
-            subtitle: 'Tell your friends about TuRun',
-            trailing: Icons.chevron_right,
-            onTap: () {
-              Share.share(
-                'Check out TuRun - Track, Unlocked, Run! 🏃\nhttps://turun.app',
-                subject: 'Join me on TuRun!',
-              );
-            },
-            iconColor: const Color(0xFF10B981),
           ),
         ],
       ),
@@ -678,6 +388,305 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
             ),
             child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog() {
+    bool isDeleting = false;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with gradient
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFFDC2626), Color(0xFFEF4444)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        // Animated skull/warning icon
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.dangerous_rounded,
+                            color: Colors.white,
+                            size: 48,
+                          ),
+                        ),
+                        const Gap(12),
+                        const Text(
+                          '⚠️ DANGER ZONE ⚠️',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const Gap(4),
+                        Text(
+                          'Account Deletion',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Content
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'You will lose everything!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1F2937),
+                          ),
+                        ),
+                        const Gap(16),
+                        
+                        // Stats cards - what will be lost
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildLossCard(
+                                icon: Icons.flag,
+                                label: 'Territories',
+                                color: const Color(0xFF8B5CF6),
+                              ),
+                            ),
+                            const Gap(8),
+                            Expanded(
+                              child: _buildLossCard(
+                                icon: Icons.emoji_events,
+                                label: 'Achievements',
+                                color: const Color(0xFFFFD700),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Gap(8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildLossCard(
+                                icon: Icons.directions_run,
+                                label: 'Run History',
+                                color: const Color(0xFF10B981),
+                              ),
+                            ),
+                            const Gap(8),
+                            Expanded(
+                              child: _buildLossCard(
+                                icon: Icons.leaderboard,
+                                label: 'Rankings',
+                                color: const Color(0xFF3B82F6),
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        const Gap(20),
+                        
+                        // Warning text
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFFECACA),
+                            ),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                color: Color(0xFFDC2626),
+                                size: 20,
+                              ),
+                              Gap(8),
+                              Expanded(
+                                child: Text(
+                                  'This action is permanent and cannot be undone!',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFFDC2626),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const Gap(24),
+                        
+                        // Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: isDeleting ? null : () => Navigator.pop(context),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  side: const BorderSide(color: Color(0xFFE5E7EB)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Keep Account',
+                                  style: TextStyle(
+                                    color: Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Gap(12),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: isDeleting
+                                    ? null
+                                    : () async {
+                                        setDialogState(() => isDeleting = true);
+                                        
+                                        final authService = context.read<AuthService>();
+                                        final success = await authService.deleteAccount();
+                                        
+                                        if (!context.mounted) return;
+                                        Navigator.pop(context);
+                                        
+                                        if (success) {
+                                          Navigator.of(context).popUntil((route) => route.isFirst);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Row(
+                                                children: [
+                                                  Icon(Icons.check_circle, color: Colors.white),
+                                                  Gap(12),
+                                                  Text('Account deleted successfully'),
+                                                ],
+                                              ),
+                                              backgroundColor: Color(0xFF10B981),
+                                              behavior: SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Row(
+                                                children: [
+                                                  const Icon(Icons.error, color: Colors.white),
+                                                  const Gap(12),
+                                                  Text(authService.error ?? 'Failed to delete account'),
+                                                ],
+                                              ),
+                                              backgroundColor: const Color(0xFFEF4444),
+                                              behavior: SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFDC2626),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: isDeleting
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Delete Forever',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLossCard({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const Gap(4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

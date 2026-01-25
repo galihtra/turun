@@ -179,7 +179,6 @@ class AuthService with ChangeNotifier {
       // Get authentication tokens
       final auth = await account.authentication;
       final idToken = auth.idToken;
-      final accessToken = auth.accessToken;
       
       if (idToken == null) {
         AppLogger.error(LogLabel.google, 'ID Token is null');
@@ -234,6 +233,40 @@ class AuthService with ChangeNotifier {
     } catch (e) {
       AppLogger.error(LogLabel.auth, 'Unexpected error during password reset', e);
       _setError('Failed to send password reset email. Please try again.');
+      return false;
+    }
+  }
+
+  // Delete user account permanently
+  // Requires Supabase RPC function 'delete_user_account' to be set up
+  Future<bool> deleteAccount() async {
+    if (_state.isLoading) {
+      AppLogger.warning(LogLabel.auth, 'Delete account already in progress');
+      return false;
+    }
+
+    clearError();
+    _setState(MyState.loading);
+    AppLogger.info(LogLabel.auth, 'Deleting user account...');
+
+    try {
+      // Call Supabase RPC function to delete all user data and auth record
+      await _supabase.rpc('delete_user_account');
+      
+      AppLogger.success(LogLabel.auth, 'User account deleted successfully');
+      
+      // Sign out locally
+      await _supabase.auth.signOut();
+      
+      _setState(MyState.loaded);
+      return true;
+    } on PostgrestException catch (e) {
+      AppLogger.error(LogLabel.auth, 'Database error during account deletion', e);
+      _setError('Failed to delete account. Please try again.');
+      return false;
+    } catch (e) {
+      AppLogger.error(LogLabel.auth, 'Unexpected error during account deletion', e);
+      _setError('An unexpected error occurred. Please try again.');
       return false;
     }
   }
