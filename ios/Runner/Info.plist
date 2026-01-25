@@ -9,10 +9,20 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.392657528338-l6jkm0kah6lm5qsquslpggku02b87ric</string>
+				<string>com.googleusercontent.apps.392657528338-blph4b17l65e38ci1ueefad24ba954iu</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.tehobenk.turun</string>
 			</array>
 		</dict>
 	</array>
+	<key>GIDClientID</key>
+	<string>392657528338-blph4b17l65e38ci1ueefad24ba954iu.apps.googleusercontent.com</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>CFBundleDevelopmentRegion</key>

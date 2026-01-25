@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:io' show Platform;
 
 class StartPage extends StatefulWidget {
   const StartPage({super.key});
@@ -21,14 +22,21 @@ class _StartPageState extends State<StartPage> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  // >>> GANTI dengan Web OAuth Client ID dari Google Cloud (bukan Android/iOS) <<<
+  // Web OAuth Client ID - dipakai untuk serverClientId (untuk mendapatkan idToken)
   static const _webClientId =
-      '392657528338-l6jkm0kah6lm5qsquslpggku02b87ric.apps.googleusercontent.com';
+      '392657528338-rt6ruhra1m7ofgk1r2rav2oneu1usop9.apps.googleusercontent.com';
 
-  // GoogleSignIn hanya dipakai di mobile (Android/iOS)
+  // iOS Client ID - dari Google Cloud Console > iOS Client
+  static const _iosClientId =
+      '392657528338-blph4b17l65e38ci1ueefad24ba954iu.apps.googleusercontent.com';
+
+  // GoogleSignIn configuration
+  // - clientId: iOS-specific client ID (required for native iOS sign-in)
+  // - serverClientId: Web client ID (required to get idToken for Supabase)
   late final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: const ['email', 'profile', 'openid'],
-    serverClientId: _webClientId,
+    clientId: _iosClientId, // This forces native iOS flow
+    serverClientId: _webClientId, // This is needed to get idToken
   );
 
   @override
@@ -92,21 +100,43 @@ class _StartPageState extends State<StartPage> {
 
   Future<void> _googleSignInFlow() async {
     setState(() => _googleSignInLoading = true);
+    
+    // Determine if we should use native flow
+    final bool isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+    print("🔵 [DEBUG] _googleSignInFlow started.");
+    print("🔵 [DEBUG] kIsWeb: $kIsWeb, Platform.isIOS: ${Platform.isIOS}, Platform.isAndroid: ${Platform.isAndroid}");
+    print("🔵 [DEBUG] isMobile: $isMobile");
+    
     try {
-      if (kIsWeb) {
+      if (!isMobile) {
+        print("🔵 [DEBUG] NOT mobile. Executing Supabase Web OAuth.");
         // WEB: tetap pakai OAuth bawaan Supabase (redirect/callback)
         await supabase.auth.signInWithOAuth(OAuthProvider.google);
         return;
       }
 
+      print("🔵 [DEBUG] IS mobile. Executing Native Google SDK.");
+      print("🔵 [DEBUG] GoogleSignIn clientId: $_iosClientId");
+      print("🔵 [DEBUG] GoogleSignIn serverClientId: $_webClientId");
+      
       // MOBILE (Android/iOS): native Google Sign-In → idToken → Supabase
       await _googleSignIn.signOut(); // bersihkan sesi lama (opsional)
+      print("🔵 [DEBUG] Calling _googleSignIn.signIn()...");
+      
       final acct = await _googleSignIn.signIn();
-      if (acct == null) return; // user cancel
+      print("🔵 [DEBUG] signIn() returned: ${acct?.email ?? 'null (cancelled)'}");
+      
+      if (acct == null) {
+        print("🔵 [DEBUG] User cancelled sign-in");
+        return; // user cancel
+      }
 
+      print("🔵 [DEBUG] Getting authentication tokens...");
       final auth = await acct.authentication;
       final idToken = auth.idToken;
       final accessToken = auth.accessToken;
+      print("🔵 [DEBUG] idToken: ${idToken != null ? 'present (${idToken.length} chars)' : 'NULL'}");
+      print("🔵 [DEBUG] accessToken: ${accessToken != null ? 'present' : 'NULL'}");
 
       if (idToken == null) {
         throw Exception(
@@ -114,16 +144,20 @@ class _StartPageState extends State<StartPage> {
         );
       }
 
+      print("🔵 [DEBUG] Calling supabase.auth.signInWithIdToken()...");
       await supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
         accessToken: accessToken,
       );
+      print("🔵 [DEBUG] Supabase signInWithIdToken SUCCESS!");
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Signed in with Google!')));
-    } catch (e) {
+    } catch (e, stack) {
+      print("🔴 [ERROR] Google Sign-In failed: $e");
+      print("🔴 [STACK] $stack");
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

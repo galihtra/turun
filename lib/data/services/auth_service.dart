@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../app/finite_state.dart';
 import '../../app/app_logger.dart';
@@ -122,6 +123,8 @@ class AuthService with ChangeNotifier {
   }
 
   // Google sign in
+  // On mobile (iOS/Android): uses native Google SDK → idToken → Supabase
+  // On web: uses Supabase OAuth redirect
   Future<bool> signInWithGoogle() async {
     if (_state.isLoading) {
       AppLogger.warning(LogLabel.google, 'Google sign in already in progress');
@@ -130,29 +133,79 @@ class AuthService with ChangeNotifier {
 
     clearError();
     _setState(MyState.loading);
-    AppLogger.info(LogLabel.google, 'Starting Google OAuth...');
+    AppLogger.info(LogLabel.google, 'Starting Google Sign-In...');
 
     try {
-      final bool result = await _supabase.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo:
-            kIsWeb ? null : 'io.supabase.tehobenk.turun://login-callback',
-        queryParams: {
-          'prompt': 'select_account',
-        },
-      );
-
-      if (!result) {
-        AppLogger.error(LogLabel.google, 'OAuth returned false');
-        _setError('Failed to initiate Google sign-in');
-        return false;
+      // Check if running on web
+      if (kIsWeb) {
+        AppLogger.info(LogLabel.google, 'Web platform detected, using OAuth flow');
+        final bool result = await _supabase.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: null,
+          queryParams: {'prompt': 'select_account'},
+        );
+        if (!result) {
+          _setError('Failed to initiate Google sign-in');
+          return false;
+        }
+        return true;
       }
 
-      AppLogger.success(LogLabel.google, 'OAuth initiated successfully');
-      // State akan diupdate oleh auth listener di AuthWrapper
+      // Mobile (iOS/Android): Use native Google Sign-In SDK
+      AppLogger.info(LogLabel.google, 'Mobile platform detected, using native SDK');
+      
+      // Import is at top of file
+      final googleSignIn = GoogleSignIn(
+        scopes: const ['email', 'profile', 'openid'],
+        // Web Client ID - required to get idToken for Supabase
+        serverClientId: '392657528338-rt6ruhra1m7ofgk1r2rav2oneu1usop9.apps.googleusercontent.com',
+      );
+      
+      // Sign out first to ensure fresh account selection
+      await googleSignIn.signOut();
+      
+      // Trigger native sign-in dialog
+      AppLogger.info(LogLabel.google, 'Opening native Google sign-in dialog...');
+      final account = await googleSignIn.signIn();
+      
+      if (account == null) {
+        AppLogger.info(LogLabel.google, 'User cancelled sign-in');
+        _setState(MyState.initial);
+        return false;
+      }
+      
+      AppLogger.info(LogLabel.google, 'User selected: ${account.email}');
+      
+      // Get authentication tokens
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+      final accessToken = auth.accessToken;
+      
+      if (idToken == null) {
+        AppLogger.error(LogLabel.google, 'ID Token is null');
+        _setError('Failed to get Google authentication token. Please try again.');
+        return false;
+      }
+      
+      AppLogger.info(LogLabel.google, 'Got tokens, signing in to Supabase...');
+      
+      // Exchange Google tokens with Supabase
+      // Note: Only pass idToken, not accessToken, to avoid nonce mismatch issues
+      await _supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+      );
+      
+      AppLogger.success(LogLabel.google, 'Google sign-in successful!');
+      _setState(MyState.loaded);
       return true;
+      
+    } on AuthException catch (e) {
+      AppLogger.error(LogLabel.google, 'Supabase auth error', e);
+      _setError(e.message);
+      return false;
     } catch (e) {
-      AppLogger.error(LogLabel.google, 'Google OAuth error', e);
+      AppLogger.error(LogLabel.google, 'Google Sign-In error', e);
       _setError('Failed to sign in with Google. Please try again.');
       return false;
     }
