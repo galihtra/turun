@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -85,6 +86,14 @@ class SignUpWidgetState extends State<SignUpWidget> {
     
     AppLogger.debug(LogLabel.google, 'Google sign in button pressed');
     await authService.signInWithGoogle();
+  }
+
+  Future<void> _signInWithApple(AuthService authService) async {
+    // Unfocus keyboard
+    FocusScope.of(context).unfocus();
+    
+    AppLogger.debug(LogLabel.auth, 'Apple sign in button pressed');
+    await authService.signInWithApple();
   }
 
   @override
@@ -200,38 +209,83 @@ class SignUpWidgetState extends State<SignUpWidget> {
                   ],
                 ),
                 SizedBox(height: 16.h),
-                // Google button
+                // Social login buttons
                 Center(
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(18.r),
-                    onTap: authService.isLoading ? null : () => _signInWithGoogle(authService),
-                    child: Container(
-                      height: 56,
-                      width: 56,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF7F8FA),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Google button
+                      InkWell(
                         borderRadius: BorderRadius.circular(18.r),
-                        boxShadow: const [
-                          BoxShadow(
-                            blurRadius: 8,
-                            color: Color(0x11000000),
-                            offset: Offset(0, 2),
+                        onTap: authService.isLoading ? null : () => _signInWithGoogle(authService),
+                        child: Container(
+                          height: 56,
+                          width: 56,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7F8FA),
+                            borderRadius: BorderRadius.circular(18.r),
+                            boxShadow: const [
+                              BoxShadow(
+                                blurRadius: 8,
+                                color: Color(0x11000000),
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        ],
+                          alignment: Alignment.center,
+                          child: authService.isLoading
+                              ? SizedBox(
+                                  width: 20.w,
+                                  height: 20.h,
+                                  child: const CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : SvgPicture.asset(
+                                  AppIcons.google,
+                                  width: 20.w,
+                                  height: 20.h,
+                                ),
+                        ),
                       ),
-                      alignment: Alignment.center,
-                      child: authService.isLoading
-                          ? SizedBox(
-                              width: 20.w,
-                              height: 20.h,
-                              child: const CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : SvgPicture.asset(
-                              AppIcons.google,
-                              width: 20.w,
-                              height: 20.h,
+                      // Apple button (iOS only)
+                      if (Platform.isIOS) ...[
+                        SizedBox(width: 16.w),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(18.r),
+                          onTap: authService.isLoading ? null : () => _signInWithApple(authService),
+                          child: Container(
+                            height: 56,
+                            width: 56,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF7F8FA),
+                              borderRadius: BorderRadius.circular(18.r),
+                              boxShadow: const [
+                                BoxShadow(
+                                  blurRadius: 8,
+                                  color: Color(0x11000000),
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
                             ),
-                    ),
+                            alignment: Alignment.center,
+                            child: authService.isLoading
+                                ? SizedBox(
+                                    width: 20.w,
+                                    height: 20.h,
+                                    child: const CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : SvgPicture.asset(
+                                    AppIcons.apple,
+                                    width: 22.w,
+                                    height: 22.h,
+                                    colorFilter: const ColorFilter.mode(
+                                      Color(0xFF142357),
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 SizedBox(height: 14.h),

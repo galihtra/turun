@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../app/finite_state.dart';
 import '../../app/app_logger.dart';
@@ -206,6 +207,65 @@ class AuthService with ChangeNotifier {
     } catch (e) {
       AppLogger.error(LogLabel.google, 'Google Sign-In error', e);
       _setError('Failed to sign in with Google. Please try again.');
+      return false;
+    }
+  }
+
+  // Apple sign in (iOS only)
+  Future<bool> signInWithApple() async {
+    if (_state.isLoading) {
+      AppLogger.warning(LogLabel.auth, 'Apple sign in already in progress');
+      return false;
+    }
+
+    clearError();
+    _setState(MyState.loading);
+    AppLogger.info(LogLabel.auth, 'Starting Apple Sign-In...');
+
+    try {
+      // Request Apple credential using native SDK
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final idToken = credential.identityToken;
+      if (idToken == null) {
+        AppLogger.error(LogLabel.auth, 'Apple ID Token is null');
+        _setError('Failed to get Apple authentication token. Please try again.');
+        return false;
+      }
+
+      AppLogger.info(LogLabel.auth, 'Got Apple token, signing in to Supabase...');
+
+      // Exchange Apple token with Supabase
+      await _supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.apple,
+        idToken: idToken,
+      );
+
+      AppLogger.success(LogLabel.auth, 'Apple sign-in successful!');
+      _setState(MyState.loaded);
+      return true;
+
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        AppLogger.info(LogLabel.auth, 'User cancelled Apple sign-in');
+        _setState(MyState.initial);
+        return false;
+      }
+      AppLogger.error(LogLabel.auth, 'Apple authorization error', e);
+      _setError('Apple sign-in failed. Please try again.');
+      return false;
+    } on AuthException catch (e) {
+      AppLogger.error(LogLabel.auth, 'Supabase auth error', e);
+      _setError(e.message);
+      return false;
+    } catch (e) {
+      AppLogger.error(LogLabel.auth, 'Apple Sign-In error', e);
+      _setError('Failed to sign in with Apple. Please try again.');
       return false;
     }
   }

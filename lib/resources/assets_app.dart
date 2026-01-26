@@ -18,6 +18,7 @@ class AppLotties {
 }
 
 class AppIcons {
+  static const String apple = '$ICON_PATH/ic_apple.svg';
   static const String google = '$ICON_PATH/ic_google.svg';
   static const String home = '$ICON_PATH/ic_home.svg';
   static const String homeActive = '$ICON_PATH/ic_home_active.svg';
