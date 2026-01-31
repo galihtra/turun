@@ -10,8 +10,6 @@ import '../../model/running/run_session_model.dart';
 import '../../model/running/run_mode.dart';
 import '../../services/directions_service.dart';
 import '../../services/run_tracking_service.dart';
-import '../../services/push_notification_service.dart';
-import '../../services/notification_service.dart';
 import '../../../utils/custom_marker_helper.dart';
 
 class RunningProvider extends ChangeNotifier {
@@ -55,8 +53,6 @@ class RunningProvider extends ChangeNotifier {
 
   // Run tracking properties
   final RunTrackingService _runTrackingService = RunTrackingService();
-  final PushNotificationService _pushNotificationService = PushNotificationService();
-  final NotificationService _notificationService = NotificationService();
   RunSession? _activeRunSession;
   bool _isRunning = false;
   final Set<Polyline> _runRoutePolylines = {};
@@ -140,6 +136,12 @@ class RunningProvider extends ChangeNotifier {
   Set<Polyline> get territoryGuidancePolylines => _territoryGuidancePolylines;
   Set<Marker> get runMarkers => _runMarkers;
   int get currentCheckpointIndex => _currentCheckpointIndex;
+  
+  /// Total number of coins/checkpoints for current territory
+  int get totalCheckpoints => (_checkpointIndices.length - 1).clamp(0, 999);
+  
+  /// Number of coins already collected
+  int get collectedCheckpoints => (_currentCheckpointMapIndex - 1).clamp(0, totalCheckpoints);
 
   // Dynamic getters that work for both modes
   double get runDistance => isLandmarkMode ? _landmarkTotalDistance : _runTrackingService.totalDistance;

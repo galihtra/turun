@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:turun/app/app_logger.dart';
 import 'package:turun/data/providers/landmark/landmark_provider.dart';
 import 'package:turun/data/providers/running/running_provider.dart';
 import 'package:turun/resources/colors_app.dart';
+import 'widgets/planning_dialogs.dart';
 
 class LandmarkRoutePlannerScreen extends StatefulWidget {
   const LandmarkRoutePlannerScreen({super.key});
@@ -22,7 +22,6 @@ class _LandmarkRoutePlannerScreenState
   final Set<Marker> _markers = {};
   final Set<Polyline> _polylines = {};
   double _totalDistance = 0;
-  bool _isFirstTap = true;
 
   @override
   void initState() {
@@ -30,7 +29,6 @@ class _LandmarkRoutePlannerScreenState
     final provider = context.read<LandmarkProvider>();
     if (provider.hasPlannedRoute) {
       _points.addAll(provider.plannedRoutePoints);
-      _isFirstTap = false;
       _updateMapElements();
     }
   }
@@ -53,7 +51,6 @@ class _LandmarkRoutePlannerScreenState
   void _onMapTap(LatLng point) {
     setState(() {
       _points.add(point);
-      _isFirstTap = false;
       _updateMapElements();
     });
   }
@@ -62,7 +59,6 @@ class _LandmarkRoutePlannerScreenState
     if (_points.isNotEmpty) {
       setState(() {
         _points.removeLast();
-        if (_points.isEmpty) _isFirstTap = true;
         _updateMapElements();
       });
     }
@@ -90,7 +86,6 @@ class _LandmarkRoutePlannerScreenState
     if (confirm == true) {
       setState(() {
         _points.clear();
-        _isFirstTap = true;
         _updateMapElements();
       });
     }
@@ -205,7 +200,7 @@ class _LandmarkRoutePlannerScreenState
     }
   }
 
-  void _saveRoute() {
+  Future<void> _saveRoute() async {
     if (_points.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Add at least 2 points to create a route')),
@@ -225,15 +220,38 @@ class _LandmarkRoutePlannerScreenState
       return;
     }
 
-    context.read<LandmarkProvider>().setPlannedRoute(_points);
-    Navigator.pop(context);
+    // ✅ NEW: Check for territory overlap
+    final provider = context.read<LandmarkProvider>();
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Excellent! Your route plan is ready.'),
-        backgroundColor: Colors.green,
-      ),
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
+
+    final overlapTerritory = await provider.checkRouteOverlap(_points);
+    
+    // Close loading indicator
+    if (mounted) Navigator.pop(context);
+
+    if (overlapTerritory != null && mounted) {
+      // Show cool gamified warning
+      PlanningDialogs.showOverlapWarning(context, overlapTerritory);
+      return;
+    }
+
+    if (mounted) {
+      provider.setPlannedRoute(_points);
+      Navigator.pop(context);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Excellent! Your route plan is ready.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   @override

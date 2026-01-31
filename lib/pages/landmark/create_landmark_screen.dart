@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:turun/data/providers/landmark/landmark_provider.dart';
 import 'package:turun/pages/running/run_share_screen.dart';
 import 'package:turun/resources/colors_app.dart';
+import 'widgets/planning_dialogs.dart';
 
 /// Screen for creating a landmark from a completed run
 class CreateLandmarkScreen extends StatefulWidget {
@@ -39,6 +40,18 @@ class _CreateLandmarkScreenState extends State<CreateLandmarkScreen> {
     final savedDuration = landmarkProvider.formattedDuration;
     final savedRoutePoints = List<LatLng>.from(landmarkProvider.routePoints);
     final savedUserAvatarUrl = landmarkProvider.activeRunSession?.userAvatarUrl;
+
+    // ✅ NEW: Final check for territory overlap before creation
+    final overlapTerritory = await landmarkProvider.checkRouteOverlap(savedRoutePoints);
+    if (overlapTerritory != null && mounted) {
+      setState(() => _isCreating = false);
+      PlanningDialogs.showOverlapWarning(
+        context, 
+        overlapTerritory, 
+        mode: WarningMode.completion,
+      );
+      return;
+    }
 
     try {
       final territory = await landmarkProvider.createTerritory(

@@ -151,6 +151,77 @@ class LandmarkProvider extends ChangeNotifier {
     }
   }
 
+  /// ✅ NEW: Check if a planned route overlaps with ANY existing territory
+  /// Returns the territory it overlaps with, or null if clear.
+  Future<Territory?> checkRouteOverlap(List<LatLng> points) async {
+    try {
+      if (_userTerritories.isEmpty) {
+        await loadUserTerritories();
+      }
+
+      const double overlapThreshold = 50.0; // 50 meters overlap limit
+
+      for (final territory in _userTerritories) {
+        if (territory.points.isEmpty) continue;
+
+        // Optimized check: first check distance to territory center
+        // If center is very far away, skip detailed point check
+        double tLat = 0, tLng = 0;
+        for (var tp in territory.points) {
+          tLat += tp.latitude;
+          tLng += tp.longitude;
+        }
+        final centerLat = tLat / territory.points.length;
+        final centerLng = tLng / territory.points.length;
+
+        // Find max radius of territory from center
+        double maxRadius = 0;
+        for (var tp in territory.points) {
+          final d = Geolocator.distanceBetween(centerLat, centerLng, tp.latitude, tp.longitude);
+          if (d > maxRadius) maxRadius = d;
+        }
+
+        // Check if ANY planned point is roughly near the territory circle
+        bool isRoughlyNear = false;
+        for (var p in points) {
+          final distToCenter = Geolocator.distanceBetween(p.latitude, p.longitude, centerLat, centerLng);
+          if (distToCenter < maxRadius + overlapThreshold + 100) { // 100m buffer
+            isRoughlyNear = true;
+            break;
+          }
+        }
+
+        if (!isRoughlyNear) continue;
+
+        // Detailed check: compare every point in route with every point in territory
+        // (For small datasets, this N*M is acceptable in planning phase)
+        for (var p in points) {
+          for (var tp in territory.points) {
+            final distance = Geolocator.distanceBetween(
+              p.latitude,
+              p.longitude,
+              tp.latitude,
+              tp.longitude,
+            );
+
+            if (distance < overlapThreshold) {
+              AppLogger.warning(
+                LogLabel.general,
+                '⚠️ Overlap detected with ${territory.name} at distance ${distance.toStringAsFixed(1)}m',
+              );
+              return territory;
+            }
+          }
+        }
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      AppLogger.error(LogLabel.general, 'Failed to check route overlap', e, stackTrace);
+      return null;
+    }
+  }
+
   /// Start a new landmark run
   Future<bool> startLandmarkRun(LatLng currentLocation) async {
     if (_isRunning) {

@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:turun/data/providers/landmark/landmark_provider.dart';
 import 'package:turun/resources/styles_app.dart';
 import 'package:turun/resources/values_app.dart';
+import 'package:turun/resources/colors_app.dart';
+import '../../landmark/landmark_run_result_screen.dart';
 
 class CompletionMessageCard extends StatelessWidget {
   final bool territoryConquered;
@@ -25,6 +27,8 @@ class CompletionMessageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (territoryConquered) {
       return _buildConqueredMessage(context);
+    } else if (territoryId == -1) {
+      return _buildLandmarkCompleteMessage(context);
     } else {
       return _buildNotConqueredMessage();
     }
@@ -162,6 +166,99 @@ class CompletionMessageCard extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLandmarkCompleteMessage(BuildContext context) {
+    final provider = context.read<LandmarkProvider>();
+    final session = provider.activeRunSession;
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.green[500]!.withValues(alpha: 0.3),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.flag_rounded,
+              color: Color(0xFF00E676),
+              size: 28,
+            ),
+          ),
+          const Gap(16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '⛰️ LANDMARK QUEST DONE!',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Gap(4),
+                Text(
+                  'Your route is ready to be immortalized. Claim this territory now!',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 13,
+                  ),
+                ),
+                const Gap(12),
+                InkWell(
+                  onTap: () {
+                    if (session != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => LandmarkRunResultScreen(session: session),
+                        ),
+                      );
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.5)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_location_alt, color: Color(0xFF00E676), size: 18),
+                        Gap(8),
+                        Text(
+                          'Register Landmark',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

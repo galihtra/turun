@@ -13,7 +13,7 @@ import 'widgets/mode_selector.dart';
 import 'widgets/start_landmark_button.dart';
 import 'widgets/start_run_button.dart';
 import 'sections/map_controls.dart';
-import 'sections/territory_collision_dialog.dart';
+import '../../pages/landmark/widgets/planning_dialogs.dart';
 import 'run_tracking_screen.dart';
 import 'helpers/map_helper.dart';
 import 'package:turun/resources/colors_app.dart';
@@ -151,9 +151,14 @@ class RunningPageState extends State<RunningPage> {
     final nearbyTerritory = await landmarkProvider.checkTerritoryProximity(currentLocation);
 
     if (nearbyTerritory != null && mounted) {
-      await TerritoryCollisionDialog.show(context, nearbyTerritory);
+      // ✅ Use new cool gamified warning
+      final wantToChallenge = await PlanningDialogs.showOverlapWarning(
+        context, 
+        nearbyTerritory,
+        mode: WarningMode.proximity,
+      );
 
-      if (mounted) {
+      if (wantToChallenge && mounted) {
         runProvider.switchMode(RunMode.territory);
         runProvider.selectTerritory(nearbyTerritory);
 

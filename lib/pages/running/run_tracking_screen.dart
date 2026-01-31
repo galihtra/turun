@@ -144,16 +144,11 @@ class _RunTrackingScreenState extends State<RunTrackingScreen>
           // Determine which provider to use based on mode
           final isLandmarkMode = runProvider.isLandmarkMode;
 
-          // ✅ Calculate coins collected and total (only for territory mode)
-          // For landmark mode, these values are not used (no checkpoints)
-          final totalCoins = isLandmarkMode
-              ? 0
-              : (runProvider.selectedTerritory?.points.length ?? 1) - 1;
-          final coinsCollected = isLandmarkMode
-              ? 0
-              : (runProvider.currentCheckpointIndex - 1).clamp(0, totalCoins);
+          // ✅ Use decoupled coins/checkpoints from provider
+          final totalCoins = isLandmarkMode ? 0 : runProvider.totalCheckpoints;
+          final coinsCollected = isLandmarkMode ? 0 : runProvider.collectedCheckpoints;
           final allCoinsCollected =
-              !isLandmarkMode && coinsCollected >= totalCoins;
+              !isLandmarkMode && coinsCollected >= totalCoins && totalCoins > 0;
 
           return Stack(
             children: [
