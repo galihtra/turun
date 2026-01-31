@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -207,77 +208,59 @@ class SignInWidgetState extends State<SignInWidget> {
                 ),
                 SizedBox(height: 16.h),
                 Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Column(
                     children: [
                       // Google button
-                      InkWell(
-                        borderRadius: BorderRadius.circular(18.r),
-                        onTap: authService.isLoading ? null : () => _signInWithGoogle(authService),
-                        child: Container(
-                          height: 56,
-                          width: 56,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF7F8FA),
-                            borderRadius: BorderRadius.circular(18.r),
-                            boxShadow: const [
-                              BoxShadow(
-                                blurRadius: 8,
-                                color: Color(0x11000000),
-                                offset: Offset(0, 2),
+                      Container(
+                        width: double.infinity,
+                        height: 50.h,
+                        margin: EdgeInsets.symmetric(horizontal: 4.w),
+                        child: OutlinedButton(
+                          onPressed: authService.isLoading ? null : () => _signInWithGoogle(authService),
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            side: const BorderSide(color: Color(0xFFE0E0E0)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SvgPicture.asset(
+                                AppIcons.google,
+                                width: 20.w,
+                                height: 20.w,
+                              ),
+                              SizedBox(width: 12.w),
+                              Text(
+                                'Sign in with Google',
+                                style: AppStyles.body2Medium.copyWith(
+                                  color: Colors.black87,
+                                  fontSize: 16.sp,
+                                ),
                               ),
                             ],
                           ),
-                          alignment: Alignment.center,
-                          child: authService.isLoading
-                              ? SizedBox(
-                                  width: 20.w,
-                                  height: 20.w,
-                                  child: const CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : SvgPicture.asset(
-                                  AppIcons.google,
-                                  width: 20.w,
-                                  height: 20.w,
-                                ),
                         ),
                       ),
+                      
                       // Apple button (iOS only)
                       if (Platform.isIOS) ...[
-                        SizedBox(width: 16.w),
-                        InkWell(
-                          borderRadius: BorderRadius.circular(18.r),
-                          onTap: authService.isLoading ? null : () => _signInWithApple(authService),
-                          child: Container(
-                            height: 56,
-                            width: 56,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF7F8FA),
-                              borderRadius: BorderRadius.circular(18.r),
-                              boxShadow: const [
-                                BoxShadow(
-                                  blurRadius: 8,
-                                  color: Color(0x11000000),
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: authService.isLoading
-                                ? SizedBox(
-                                    width: 20.w,
-                                    height: 20.w,
-                                    child: const CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : SvgPicture.asset(
-                                    AppIcons.apple,
-                                    width: 22.w,
-                                    height: 22.w,
-                                    colorFilter: const ColorFilter.mode(
-                                      Color(0xFF142357),
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
+                        SizedBox(height: 12.h),
+                        Container(
+                          width: double.infinity,
+                          height: 50.h,
+                          margin: EdgeInsets.symmetric(horizontal: 4.w),
+                          child: SignInWithAppleButton(
+                          onPressed: () {
+                          if (!authService.isLoading) _signInWithApple(authService);
+                          },
+                          style: SignInWithAppleButtonStyle.black,
+                            height: 50.h,
+                            borderRadius: BorderRadius.circular(8.r),
+                            text: 'Sign in with Apple',
                           ),
                         ),
                       ],
