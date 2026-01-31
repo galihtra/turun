@@ -141,6 +141,7 @@ class _CreateLandmarkScreenState extends State<CreateLandmarkScreen> {
                   routePoints: savedRoutePoints,
                   isLandmark: true,
                   territoryName: territory.name,
+                  territoryId: territory.id,
                   userAvatarUrl: savedUserAvatarUrl,
                 ),
               ),

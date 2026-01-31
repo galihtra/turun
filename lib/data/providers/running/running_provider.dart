@@ -28,6 +28,7 @@ class RunningProvider extends ChangeNotifier {
   // Territories properties
   List<Territory> _territories = [];
   final Set<Polygon> _polygons = {};
+  final Set<Polyline> _territoryPolylines = {}; // ✅ NEW: For rendering territory routes
   final Set<Marker> _markers = {};
   bool _isLoadingTerritories = false;
   String? _territoriesError;
@@ -65,6 +66,11 @@ class RunningProvider extends ChangeNotifier {
   bool _hasLeftStartPoint = false;
   DateTime? _lastFinishLogTime;
   bool _runCompleted = false; // ✅ NEW: Flag to prevent multiple completions
+  
+  // ✅ Decoupling: Route Points vs Gameplay Checkpoints
+  List<int> _checkpointIndices = []; // Indices of points that are coins
+  int _currentCheckpointMapIndex = 0; // Current index WITHIN _checkpointIndices
+
 
   // ✅ NEW: GPS stream specifically for running
   StreamSubscription<Position>? _runGpsStream;
@@ -85,6 +91,7 @@ class RunningProvider extends ChangeNotifier {
   // Territories getters
   List<Territory> get territories => _territories;
   Set<Polygon> get polygons => _polygons;
+  Set<Polyline> get territoryPolylines => _territoryPolylines; // ✅ NEW
   Set<Marker> get markers => _markers;
   bool get isLoadingTerritories => _isLoadingTerritories;
   String? get territoriesError => _territoriesError;
@@ -140,12 +147,12 @@ class RunningProvider extends ChangeNotifier {
 
   /// Get progress percentage through territory route
   double get routeProgress {
-    if (_selectedTerritory == null || _selectedTerritory!.points.isEmpty) return 0;
+    if (_selectedTerritory == null || _checkpointIndices.length <= 1) return 0;
     
-    final totalCoins = _selectedTerritory!.points.length - 1;
+    final totalCoins = _checkpointIndices.length - 1; // Exclude start
     if (totalCoins <= 0) return 0;
     
-    final coinsCollected = (_currentCheckpointIndex - 1).clamp(0, totalCoins);
+    final coinsCollected = (_currentCheckpointMapIndex - 1).clamp(0, totalCoins);
     
     return (coinsCollected / totalCoins) * 100;
   }
@@ -324,51 +331,83 @@ class RunningProvider extends ChangeNotifier {
 
   void _generatePolygons() {
     _polygons.clear();
+    _territoryPolylines.clear();
     _markers.clear();
 
     for (var territory in _territories) {
       if (territory.points.isEmpty) continue;
 
-      Color fillColor;
-      Color strokeColor;
+      Color color;
       int strokeWidth = 2;
 
       // Determine base color (owner color or grey for unclaimed)
       if (territory.isOwned) {
-        // Use owner's profile color if available
         if (territory.ownerColor != null) {
-          final ownerColor = _colorFromHex(territory.ownerColor!);
-          fillColor = ownerColor.withValues(alpha: 0.3);
-          strokeColor = ownerColor;
+          color = _colorFromHex(territory.ownerColor!);
         } else {
-          // Fallback to blue if no color specified
-          fillColor = Colors.blue.withValues(alpha: 0.2);
-          strokeColor = Colors.blue;
+          color = Colors.blue;
         }
       } else {
-        // Unclaimed territory (grey)
-        fillColor = Colors.grey.withValues(alpha: 0.15);
-        strokeColor = Colors.grey.shade400;
+        color = Colors.grey.shade400;
       }
 
-      // If selected, increase stroke width and add slight brightness
+      // Selection styling
       if (_selectedTerritory?.id == territory.id) {
-        strokeWidth = 5; // Thicker border for selected
-        // Increase opacity slightly for selected
-        fillColor = fillColor.withValues(alpha: 0.4);
+        strokeWidth = 5;
       }
 
-      final polygon = Polygon(
-        polygonId: PolygonId('territory_${territory.id}'),
-        points: territory.points,
-        fillColor: fillColor,
-        strokeColor: strokeColor,
-        strokeWidth: strokeWidth,
-        consumeTapEvents: true,
-        onTap: () => selectTerritory(territory),
+      // Always add Polyline to ensure it follows the route perfectly
+      _territoryPolylines.add(
+        Polyline(
+          polylineId: PolylineId('territory_line_${territory.id}'),
+          points: territory.points,
+          color: color,
+          width: strokeWidth + 2,
+          startCap: Cap.roundCap,
+          endCap: Cap.roundCap,
+          jointType: JointType.round,
+        ),
       );
 
-      _polygons.add(polygon);
+      // Check if we should render a polygon fill
+      // System territories (unowned) are always areas. 
+      // User landmarks are polygons only if they form a loop.
+      bool isLoop = false;
+      if (territory.points.length >= 3) {
+        final dist = Geolocator.distanceBetween(
+          territory.points.first.latitude,
+          territory.points.first.longitude,
+          territory.points.last.latitude,
+          territory.points.last.longitude,
+        );
+        isLoop = dist < 40; // Within 40 meters
+      }
+
+      if (!territory.isOwned || isLoop) {
+        final polygon = Polygon(
+          polygonId: PolygonId('territory_${territory.id}'),
+          points: territory.points,
+          fillColor: color.withValues(alpha: 0.2),
+          strokeColor: color.withValues(alpha: 0.0), // No border for polygon to avoid stretching lines
+          strokeWidth: 0,
+          consumeTapEvents: true,
+          onTap: () => selectTerritory(territory),
+        );
+        _polygons.add(polygon);
+      } else {
+        // If not a loop, still add an invisible polygon for tap detection
+        _polygons.add(
+          Polygon(
+            polygonId: PolygonId('territory_tap_${territory.id}'),
+            points: territory.points,
+            fillColor: Colors.transparent,
+            strokeColor: Colors.transparent,
+            strokeWidth: 0,
+            consumeTapEvents: true,
+            onTap: () => selectTerritory(territory),
+          ),
+        );
+      }
 
       if (_selectedTerritory?.id == territory.id &&
           territory.points.isNotEmpty &&
@@ -394,8 +433,47 @@ class RunningProvider extends ChangeNotifier {
         LogLabel.general, 'Territory selected: ${territory.name ?? territory.id}');
 
     _selectedTerritory = territory;
+    _calculateCheckpointIndices(); // ✅ Calculate coins for this territory
     _generatePolygons();
     notifyListeners();
+  }
+
+  /// ✅ Decouple route points from coins for better gameplay
+  void _calculateCheckpointIndices() {
+    if (_selectedTerritory == null || _selectedTerritory!.points.isEmpty) {
+      _checkpointIndices = [];
+      return;
+    }
+
+    final points = _selectedTerritory!.points;
+    _checkpointIndices = [0]; // Always start with index 0
+    
+    if (points.length < 2) return;
+
+    int lastIndex = 0;
+    const double minSpacing = 80.0; // Minimum 80 meters between coins
+
+    for (int i = 1; i < points.length; i++) {
+      final distance = Geolocator.distanceBetween(
+        points[lastIndex].latitude,
+        points[lastIndex].longitude,
+        points[i].latitude,
+        points[i].longitude,
+      );
+
+      // Add checkpoint if far enough or it's the last point
+      if (distance >= minSpacing || i == points.length - 1) {
+        // Don't add if it's too close to the very end (the start point loop-back)
+        // unless it is the last point
+        _checkpointIndices.add(i);
+        lastIndex = i;
+      }
+    }
+
+    AppLogger.info(
+      LogLabel.general,
+      '🎮 Gameplay Decoupling: ${points.length} route points -> ${_checkpointIndices.length} coins',
+    );
   }
 
   Future<void> startNavigation(Territory territory) async {
@@ -785,6 +863,7 @@ class RunningProvider extends ChangeNotifier {
 
         // ✅ Reset ALL checkpoint progress flags
         _currentCheckpointIndex = 1;
+        _currentCheckpointMapIndex = 1; // ✅ Start from first filtered coin
         _hasLeftStartPoint = false;
         _lastFinishLogTime = null;
         _runCompleted = false; // ✅ CRITICAL: Reset completion flag
@@ -866,7 +945,15 @@ class RunningProvider extends ChangeNotifier {
     for (int i = startIndex; i < points.length; i++) {
       remainingRoutePoints.add(points[i]);
     }
-    remainingRoutePoints.add(points.first);
+    // Only close the loop if it's a closed territory
+    // We can check if it's a loop like in LandmarkProvider
+    final distToStart = Geolocator.distanceBetween(
+      points.first.latitude, points.first.longitude,
+      points.last.latitude, points.last.longitude
+    );
+    if (distToStart < 40) {
+      remainingRoutePoints.add(points.first);
+    }
 
     if (remainingRoutePoints.length >= 2) {
       final remainingPolyline = Polyline(
@@ -881,8 +968,9 @@ class RunningProvider extends ChangeNotifier {
     }
 
     // Create NEXT CHECKPOINT indicator with road routing
-    if (_currentLatLng != null && _currentCheckpointIndex < points.length) {
-      final nextCheckpoint = points[_currentCheckpointIndex.clamp(0, points.length - 1)];
+    if (_currentLatLng != null && _currentCheckpointMapIndex < _checkpointIndices.length) {
+      final nextCheckpointPointIndex = _checkpointIndices[_currentCheckpointMapIndex];
+      final nextCheckpoint = points[nextCheckpointPointIndex];
 
       // Get road route from current position to next checkpoint
       final routePoints = await _getDirectionsRoute(_currentLatLng!, nextCheckpoint);
@@ -929,8 +1017,8 @@ class RunningProvider extends ChangeNotifier {
     }
 
     final points = _selectedTerritory!.points;
-    final totalCoins = points.length - 1;
-    final hasCompletedAllCheckpoints = _currentCheckpointIndex > totalCoins;
+    final totalCoins = _checkpointIndices.length - 1;
+    final hasCompletedAllCheckpoints = _currentCheckpointMapIndex > totalCoins;
     
     AppLogger.info(LogLabel.general, '📍 Creating markers for ${points.length} points...');
     AppLogger.info(LogLabel.general, '   Current checkpoint: $_currentCheckpointIndex');
@@ -968,23 +1056,22 @@ class RunningProvider extends ChangeNotifier {
       AppLogger.info(LogLabel.general, '   ✅ START marker created');
     }
 
-    // Checkpoint coins (skip index 0, only show uncollected)
-    for (int i = 1; i < points.length; i++) {
-      if (i < _currentCheckpointIndex) {
-        AppLogger.debug(LogLabel.general, '   ⏭️ Coin $i already collected, skipping');
+    // Checkpoint coins (using filtered indices)
+    for (int m = 1; m < _checkpointIndices.length; m++) {
+      if (m < _currentCheckpointMapIndex) {
         continue;
       }
       
-      AppLogger.debug(LogLabel.general, '   Creating Coin $i...');
-      final coinIcon = await CustomMarkerHelper.createCheckpointCoin(i);
+      final pointIndex = _checkpointIndices[m];
+      final coinIcon = await CustomMarkerHelper.createCheckpointCoin(m);
 
       final marker = Marker(
-        markerId: MarkerId('checkpoint_$i'),
-        position: points[i],
+        markerId: MarkerId('checkpoint_$m'),
+        position: points[pointIndex],
         icon: coinIcon,
         infoWindow: InfoWindow(
-          title: 'Checkpoint $i',
-          snippet: '${(i / points.length * 100).toStringAsFixed(0)}% complete',
+          title: 'Checkpoint $m',
+          snippet: '${(m / (_checkpointIndices.length - 1) * 100).toStringAsFixed(0)}% complete',
         ),
       );
 
@@ -1006,7 +1093,6 @@ class RunningProvider extends ChangeNotifier {
     if (points.isEmpty) return;
     
     final startPoint = points.first;
-    final totalCoins = points.length - 1;
     
     // Calculate distance to START point
     final distanceToStart = Geolocator.distanceBetween(
@@ -1023,9 +1109,10 @@ class RunningProvider extends ChangeNotifier {
     }
     
     // STEP 2: Check for coin collection
-    if (_currentCheckpointIndex >= 1 && _currentCheckpointIndex <= totalCoins) {
-      final nextCoinIndex = _currentCheckpointIndex;
-      final coinPosition = points[nextCoinIndex];
+    if (_currentCheckpointMapIndex >= 1 && _currentCheckpointMapIndex < _checkpointIndices.length) {
+      final nextCoinMapIndex = _currentCheckpointMapIndex;
+      final pointIndex = _checkpointIndices[nextCoinMapIndex];
+      final coinPosition = points[pointIndex];
       
       final distanceToCoin = Geolocator.distanceBetween(
         _currentLatLng!.latitude,
@@ -1036,30 +1123,32 @@ class RunningProvider extends ChangeNotifier {
       
       AppLogger.debug(
         LogLabel.general,
-        '📏 Distance to coin $nextCoinIndex: ${distanceToCoin.toStringAsFixed(1)}m',
+        '📏 Distance to coin $nextCoinMapIndex (Point $pointIndex): ${distanceToCoin.toStringAsFixed(1)}m',
       );
       
       // Within 25 meters = coin collected
       if (distanceToCoin <= 25) {
         AppLogger.success(
           LogLabel.general,
-          '🪙 COIN $nextCoinIndex COLLECTED! (${distanceToCoin.toStringAsFixed(0)}m)',
+          '🪙 COIN $nextCoinMapIndex COLLECTED! (${distanceToCoin.toStringAsFixed(0)}m)',
         );
 
-        _currentCheckpointIndex++;
+        _currentCheckpointMapIndex++;
+        // Also update regular index for backward compatibility or other logic
+        _currentCheckpointIndex = pointIndex;
 
         // Refresh markers asynchronously
         _refreshMarkersAsync();
 
         AppLogger.info(
           LogLabel.general,
-          '📊 Progress: ${routeProgress.toStringAsFixed(0)}% (${_currentCheckpointIndex - 1}/$totalCoins coins)',
+          '📊 Progress: ${routeProgress.toStringAsFixed(0)}% (${_currentCheckpointMapIndex - 1}/${_checkpointIndices.length - 1} coins)',
         );
       }
     }
     
     // STEP 3: Check for FINISH
-    final allCoinsCollected = _currentCheckpointIndex > totalCoins;
+    final allCoinsCollected = _currentCheckpointMapIndex >= _checkpointIndices.length;
     
     if (allCoinsCollected && _hasLeftStartPoint && !_runCompleted) {
       if (distanceToStart <= 25) {
@@ -1098,8 +1187,8 @@ class RunningProvider extends ChangeNotifier {
     _territoryGuidancePolylines.clear();
     
     final points = _selectedTerritory!.points;
-    final totalCoins = points.length - 1;
-    final allCoinsCollected = _currentCheckpointIndex > totalCoins;
+    final totalCoins = _checkpointIndices.length - 1;
+    final allCoinsCollected = _currentCheckpointMapIndex > totalCoins;
 
     if (allCoinsCollected) {
       // Show route back to START
@@ -1142,9 +1231,10 @@ class RunningProvider extends ChangeNotifier {
         _territoryGuidancePolylines.add(remainingPolyline);
       }
 
-      // Next checkpoint line
-      if (_currentLatLng != null && _currentCheckpointIndex < points.length) {
-        final nextCheckpoint = points[_currentCheckpointIndex];
+      // Next checkpoint line (point to the next FILTERED coin)
+      if (_currentLatLng != null && _currentCheckpointMapIndex < _checkpointIndices.length) {
+        final nextCheckpointPointIndex = _checkpointIndices[_currentCheckpointMapIndex];
+        final nextCheckpoint = points[nextCheckpointPointIndex];
         final nextCheckpointLine = Polyline(
           polylineId: const PolylineId('next_checkpoint_line'),
           points: [_currentLatLng!, nextCheckpoint],

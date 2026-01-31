@@ -222,6 +222,29 @@ class NotificationService {
     }
   }
 
+  /// Generate territory created notification (Initial creation of landmark)
+  Future<void> generateTerritoryCreatedNotification({
+    required String userId,
+    required int territoryId,
+    required String territoryName,
+  }) async {
+    try {
+      await _supabase.from('notifications').insert({
+        'user_id': userId,
+        'title': '🏗️ TERRITORY CREATED!',
+        'message':
+            'Selamat! Landmark baru "$territoryName" telah berhasil didaftarkan sebagai Territory-mu!',
+        'type': 'territoryCreated',
+        'territory_id': territoryId,
+        'territory_name': territoryName,
+      });
+
+      AppLogger.success(_logLabel, 'Created territory created notification for $territoryName');
+    } catch (e) {
+      AppLogger.error(_logLabel, 'Error creating territory created notification', e);
+    }
+  }
+
   /// Generate run completed without territory conquest notification
   /// User ran in someone else's territory but didn't claim it
   Future<void> generateRunCompletedNoConquestNotification({

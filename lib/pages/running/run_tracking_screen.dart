@@ -171,7 +171,7 @@ class _RunTrackingScreenState extends State<RunTrackingScreen>
                 rotateGesturesEnabled: false,
                 polygons: isLandmarkMode ? {} : runProvider.polygons,
                 polylines: isLandmarkMode
-                    ? landmarkProvider.routePolylines
+                    ? _buildLandmarkPolylines(landmarkProvider, userColor)
                     : _buildAllPolylines(runProvider, userColor),
                 markers: isLandmarkMode
                     ? landmarkProvider.markers
@@ -324,6 +324,38 @@ class _RunTrackingScreenState extends State<RunTrackingScreen>
         Navigator.pop(context);
       }
     }
+  }
+
+  // Build landmark polylines: planned ghost route + actual run route
+  Set<Polyline> _buildLandmarkPolylines(LandmarkProvider provider, Color userColor) {
+    final polylines = <Polyline>{...provider.routePolylines};
+
+    // Add planned ghost route if exists
+    if (provider.hasPlannedRoute) {
+      polylines.add(
+        Polyline(
+          polylineId: const PolylineId('planned_ghost_route'),
+          points: provider.plannedRoutePoints,
+          color: Colors.blue.withValues(alpha: 0.3),
+          width: 8,
+          patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+          zIndex: 0, // Draw below actual run
+        ),
+      );
+    }
+    
+    // Ensure actual run route is on top and correct color
+    final runPolylines = provider.routePolylines.map((p) {
+      if (p.polylineId.value == 'landmark_route') {
+        return p.copyWith(
+            colorParam: userColor,
+            zIndexParam: 10,
+        );
+      }
+      return p;
+    });
+
+    return {...polylines, ...runPolylines};
   }
 
   // Build all polylines: guidance + user's actual route

@@ -4,6 +4,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/app/app_logger.dart';
+import 'package:turun/data/services/notification_service.dart';
+import 'package:turun/data/services/push_notification_service.dart';
+import 'package:turun/data/services/run_tracking_service.dart';
 
 import '../../model/territory/territory_model.dart';
 import '../../model/running/run_session_model.dart';
@@ -12,6 +15,9 @@ import '../../model/running/run_session_model.dart';
 /// Handles free running without territory boundaries
 class LandmarkProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final NotificationService _notificationService = NotificationService();
+  final PushNotificationService _pushNotificationService = PushNotificationService();
+  final RunTrackingService _runTrackingService = RunTrackingService();
 
   // Landmark run tracking
   final List<LatLng> _routePoints = [];
@@ -34,10 +40,16 @@ class LandmarkProvider extends ChangeNotifier {
   final Set<Polyline> _routePolylines = {};
   final Set<Marker> _markers = {};
 
+  // Planned Route (Pre-run)
+  List<LatLng> _plannedRoutePoints = [];
+  bool get hasPlannedRoute => _plannedRoutePoints.isNotEmpty;
+  List<LatLng> get plannedRoutePoints => List.unmodifiable(_plannedRoutePoints);
+
   // All user-created territories (for display on global map)
   List<Territory> _userTerritories = [];
   bool _isLoadingTerritories = false;
   final Set<Polygon> _territoryPolygons = {};
+  final Set<Polyline> _territoryPolylines = {}; // ✅ NEW
 
   // Constants
   static const double minDistanceMeters = 500.0; // Minimum 500m for valid landmark
@@ -58,6 +70,7 @@ class LandmarkProvider extends ChangeNotifier {
   List<Territory> get userTerritories => _userTerritories;
   bool get isLoadingTerritories => _isLoadingTerritories;
   Set<Polygon> get territoryPolygons => _territoryPolygons;
+  Set<Polyline> get territoryPolylines => _territoryPolylines; // ✅ NEW
 
   /// Current pace (min/km)
   double get currentPace {
@@ -389,6 +402,18 @@ class LandmarkProvider extends ChangeNotifier {
       _isRunning = false;
 
       AppLogger.success(LogLabel.general, 'Landmark run completed');
+
+      // Show push notification
+      await _pushNotificationService.showRunCompletedNotification(
+        title: '🏁 LANDMARK SELESAI!',
+        body: 'Hebat! Kamu telah menempuh ${(finalDistance / 1000).toStringAsFixed(2)} km. Daftarkan landmark ini sebagai territory-mu sekarang!',
+        data: {
+          'type': 'landmarkRunCompleted',
+          'session_id': _activeRunSession!.id,
+          'distance': finalDistance,
+        },
+      );
+
       notifyListeners();
 
       return _activeRunSession;
@@ -487,6 +512,24 @@ class LandmarkProvider extends ChangeNotifier {
 
       AppLogger.success(LogLabel.general, 'Territory created from landmark: ${territory.name}');
 
+      // Show push notification for landmark creation
+      await _pushNotificationService.showRunCompletedNotification(
+        title: '🏗️ TERRITORY DIKLAIM!',
+        body: 'Selamat! Landmark baru "${territory.name}" kini resmi menjadi wilayah kekuasaanmu!',
+        data: {
+          'type': 'territoryCreated',
+          'territory_id': territory.id,
+          'territory_name': territory.name,
+        },
+      );
+
+      // Save to notification history
+      await _notificationService.generateTerritoryCreatedNotification(
+        userId: userId,
+        territoryId: territory.id,
+        territoryName: territory.name ?? 'New Landmark',
+      );
+
       // ✅ UPDATE: Link the run session to the newly created territory
       // This ensures the owner's run appears in the leaderboard
       if (_activeRunSession != null) {
@@ -526,23 +569,39 @@ class LandmarkProvider extends ChangeNotifier {
     }
   }
 
+  /// Update territory name and description
+  Future<bool> updateTerritoryDetails({
+    required int territoryId,
+    required String name,
+    required String description,
+  }) async {
+    try {
+      final now = DateTime.now();
+      await _supabase.from('territories').update({
+        'name': name,
+        'region': description,
+        'updated_at': now.toIso8601String(),
+      }).eq('id', territoryId);
+
+      AppLogger.success(LogLabel.general, 'Territory $territoryId updated: $name');
+      return true;
+    } catch (e, stackTrace) {
+      AppLogger.error(LogLabel.general, 'Failed to update territory details', e, stackTrace);
+      return false;
+    }
+  }
+
   // ==================== HELPER METHODS ====================
 
   /// Simplify route points for territory creation
   /// Reduces the number of points while maintaining route shape
   List<LatLng> _simplifyRoutePoints(List<LatLng> points) {
-    if (points.length <= 10) return points; // Already simple enough
+    if (points.length <= 20) return points; // Already simple enough
 
-    // Target: ~8-15 checkpoints for a good gameplay experience
-    // Minimum distance between checkpoints based on total distance
-    final totalDistance = _totalDistance;
-    final targetCheckpoints = totalDistance < 2000
-        ? 8   // Short route: 8 checkpoints
-        : totalDistance < 5000
-            ? 12  // Medium route: 12 checkpoints
-            : 15; // Long route: 15 checkpoints
-
-    final minDistanceBetweenPoints = totalDistance / targetCheckpoints;
+    // Target: High fidelity visualization + fun checkpoint density
+    // We keep a point roughly every 12-15 meters.
+    // This allows the visual line to follow road curves perfectly.
+    const double targetInterval = 12.0; 
 
     final simplified = <LatLng>[points.first]; // Always include start
     LatLng lastIncluded = points.first;
@@ -555,17 +614,21 @@ class LandmarkProvider extends ChangeNotifier {
         points[i].longitude,
       );
 
-      if (distance >= minDistanceBetweenPoints) {
+      // Only include point if it's far enough from the last one
+      if (distance >= targetInterval) {
         simplified.add(points[i]);
         lastIncluded = points[i];
       }
     }
 
-    simplified.add(points.last); // Always include end
+    // Always include the last point to close the route accurately
+    if (simplified.last != points.last) {
+      simplified.add(points.last);
+    }
 
     AppLogger.info(
       LogLabel.general,
-      'Simplified route: ${points.length} points → ${simplified.length} checkpoints',
+      'Simplified route: ${points.length} points → ${simplified.length} points (Fidelity focused)',
     );
 
     return simplified;
@@ -617,22 +680,49 @@ class LandmarkProvider extends ChangeNotifier {
   /// Generate polygons for user territories to display on map
   void _generateTerritoryPolygons() {
     _territoryPolygons.clear();
+    _territoryPolylines.clear();
 
     for (final territory in _userTerritories) {
-      if (territory.points.length < 3) continue;
+      if (territory.points.isEmpty) continue;
 
-      // Create a polygon from the territory points
       final color = _parseColor(territory.ownerColor);
 
-      _territoryPolygons.add(
-        Polygon(
-          polygonId: PolygonId('user_territory_${territory.id}'),
+      // ✅ ADD: Polyline to follow route exactly
+      _territoryPolylines.add(
+        Polyline(
+          polylineId: PolylineId('user_territory_line_${territory.id}'),
           points: territory.points,
-          strokeColor: color,
-          strokeWidth: 3,
-          fillColor: color.withValues(alpha: 0.2),
+          color: color,
+          width: 3,
+          startCap: Cap.roundCap,
+          endCap: Cap.roundCap,
+          jointType: JointType.round,
         ),
       );
+
+      // Check if it's a loop for Polygon fill
+      bool isLoop = false;
+      if (territory.points.length >= 3) {
+        final dist = Geolocator.distanceBetween(
+          territory.points.first.latitude,
+          territory.points.first.longitude,
+          territory.points.last.latitude,
+          territory.points.last.longitude,
+        );
+        isLoop = dist < 40;
+      }
+
+      if (isLoop) {
+        _territoryPolygons.add(
+          Polygon(
+            polygonId: PolygonId('user_territory_${territory.id}'),
+            points: territory.points,
+            strokeColor: Colors.transparent, // Border handled by polyline
+            strokeWidth: 0,
+            fillColor: color.withValues(alpha: 0.2),
+          ),
+        );
+      }
     }
   }
 
@@ -665,6 +755,20 @@ class LandmarkProvider extends ChangeNotifier {
     _routePolylines.clear();
     _markers.clear();
     _activeRunSession = null;
+    notifyListeners();
+  }
+
+  // ==================== PLANNED ROUTE METHODS ====================
+
+  /// Set the planned route points
+  void setPlannedRoute(List<LatLng> points) {
+    _plannedRoutePoints = List.from(points);
+    notifyListeners();
+  }
+
+  /// Clear the planned route
+  void clearPlannedRoute() {
+    _plannedRoutePoints.clear();
     notifyListeners();
   }
 

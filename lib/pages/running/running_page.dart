@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:turun/app/app_logger.dart';
+import 'package:turun/pages/landmark/landmark_route_planner_screen.dart';
 import '../../data/providers/running/running_provider.dart';
 import '../../data/providers/landmark/landmark_provider.dart';
 import '../../data/model/running/run_mode.dart';
@@ -15,6 +16,7 @@ import 'sections/map_controls.dart';
 import 'sections/territory_collision_dialog.dart';
 import 'run_tracking_screen.dart';
 import 'helpers/map_helper.dart';
+import 'package:turun/resources/colors_app.dart';
 
 class RunningPage extends StatefulWidget {
   const RunningPage({super.key});
@@ -223,11 +225,71 @@ class RunningPageState extends State<RunningPage> {
     }
   }
 
+  void _openRoutePlanner() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LandmarkRoutePlannerScreen(),
+      ),
+    );
+  }
+
+  Set<Polyline> _getPolylines(RunningProvider runningProvider, LandmarkProvider landmarkProvider) {
+    final polylines = <Polyline>{
+      ...runningProvider.routePolylines,
+      ...runningProvider.territoryPolylines, // ✅ NEW: Always show territory routes
+    };
+    
+    if (runningProvider.isLandmarkMode && landmarkProvider.hasPlannedRoute) {
+      polylines.add(
+        Polyline(
+          polylineId: const PolylineId('planned_ghost_route'),
+          points: landmarkProvider.plannedRoutePoints,
+          color: AppColors.blueLogo.withValues(alpha: 0.5),
+          width: 5,
+          patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+        ),
+      );
+    }
+    
+    return polylines;
+  }
+  
+  Set<Marker> _getMarkers(RunningProvider runningProvider, LandmarkProvider landmarkProvider) {
+    final markers = <Marker>{...runningProvider.markers};
+    
+     if (runningProvider.isLandmarkMode && landmarkProvider.hasPlannedRoute) {
+       final points = landmarkProvider.plannedRoutePoints;
+       markers.add(
+         Marker(
+           markerId: const MarkerId('planned_start'),
+           position: points.first,
+           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+           alpha: 0.7,
+           infoWindow: const InfoWindow(title: 'Planned Start'),
+         ),
+       );
+       if (points.length > 1) {
+         markers.add(
+           Marker(
+             markerId: const MarkerId('planned_end'),
+             position: points.last,
+             icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+             alpha: 0.7,
+             infoWindow: const InfoWindow(title: 'Planned End'),
+           ),
+         );
+       }
+     }
+     
+     return markers;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Consumer<RunningProvider>(
-        builder: (context, runningProvider, child) {
+      body: Consumer2<RunningProvider, LandmarkProvider>(
+        builder: (context, runningProvider, landmarkProvider, child) {
           final initialPosition = runningProvider.currentLatLng ?? const LatLng(1.18376, 104.01703);
 
           return Stack(
@@ -250,8 +312,8 @@ class RunningPageState extends State<RunningPage> {
                 tiltGesturesEnabled: false,
                 rotateGesturesEnabled: false,
                 polygons: runningProvider.polygons,
-                polylines: runningProvider.routePolylines,
-                markers: runningProvider.markers,
+                polylines: _getPolylines(runningProvider, landmarkProvider),
+                markers: _getMarkers(runningProvider, landmarkProvider),
               ),
 
               // Loading Overlay
@@ -329,23 +391,54 @@ class RunningPageState extends State<RunningPage> {
                   ),
                 ),
 
-              // Start Landmark Run Button
+              // PLAN ROUTE BUTTON (Top) - REMOVED since it's merged into the bottom button
+              // But we keep the Clear button if a route exists
+              if (runningProvider.isLandmarkMode && !runningProvider.isRunning && landmarkProvider.hasPlannedRoute)
+                Positioned(
+                  top: 130,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: TextButton.icon(
+                      onPressed: () => landmarkProvider.clearPlannedRoute(),
+                      icon: const Icon(Icons.clear, size: 16, color: Colors.red),
+                      label: const Text(
+                        'Clear Planned Route',
+                        style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.9),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: const BorderSide(color: Colors.red, width: 1),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // DYNAMIC LANDMARK BUTTON (Bottom)
               if (runningProvider.isLandmarkMode &&
                   !runningProvider.isRunning &&
-                  !runningProvider.isNavigating &&
-                  runningProvider.canStartLandmarkRun)
+                  !runningProvider.isNavigating)
                 Positioned(
                   bottom: 100,
                   left: 0,
                   right: 0,
-                  child: StartLandmarkButton(onPressed: _handleStartLandmarkRun),
+                  child: StartLandmarkButton(
+                    title: landmarkProvider.hasPlannedRoute ? 'Start Landmark Run' : 'Plan Landmark Route',
+                    subtitle: landmarkProvider.hasPlannedRoute ? 'Follow your ghost route' : 'Draw your path on the map',
+                    icon: landmarkProvider.hasPlannedRoute ? Icons.play_arrow_rounded : Icons.add_road_rounded,
+                    onPressed: landmarkProvider.hasPlannedRoute ? _handleStartLandmarkRun : _openRoutePlanner,
+                  ),
                 ),
 
-              // Map Controls (Zoom & Recenter)
+              // Map Controls (Now on the Right)
               Positioned(
                 bottom: runningProvider.isNavigating || runningProvider.isLandmarkMode ? 180 : 240,
-                left: 20,
-                right: 20,
+                right: 20, // Moved to right
                 child: MapControls(
                   onZoomIn: _zoomIn,
                   onZoomOut: _zoomOut,
@@ -436,7 +529,7 @@ class RunningPageState extends State<RunningPage> {
           Text(
             'Using default location',
             style: TextStyle(
-              color: Colors.white,
+               color: Colors.white,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),

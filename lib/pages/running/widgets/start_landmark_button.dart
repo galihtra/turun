@@ -3,10 +3,16 @@ import 'package:turun/resources/colors_app.dart';
 
 class StartLandmarkButton extends StatelessWidget {
   final VoidCallback onPressed;
+  final String title;
+  final String subtitle;
+  final IconData icon;
 
   const StartLandmarkButton({
     super.key,
     required this.onPressed,
+    this.title = 'Start Landmark Run',
+    this.subtitle = 'Create your own route',
+    this.icon = Icons.explore,
   });
 
   @override
@@ -43,20 +49,20 @@ class StartLandmarkButton extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.explore,
+                  child: Icon(
+                    icon,
                     color: Colors.white,
                     size: 22,
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Start Landmark Run',
-                      style: TextStyle(
+                      title,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -64,8 +70,8 @@ class StartLandmarkButton extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Create your own route',
-                      style: TextStyle(
+                      subtitle,
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 11,
                       ),
