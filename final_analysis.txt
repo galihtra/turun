@@ -1,0 +1,26 @@
+Analyzing turun...                                              
+
+warning • Unused import: 'package:turun/data/services/run_tracking_service.dart' • lib/data/providers/landmark/landmark_provider.dart:9:8 • unused_import
+warning • The declaration '_checkTerritoryConquest' isn't referenced • lib/data/providers/running/running_provider.dart:1368:16 • unused_element
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:106:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:107:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:108:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:112:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:118:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:119:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:120:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:124:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:127:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:130:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:134:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:138:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:139:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:147:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:153:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:159:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/pages/home/start_page.dart:160:7 • avoid_print
+warning • Unused import: 'package:turun/app/app_logger.dart' • lib/pages/landmark/landmark_route_planner_screen.dart:5:8 • unused_import
+warning • The value of the field '_isFirstTap' isn't used • lib/pages/landmark/landmark_route_planner_screen.dart:25:8 • unused_field
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/pages/running/run_share_screen.dart:333:37 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/pages/running/run_share_screen.dart:334:44 • use_build_context_synchronously
+

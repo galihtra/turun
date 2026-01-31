@@ -346,11 +346,11 @@ class RunTrackingService {
 
       AppLogger.info(
         LogLabel.general,
-        '⚔️ Pace comparison: New ${newPace.toStringAsFixed(2)} vs Best ${currentBestPace.toStringAsFixed(2)}',
+        '⚔️ Conquest Check: New Pace ${newPace.toStringAsFixed(3)} vs Record ${currentBestPace.toStringAsFixed(3)}',
       );
 
       // Send "Under Attack" notification to current territory owner
-      if (newRun.userId != currentBestRun.userId) {
+      if (newRun.userId != currentBestRun.userId && newPace < currentBestPace) {
         try {
           // Get territory name and attacker username
           final territoryResponse = await _supabase
@@ -390,23 +390,23 @@ class RunTrackingService {
       }
 
       // New run must be STRICTLY faster to conquer
-      if (newPace < currentBestPace) {
+      if (newPace < (currentBestPace - 0.001)) { // Use small epsilon for safety
         AppLogger.success(
           LogLabel.general,
-          '🏆 NEW CHAMPION! ${newPace.toStringAsFixed(2)} < ${currentBestPace.toStringAsFixed(2)}',
+          '🏆 NEW CHAMPION! ${newPace.toStringAsFixed(3)} < ${currentBestPace.toStringAsFixed(3)}',
         );
         return true;
       }
 
-      // Check if it's the same user improving their own record
-      if (newRun.userId == currentBestRun.userId && newPace < currentBestPace) {
-        AppLogger.info(LogLabel.general, '📈 User improved their own best time!');
-        return true;
+      // Check if it's the same user but they didn't beat their record
+      if (newRun.userId == currentBestRun.userId) {
+        AppLogger.info(LogLabel.general, '🏠 Owner didn\'t beat their own best today.');
+        return false;
       }
 
       AppLogger.info(
         LogLabel.general,
-        '❌ Not fast enough to conquer. Need pace < ${currentBestPace.toStringAsFixed(2)}',
+        '❌ Not fast enough to conquer. Need pace < ${currentBestPace.toStringAsFixed(3)}',
       );
       return false;
     } catch (e, stackTrace) {

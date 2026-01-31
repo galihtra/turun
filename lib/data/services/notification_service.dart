@@ -210,7 +210,7 @@ class NotificationService {
         'user_id': userId,
         'title': '🏆 TERRITORY CLAIMED!',
         'message':
-            'Selamat! Kamu berhasil menguasai $territoryName dengan pace $pace! Tetap pertahankan rekormu!',
+            'Congratulations! You have successfully conquered $territoryName with a pace of $pace! Keep defending your record!',
         'type': 'runCompletedConquest',
         'territory_id': territoryId,
         'territory_name': territoryName,
@@ -233,7 +233,7 @@ class NotificationService {
         'user_id': userId,
         'title': '🏗️ TERRITORY CREATED!',
         'message':
-            'Selamat! Landmark baru "$territoryName" telah berhasil didaftarkan sebagai Territory-mu!',
+            'Congratulations! Your new landmark "$territoryName" has been successfully registered as your Territory!',
         'type': 'territoryCreated',
         'territory_id': territoryId,
         'territory_name': territoryName,
@@ -257,9 +257,9 @@ class NotificationService {
     try {
       await _supabase.from('notifications').insert({
         'user_id': userId,
-        'title': '🏃 LARI SELESAI!',
+        'title': '🏃 RUN COMPLETED!',
         'message':
-            'Bagus! Kamu menyelesaikan lari di $territoryName dengan pace $userPace. Kalahkan pace $targetPace untuk mengklaim territory ini!',
+            'Great job! You finished your run in $territoryName with a pace of $userPace. Beat the $targetPace record to claim this territory!',
         'type': 'runCompletedNoConquest',
         'territory_id': territoryId,
         'territory_name': territoryName,

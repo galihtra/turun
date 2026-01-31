@@ -66,6 +66,7 @@ class RunningProvider extends ChangeNotifier {
   bool _hasLeftStartPoint = false;
   DateTime? _lastFinishLogTime;
   bool _runCompleted = false; // ✅ NEW: Flag to prevent multiple completions
+  double? _recordPace; // ✅ NEW: The pace to beat
   
   // ✅ Decoupling: Route Points vs Gameplay Checkpoints
   List<int> _checkpointIndices = []; // Indices of points that are coins
@@ -129,6 +130,8 @@ class RunningProvider extends ChangeNotifier {
     }
     return isAtTerritoryStartPoint(_currentLatLng!, _selectedTerritory!);
   }
+
+  double? get recordPace => _recordPace;
 
   // Run tracking getters
   RunSession? get activeRunSession => _activeRunSession;
@@ -1323,12 +1326,25 @@ class RunningProvider extends ChangeNotifier {
         _hasLeftStartPoint = false;
 
         // Check if user can conquer territory
-        final canConquer = await _checkTerritoryConquest(completedSession);
+        final currentBestRun = await _runTrackingService.getBestRunForTerritory(
+          territoryId: completedSession.territoryId,
+          excludeRunId: completedSession.id,
+        );
+        
+        final canConquer = await _runTrackingService.canConquerTerritory(
+          newRun: completedSession,
+          currentBestRun: currentBestRun,
+        );
 
         if (canConquer) {
           _activeRunSession = completedSession.copyWith(
             territoryConquered: true,
           );
+          _recordPace = null;
+        } else {
+          // Store the record pace if we didn't conquer, so we can show it in the UI
+          _recordPace = currentBestRun?.averagePaceMinPerKm;
+          AppLogger.info(LogLabel.general, '🏁 Pace to beat: ${_recordPace?.toStringAsFixed(2) ?? "N/A"}');
         }
 
         // Clear territory after processing conquest
@@ -1348,105 +1364,7 @@ class RunningProvider extends ChangeNotifier {
     }
   }
 
-  /// Check if user conquered territory with this run
-  Future<bool> _checkTerritoryConquest(RunSession newRun) async {
-    try {
-      AppLogger.info(LogLabel.general, '🔍 Checking territory conquest for run ${newRun.id}...');
-
-      // Get territory name for notifications
-      String territoryName = 'Unknown Territory';
-      try {
-        final territoryResponse = await _supabase
-            .from('territories')
-            .select('name')
-            .eq('id', newRun.territoryId)
-            .maybeSingle();
-        territoryName = territoryResponse?['name'] ?? 'Unknown Territory';
-      } catch (e) {
-        AppLogger.warning(LogLabel.general, 'Could not fetch territory name: $e');
-      }
-
-      // Get best run EXCLUDING the current run
-      final currentBestRun = await _runTrackingService.getBestRunForTerritory(
-        territoryId: newRun.territoryId,
-        excludeRunId: newRun.id, // Exclude current run from comparison
-      );
-
-      final canConquer = await _runTrackingService.canConquerTerritory(
-        newRun: newRun,
-        currentBestRun: currentBestRun,
-      );
-
-      if (canConquer) {
-        AppLogger.info(LogLabel.general, '✅ Can conquer! Updating territory ownership...');
-
-        await _runTrackingService.updateTerritoryOwnership(
-          territoryId: newRun.territoryId,
-          newOwnerId: newRun.userId,
-          previousOwnerId: currentBestRun?.userId,
-        );
-
-        AppLogger.success(
-          LogLabel.general,
-          '🏆 Territory conquered! Pace: ${newRun.formattedPace}',
-        );
-
-        // Show push notification for successful territory claim
-        await _pushNotificationService.showRunCompletedNotification(
-          title: '🏆 TERRITORY CLAIMED!',
-          body: 'Selamat! Kamu berhasil menguasai $territoryName dengan pace ${newRun.formattedPace}!',
-          data: {
-            'type': 'runCompletedConquest',
-            'territory_id': newRun.territoryId,
-            'territory_name': territoryName,
-          },
-        );
-
-        // Also save to notification history
-        await _notificationService.generateRunCompletedWithConquestNotification(
-          userId: newRun.userId,
-          territoryId: newRun.territoryId,
-          territoryName: territoryName,
-          pace: newRun.formattedPace,
-        );
-
-        return true;
-      }
-
-      AppLogger.info(LogLabel.general, '❌ Cannot conquer territory');
-
-      // Show push notification for run completed but no conquest
-      final targetPace = currentBestRun?.formattedPace ?? 'unknown';
-      await _pushNotificationService.showRunCompletedNotification(
-        title: '🏃 LARI SELESAI!',
-        body: 'Bagus! Kamu menyelesaikan lari di $territoryName. Kalahkan pace $targetPace untuk mengklaim territory ini!',
-        data: {
-          'type': 'runCompletedNoConquest',
-          'territory_id': newRun.territoryId,
-          'territory_name': territoryName,
-        },
-      );
-
-      // Also save to notification history
-      await _notificationService.generateRunCompletedNoConquestNotification(
-        userId: newRun.userId,
-        territoryId: newRun.territoryId,
-        territoryName: territoryName,
-        userPace: newRun.formattedPace,
-        targetPace: targetPace,
-      );
-
-      return false;
-    } catch (e, stackTrace) {
-      AppLogger.error(
-        LogLabel.general,
-        'Failed to check territory conquest',
-        e,
-        stackTrace,
-      );
-      return false;
-    }
-  }
+  // Placeholder for any additional conquest-related logic
 
   /// Cancel run session
   void cancelRunSession() {

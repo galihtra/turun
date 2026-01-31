@@ -65,7 +65,10 @@ class _RunTrackingScreenState extends State<RunTrackingScreen>
             context,
             MaterialPageRoute(
               builder: (context) =>
-                  RunCompletionScreen(session: provider.activeRunSession!),
+                  RunCompletionScreen(
+                    session: provider.activeRunSession!,
+                    targetPace: provider.recordPace != null ? '${provider.recordPace!.toStringAsFixed(2)} min/km' : null,
+                  ),
             ),
           );
         }
@@ -301,7 +304,10 @@ class _RunTrackingScreenState extends State<RunTrackingScreen>
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => RunCompletionScreen(session: result),
+              builder: (context) => RunCompletionScreen(
+                session: result,
+                targetPace: provider.recordPace != null ? '${provider.recordPace!.toStringAsFixed(2)} min/km' : null,
+              ),
             ),
           );
         }

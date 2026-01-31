@@ -9,10 +9,12 @@ import 'widgets/completion_particles.dart';
 
 class RunCompletionScreen extends StatefulWidget {
   final RunSession session;
+  final String? targetPace;
 
   const RunCompletionScreen({
     super.key,
     required this.session,
+    this.targetPace,
   });
 
   @override
@@ -89,6 +91,9 @@ class _RunCompletionScreenState extends State<RunCompletionScreen>
                         CompletionMessageCard(
                           territoryConquered: widget.session.territoryConquered,
                           pace: widget.session.formattedPace,
+                          territoryId: widget.session.territoryId,
+                          territoryName: 'Territory ${widget.session.territoryId}',
+                          targetPace: widget.targetPace,
                         ),
                         const Gap(30),
                       ],

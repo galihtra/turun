@@ -6,7 +6,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/app/app_logger.dart';
 import 'package:turun/data/services/notification_service.dart';
 import 'package:turun/data/services/push_notification_service.dart';
-import 'package:turun/data/services/run_tracking_service.dart';
 
 import '../../model/territory/territory_model.dart';
 import '../../model/running/run_session_model.dart';
@@ -17,7 +16,6 @@ class LandmarkProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
   final NotificationService _notificationService = NotificationService();
   final PushNotificationService _pushNotificationService = PushNotificationService();
-  final RunTrackingService _runTrackingService = RunTrackingService();
 
   // Landmark run tracking
   final List<LatLng> _routePoints = [];
@@ -405,8 +403,8 @@ class LandmarkProvider extends ChangeNotifier {
 
       // Show push notification
       await _pushNotificationService.showRunCompletedNotification(
-        title: '🏁 LANDMARK SELESAI!',
-        body: 'Hebat! Kamu telah menempuh ${(finalDistance / 1000).toStringAsFixed(2)} km. Daftarkan landmark ini sebagai territory-mu sekarang!',
+        title: '🏁 LANDMARK COMPLETED!',
+        body: 'Great job! You covered ${(finalDistance / 1000).toStringAsFixed(2)} km. Register this landmark as your territory now!',
         data: {
           'type': 'landmarkRunCompleted',
           'session_id': _activeRunSession!.id,
@@ -514,8 +512,8 @@ class LandmarkProvider extends ChangeNotifier {
 
       // Show push notification for landmark creation
       await _pushNotificationService.showRunCompletedNotification(
-        title: '🏗️ TERRITORY DIKLAIM!',
-        body: 'Selamat! Landmark baru "${territory.name}" kini resmi menjadi wilayah kekuasaanmu!',
+        title: '🏗️ TERRITORY CLAIMED!',
+        body: 'Congratulations! Your new landmark "${territory.name}" is now officially under your control!',
         data: {
           'type': 'territoryCreated',
           'territory_id': territory.id,
