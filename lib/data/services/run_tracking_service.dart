@@ -389,8 +389,9 @@ class RunTrackingService {
         }
       }
 
-      // New run must be STRICTLY faster to conquer
-      if (newPace < (currentBestPace - 0.001)) { // Use small epsilon for safety
+      // New run must be faster to conquer (strictly less than)
+      // Using direct comparison - any faster pace wins
+      if (newPace < currentBestPace) {
         AppLogger.success(
           LogLabel.general,
           '🏆 NEW CHAMPION! ${newPace.toStringAsFixed(3)} < ${currentBestPace.toStringAsFixed(3)}',
@@ -457,17 +458,28 @@ class RunTrackingService {
           .eq('id', territoryId);
 
       // Update run_sessions to mark territory as conquered
-      await _supabase
+      // First, find the specific run to update (best run for this user in this territory)
+      final bestUserRun = await _supabase
           .from('run_sessions')
-          .update({
-            'territory_conquered': true,
-            'previous_owner_id': previousOwnerId,
-          })
+          .select('id')
           .eq('territory_id', territoryId)
           .eq('user_id', newOwnerId)
           .eq('status', 'completed')
           .order('average_pace_min_per_km', ascending: true)
-          .limit(1);
+          .limit(1)
+          .maybeSingle();
+      
+      if (bestUserRun != null) {
+        await _supabase
+            .from('run_sessions')
+            .update({
+              'territory_conquered': true,
+              'previous_owner_id': previousOwnerId,
+            })
+            .eq('id', bestUserRun['id']);
+        
+        AppLogger.info(LogLabel.supabase, '📝 Marked run ${bestUserRun['id']} as conquered');
+      }
 
       AppLogger.success(
         LogLabel.supabase,

@@ -1317,8 +1317,9 @@ class RunningProvider extends ChangeNotifier {
       );
 
       if (completedSession != null) {
+        // NOTE: Don't set _isRunning = false yet! We need to finish processing first
+        // otherwise the UI might navigate before we update territoryConquered
         _activeRunSession = completedSession;
-        _isRunning = false;
         
         // Clean up run-specific visuals
         _runRoutePolylines.clear();
@@ -1333,15 +1334,41 @@ class RunningProvider extends ChangeNotifier {
           excludeRunId: completedSession.id,
         );
         
+        // DEBUG: Log the pace comparison
+        AppLogger.info(
+          LogLabel.general, 
+          '📊 CONQUEST DEBUG:\n'
+          '   New Run ID: ${completedSession.id}\n'
+          '   New Run Pace: ${completedSession.averagePaceMinPerKm.toStringAsFixed(3)} min/km\n'
+          '   Current Best Run ID: ${currentBestRun?.id ?? "N/A"}\n'
+          '   Current Best Pace: ${currentBestRun?.averagePaceMinPerKm.toStringAsFixed(3) ?? "N/A"} min/km\n'
+          '   Current Best User: ${currentBestRun?.userId ?? "N/A"}'
+        );
+        
         final canConquer = await _runTrackingService.canConquerTerritory(
           newRun: completedSession,
           currentBestRun: currentBestRun,
         );
+        
+        AppLogger.info(LogLabel.general, '🏆 Can Conquer Result: $canConquer');
 
         if (canConquer) {
+          // ✅ FIX: Actually update territory ownership in database!
+          final previousOwnerId = currentBestRun?.userId;
+          AppLogger.info(LogLabel.general, '🎯 Calling updateTerritoryOwnership...');
+          
+          final ownershipUpdated = await _runTrackingService.updateTerritoryOwnership(
+            territoryId: completedSession.territoryId,
+            newOwnerId: completedSession.userId,
+            previousOwnerId: previousOwnerId,
+          );
+          
+          AppLogger.info(LogLabel.general, '✅ Ownership update result: $ownershipUpdated');
+          
           _activeRunSession = completedSession.copyWith(
             territoryConquered: true,
           );
+          AppLogger.info(LogLabel.general, '🏆 Session marked as conquered: ${_activeRunSession?.territoryConquered}');
           _recordPace = null;
         } else {
           // Store the record pace if we didn't conquer, so we can show it in the UI
@@ -1354,6 +1381,10 @@ class RunningProvider extends ChangeNotifier {
 
         // Reload territories
         await loadTerritories();
+
+        // ✅ NOW it's safe to set _isRunning = false 
+        // After activeRunSession is fully updated with territoryConquered
+        _isRunning = false;
 
         notifyListeners();
         return _activeRunSession;
