@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:provider/provider.dart';
+import 'package:turun/base_widgets/dialogs/gamified_dialog.dart';
 import 'package:turun/data/services/auth_service.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
@@ -324,73 +325,35 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   void _showClearCacheDialog() {
-    showDialog(
+    GamifiedDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.blueLogo.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.clear_all,
-                color: AppColors.blueLogo,
-                size: 24,
-              ),
+      title: 'Clear Cache',
+      description: 'This will clear cached data to free up storage space. Your activities and progress will not be affected.',
+      icon: Icons.cleaning_services_rounded,
+      headerGradient: [
+        AppColors.blueLogo,
+        AppColors.blueDark,
+      ],
+      primaryButtonText: 'CLEAR',
+      onPrimaryPressed: () {
+        // Clear cache logic
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                Gap(12),
+                Text('Cache cleared successfully!'),
+              ],
             ),
-            const Gap(12),
-            const Text(
-              'Clear Cache',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          'This will clear cached data to free up storage space. Your activities and progress will not be affected.',
-          style: TextStyle(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            backgroundColor: Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
           ),
-          ElevatedButton(
-            onPressed: () {
-              // Clear cache logic
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.white),
-                      Gap(12),
-                      Text('Cache cleared successfully!'),
-                    ],
-                  ),
-                  backgroundColor: Color(0xFF10B981),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.blueLogo,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Clear'),
-          ),
-        ],
-      ),
+        );
+      },
+      secondaryButtonText: 'CANCEL',
+      onSecondaryPressed: () => Navigator.pop(context),
     );
   }
 

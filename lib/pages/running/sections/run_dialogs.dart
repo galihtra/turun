@@ -1,58 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:turun/resources/colors_app.dart';
+import 'package:turun/base_widgets/dialogs/gamified_dialog.dart';
 
 class RunDialogs {
   /// Show confirmation dialog for finishing a run
   static Future<bool?> showFinishConfirmation(BuildContext context) {
-    return showDialog<bool>(
+    return GamifiedDialog.show<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Finish Run?'),
-        content: const Text('Are you sure you want to finish this run?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.green[500],
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Finish'),
-          ),
-        ],
-      ),
+      title: 'Finish Run?',
+      description: 'Amazing progress! Are you sure you want to wrap up this run session and save your achievements?',
+      icon: Icons.flag_rounded,
+      headerGradient: [
+        const Color(0xFF10B981),
+        const Color(0xFF059669),
+      ],
+      primaryButtonText: 'FINISH',
+      onPrimaryPressed: () => Navigator.pop(context, true),
+      secondaryButtonText: 'KEEP GOING',
+      onSecondaryPressed: () => Navigator.pop(context, false),
     );
   }
 
   /// Show confirmation dialog for canceling a run
   static Future<bool?> showCancelConfirmation(BuildContext context) {
-    return showDialog<bool>(
+    return GamifiedDialog.show<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancel Run?'),
-        content: const Text('Are you sure? This will discard your progress.'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('No'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.red[500],
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Yes, Cancel'),
-          ),
-        ],
-      ),
+      title: 'Cancel Run?',
+      description: 'Warning! Discarding this run will lose all progress and unclaimed territory points. Are you sure?',
+      icon: Icons.warning_rounded,
+      headerGradient: [
+        const Color(0xFFEF4444),
+        const Color(0xFFDC2626),
+      ],
+      primaryButtonText: 'YES, DISCARD',
+      onPrimaryPressed: () => Navigator.pop(context, true),
+      secondaryButtonText: 'NO, WAIT',
+      onSecondaryPressed: () => Navigator.pop(context, false),
     );
   }
 }

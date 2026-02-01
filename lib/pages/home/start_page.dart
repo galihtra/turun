@@ -4,6 +4,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io' show Platform;
 
+import 'package:turun/app/app_logger.dart';
+
 class StartPage extends StatefulWidget {
   const StartPage({super.key});
 
@@ -103,40 +105,38 @@ class _StartPageState extends State<StartPage> {
     
     // Determine if we should use native flow
     final bool isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
-    print("🔵 [DEBUG] _googleSignInFlow started.");
-    print("🔵 [DEBUG] kIsWeb: $kIsWeb, Platform.isIOS: ${Platform.isIOS}, Platform.isAndroid: ${Platform.isAndroid}");
-    print("🔵 [DEBUG] isMobile: $isMobile");
-    
+    AppLogger.info(LogLabel.auth,"_googleSignInFlow started.");
+    AppLogger.info(LogLabel.auth,"kIsWeb: $kIsWeb, Platform.isIOS: ${Platform.isIOS}, Platform.isAndroid: ${Platform.isAndroid}");
+    AppLogger.info(LogLabel.auth,"isMobile: $isMobile");
     try {
       if (!isMobile) {
-        print("🔵 [DEBUG] NOT mobile. Executing Supabase Web OAuth.");
+        AppLogger.info(LogLabel.auth,"NOT mobile. Executing Supabase Web OAuth.");
         // WEB: tetap pakai OAuth bawaan Supabase (redirect/callback)
         await supabase.auth.signInWithOAuth(OAuthProvider.google);
         return;
       }
 
-      print("🔵 [DEBUG] IS mobile. Executing Native Google SDK.");
-      print("🔵 [DEBUG] GoogleSignIn clientId: $_iosClientId");
-      print("🔵 [DEBUG] GoogleSignIn serverClientId: $_webClientId");
-      
+      AppLogger.info(LogLabel.auth,"IS mobile. Executing Native Google SDK.");
+      AppLogger.info(LogLabel.auth,"GoogleSignIn clientId: $_iosClientId");
+      AppLogger.info(LogLabel.auth,"GoogleSignIn serverClientId: $_webClientId");
+
       // MOBILE (Android/iOS): native Google Sign-In → idToken → Supabase
       await _googleSignIn.signOut(); // bersihkan sesi lama (opsional)
-      print("🔵 [DEBUG] Calling _googleSignIn.signIn()...");
-      
+      AppLogger.info(LogLabel.auth,"Calling _googleSignIn.signIn()...");
       final acct = await _googleSignIn.signIn();
-      print("🔵 [DEBUG] signIn() returned: ${acct?.email ?? 'null (cancelled)'}");
-      
+      AppLogger.info(LogLabel.auth,"signIn() returned: ${acct?.email ?? 'null (cancelled)'}");
+
       if (acct == null) {
-        print("🔵 [DEBUG] User cancelled sign-in");
+        AppLogger.info(LogLabel.auth,"User cancelled sign-in");
         return; // user cancel
       }
 
-      print("🔵 [DEBUG] Getting authentication tokens...");
+      AppLogger.info(LogLabel.auth,"Getting authentication tokens...");
       final auth = await acct.authentication;
       final idToken = auth.idToken;
       final accessToken = auth.accessToken;
-      print("🔵 [DEBUG] idToken: ${idToken != null ? 'present (${idToken.length} chars)' : 'NULL'}");
-      print("🔵 [DEBUG] accessToken: ${accessToken != null ? 'present' : 'NULL'}");
+      AppLogger.info(LogLabel.auth,"idToken: ${idToken != null ? 'present (${idToken.length} chars)' : 'NULL'}");
+      AppLogger.info(LogLabel.auth,"accessToken: ${accessToken != null ? 'present' : 'NULL'}");
 
       if (idToken == null) {
         throw Exception(
@@ -144,20 +144,20 @@ class _StartPageState extends State<StartPage> {
         );
       }
 
-      print("🔵 [DEBUG] Calling supabase.auth.signInWithIdToken()...");
+      AppLogger.info(LogLabel.auth,"Calling supabase.auth.signInWithIdToken()...");
       await supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
         accessToken: accessToken,
       );
-      print("🔵 [DEBUG] Supabase signInWithIdToken SUCCESS!");
+      AppLogger.info(LogLabel.supabase,"Google Sign-In successful");
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Signed in with Google!')));
     } catch (e, stack) {
-      print("🔴 [ERROR] Google Sign-In failed: $e");
-      print("🔴 [STACK] $stack");
+      AppLogger.error(LogLabel.auth,"Google Sign-In failed: $e");
+      AppLogger.error(LogLabel.auth,"[STACK] $stack");
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

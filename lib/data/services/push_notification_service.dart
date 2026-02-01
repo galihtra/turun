@@ -201,7 +201,7 @@ class PushNotificationService {
   /// Handle notification tap when app is in background/terminated
   void _handleNotificationTap(RemoteMessage message) {
     AppLogger.info(_logLabel, 'Notification tapped: ${message.data}');
-    // TODO: Navigate to specific screen based on notification type
+    
     // For example: if message.data['type'] == 'underAttack', navigate to territory
   }
 
@@ -211,7 +211,6 @@ class PushNotificationService {
     if (response.payload != null) {
       // ignore: unused_local_variable
       final data = jsonDecode(response.payload!);
-      // TODO: Navigate based on data
     }
   }
 

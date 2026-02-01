@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 import 'package:turun/data/providers/landmark/landmark_provider.dart';
 import 'package:turun/pages/running/run_share_screen.dart';
 import 'package:turun/resources/colors_app.dart';
+import '../../data/model/running/run_session_model.dart';
 import 'widgets/planning_dialogs.dart';
 
 /// Screen for creating a landmark from a completed run
 class CreateLandmarkScreen extends StatefulWidget {
-  const CreateLandmarkScreen({super.key});
+  final RunSession session;
+  const CreateLandmarkScreen({super.key, required this.session});
 
   @override
   State<CreateLandmarkScreen> createState() => _CreateLandmarkScreenState();
@@ -35,11 +37,11 @@ class _CreateLandmarkScreenState extends State<CreateLandmarkScreen> {
     final landmarkProvider = context.read<LandmarkProvider>();
 
     // Save run data BEFORE creating territory (because createTerritory clears the data)
-    final savedDistance = landmarkProvider.formattedDistance;
-    final savedPace = landmarkProvider.currentPace;
-    final savedDuration = landmarkProvider.formattedDuration;
-    final savedRoutePoints = List<LatLng>.from(landmarkProvider.routePoints);
-    final savedUserAvatarUrl = landmarkProvider.activeRunSession?.userAvatarUrl;
+    final savedDistance = widget.session.formattedDistance;
+    final savedPace = widget.session.averagePaceMinPerKm;
+    final savedDuration = widget.session.formattedDuration;
+    final savedRoutePoints = List<LatLng>.from(widget.session.routePoints);
+    final savedUserAvatarUrl = widget.session.userAvatarUrl;
 
     // ✅ NEW: Final check for territory overlap before creation
     final overlapTerritory = await landmarkProvider.checkRouteOverlap(savedRoutePoints);
@@ -144,7 +146,8 @@ class _CreateLandmarkScreenState extends State<CreateLandmarkScreen> {
         if (mounted) {
           if (shouldShare == true) {
             // Navigate to share screen using saved data
-            Navigator.pushReplacement(
+            // ✅ IMPROVEMENT: Clear creation stack so 'Back' from Share goes Home
+            Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
                 builder: (context) => RunShareScreen(
@@ -158,6 +161,7 @@ class _CreateLandmarkScreenState extends State<CreateLandmarkScreen> {
                   userAvatarUrl: savedUserAvatarUrl,
                 ),
               ),
+              (route) => route.isFirst,
             );
           } else {
             // Navigate back to home
@@ -208,7 +212,6 @@ class _CreateLandmarkScreenState extends State<CreateLandmarkScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final landmarkProvider = context.watch<LandmarkProvider>();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -275,11 +278,11 @@ class _CreateLandmarkScreenState extends State<CreateLandmarkScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _buildQuickStat(
-                          landmarkProvider.formattedDistance,
+                          widget.session.formattedDistance,
                           'Distance',
                         ),
                         _buildQuickStat(
-                          landmarkProvider.formattedDuration,
+                          widget.session.formattedDuration,
                           'Duration',
                         ),
                       ],

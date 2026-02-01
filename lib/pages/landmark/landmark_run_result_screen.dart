@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:turun/data/model/running/run_session_model.dart';
 import 'package:turun/data/providers/landmark/landmark_provider.dart';
 import 'package:turun/resources/colors_app.dart';
@@ -16,8 +15,7 @@ class LandmarkRunResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final landmarkProvider = context.watch<LandmarkProvider>();
-    final isValid = landmarkProvider.totalDistance >= LandmarkProvider.minDistanceMeters;
+    final isValid = session.distanceMeters >= LandmarkProvider.minDistanceMeters;
 
     return Scaffold(
       body: Container(
@@ -117,21 +115,21 @@ class LandmarkRunResultScreen extends StatelessWidget {
                         // Stats Grid
                         _buildStatCard(
                           'Distance',
-                          landmarkProvider.formattedDistance,
+                          session.formattedDistance,
                           Icons.straighten,
                           isValid ? AppColors.green[500]! : Colors.orange,
                         ),
                         const SizedBox(height: 16),
                         _buildStatCard(
                           'Duration',
-                          landmarkProvider.formattedDuration,
+                          session.formattedDuration,
                           Icons.timer,
                           AppColors.blue[500]!,
                         ),
                         const SizedBox(height: 16),
                         _buildStatCard(
                           'Pace',
-                          _formatPace(landmarkProvider.currentPace),
+                          session.formattedPace,
                           Icons.speed,
                           AppColors.purple[500]!,
                         ),
@@ -147,7 +145,7 @@ class LandmarkRunResultScreen extends StatelessWidget {
                           const SizedBox(height: 40),
 
                           // Progress Bar
-                          _buildProgressIndicator(landmarkProvider.totalDistance),
+                          _buildProgressIndicator(session.distanceMeters),
 
                           const SizedBox(height: 40),
 
@@ -160,7 +158,7 @@ class LandmarkRunResultScreen extends StatelessWidget {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const CreateLandmarkScreen(),
+                                    builder: (context) => CreateLandmarkScreen(session: session),
                                   ),
                                 );
                               },
@@ -340,12 +338,5 @@ class LandmarkRunResultScreen extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String _formatPace(double pace) {
-    if (pace <= 0) return "0'00\"";
-    final paceMinutes = pace.floor();
-    final paceSeconds = ((pace - paceMinutes) * 60).round();
-    return "$paceMinutes'${paceSeconds.toString().padLeft(2, '0')}\"";
   }
 }

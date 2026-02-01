@@ -1,9 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
-import '../../data/providers/landmark/landmark_provider.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -70,12 +68,6 @@ class _RunShareScreenState extends State<RunShareScreen> {
         foregroundColor: Colors.white,
         title: const Text('Share Run'),
         actions: [
-          if (widget.territoryConquered || widget.isLandmark)
-            IconButton(
-              icon: const Icon(Icons.edit_note, color: Colors.amber),
-              tooltip: 'Edit Territory Details',
-              onPressed: _showEditTerritoryDialog,
-            ),
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: _isGenerating ? null : _shareImage,
@@ -253,104 +245,5 @@ class _RunShareScreenState extends State<RunShareScreen> {
     } finally {
       setState(() => _isGenerating = false);
     }
-  }
-
-  void _showEditTerritoryDialog() {
-    final landmarkProvider = context.read<LandmarkProvider>();
-    final nameController = TextEditingController(text: widget.territoryName);
-    final descController = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.grey[900],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 20,
-          right: 20,
-          top: 20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Customize Your Territory',
-              style: AppStyles.title1Medium.copyWith(color: Colors.white),
-            ),
-            AppGaps.kGap12,
-            TextField(
-              controller: nameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Territory Name',
-                labelStyle: const TextStyle(color: Colors.grey),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: Colors.amber),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            AppGaps.kGap16,
-            TextField(
-              controller: descController,
-              style: const TextStyle(color: Colors.white),
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: 'Description / Region',
-                labelStyle: const TextStyle(color: Colors.grey),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: Colors.amber),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            AppGaps.kGap24,
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (widget.territoryId != null) {
-                    final success = await landmarkProvider.updateTerritoryDetails(
-                      territoryId: widget.territoryId!,
-                      name: nameController.text,
-                      description: descController.text,
-                    );
-                    if (success && mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Territory updated!')),
-                      );
-                    }
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ),
-            AppGaps.kGap30,
-          ],
-        ),
-      ),
-    );
   }
 }

@@ -34,12 +34,12 @@ class PlanningDialogs {
               content: Container(
                 width: MediaQuery.of(context).size.width * 0.9,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
+                  gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      const Color(0xFF121212),
-                      const Color(0xFF1E1E1E),
+                       Color(0xFF121212),
+                       Color(0xFF1E1E1E),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(32),
