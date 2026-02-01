@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/model/territory/territory_model.dart';
 import '../../../data/services/territory_leaderboard_service.dart';
+import '../../../base_widgets/route_visualization.dart';
 
 class TerritoryInfoHeader extends StatelessWidget {
   final Territory territory;
@@ -67,24 +68,40 @@ class TerritoryInfoHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Territory Image
-          if (territory.imageUrl != null)
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
+          // Territory Route Visualization
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
+            child: Container(
+              width: double.infinity,
+              height: 180,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: territory.isOwned
+                      ? [
+                          _getOwnerColor().withValues(alpha: 0.15),
+                          _getOwnerColor().withValues(alpha: 0.05),
+                        ]
+                      : [
+                          Colors.grey.shade100,
+                          Colors.grey.shade200,
+                        ],
+                ),
               ),
-              child: Image.network(
-                territory.imageUrl!,
-                width: double.infinity,
-                height: 160,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return _buildDefaultImage();
-                },
-              ),
-            )
-          else
-            _buildDefaultImage(),
+              child: territory.imageUrl != null
+                  ? Image.network(
+                      territory.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return _buildRouteVisualization();
+                      },
+                    )
+                  : _buildRouteVisualization(),
+            ),
+          ),
 
           // Territory Info
           Padding(
@@ -264,25 +281,42 @@ class TerritoryInfoHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildDefaultImage() {
-    return Container(
-      width: double.infinity,
-      height: 160,
-      decoration: BoxDecoration(
-        color: territory.isOwned
-            ? _getOwnerColor().withValues(alpha: 0.1)
-            : Colors.grey.withValues(alpha: 0.1),
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(20),
+  Widget _buildRouteVisualization() {
+    final routeColor = territory.isOwned ? _getOwnerColor() : Colors.blue;
+    
+    return Stack(
+      children: [
+        // Route Thumbnail
+        Positioned.fill(
+          child: RouteThumbnail(
+            points: territory.points,
+            isSelected: false,
+            isLandmark: false,
+            activeColor: routeColor,
+          ),
         ),
-      ),
-      child: Icon(
-        Icons.location_on_rounded,
-        size: 64,
-        color: territory.isOwned
-            ? _getOwnerColor().withValues(alpha: 0.5)
-            : Colors.grey.withValues(alpha: 0.4),
-      ),
+        
+        // Gradient overlay at bottom for text readability
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: 60,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.2),
+                ],
+              ),
+            ),
+          ),
+        ),
+        
+      ],
     );
   }
 
