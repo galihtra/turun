@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../widgets/share_route_painter.dart';
+import 'package:turun/base_widgets/route_visualization.dart';
 
 class ShareRouteGrid extends StatelessWidget {
   final List<LatLng>? routePoints;

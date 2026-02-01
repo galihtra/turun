@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../data/model/territory/territory_model.dart';
+import 'package:turun/base_widgets/route_visualization.dart';
 
 class TerritoryLeaderboardCard extends StatelessWidget {
   final Territory territory;
@@ -101,10 +102,18 @@ class TerritoryLeaderboardCard extends StatelessWidget {
                           territory.imageUrl!,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            return _buildDefaultIcon();
+                            return RouteThumbnail(
+                              points: territory.points,
+                              isSelected: isSelected,
+                              activeColor: Colors.blue,
+                            );
                           },
                         )
-                      : _buildDefaultIcon(),
+                      : RouteThumbnail(
+                          points: territory.points,
+                          isSelected: isSelected,
+                          activeColor: Colors.blue,
+                        ),
                 ),
               ),
 
@@ -319,16 +328,6 @@ class TerritoryLeaderboardCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildDefaultIcon() {
-    return Icon(
-      Icons.location_on_rounded,
-      size: 40,
-      color: territory.isOwned
-          ? _getOwnerColor().withValues(alpha: 0.6)
-          : Colors.grey.withValues(alpha: 0.4),
     );
   }
 }

@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
 import 'package:turun/resources/values_app.dart';
-
+import 'package:turun/base_widgets/route_visualization.dart';
 import '../../../data/model/territory/territory_model.dart';
 
 class TerritoryCard extends StatelessWidget {
@@ -130,23 +130,17 @@ class TerritoryCard extends StatelessWidget {
                                   territory.imageUrl!,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
-                                    return Icon(
-                                      Icons.location_city_rounded,
-                                      color: isSelected
-                                          ? Colors.white.withValues(alpha: 0.8)
-                                          : AppColors.blueLogo
-                                              .withValues(alpha: 0.6),
-                                      size: 36.sp,
+                                    return RouteThumbnail(
+                                      points: territory.points,
+                                      isSelected: isSelected,
+                                      activeColor: AppColors.blueLogo,
                                     );
                                   },
                                 )
-                              : Icon(
-                                  Icons.location_city_rounded,
-                                  color: isSelected
-                                      ? Colors.white.withValues(alpha: 0.8)
-                                      : AppColors.blueLogo
-                                          .withValues(alpha: 0.6),
-                                  size: 36.sp,
+                              : RouteThumbnail(
+                                  points: territory.points,
+                                  isSelected: isSelected,
+                                  activeColor: AppColors.blueLogo,
                                 ),
                         ),
                       ),

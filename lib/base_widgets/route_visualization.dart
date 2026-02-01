@@ -1,13 +1,76 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+class RouteThumbnail extends StatelessWidget {
+  final List<LatLng> points;
+  final bool isSelected;
+  final bool isLandmark;
+  final Color? activeColor;
+
+  const RouteThumbnail({
+    super.key,
+    required this.points,
+    this.isSelected = false,
+    this.isLandmark = false,
+    this.activeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: isSelected 
+        ? Colors.white.withValues(alpha: 0.05) 
+        : Colors.grey.shade50,
+      child: Stack(
+        children: [
+          // Background Grid Pattern
+          Positioned.fill(
+            child: CustomPaint(
+              painter: GridPainter(
+                color: isSelected 
+                  ? Colors.white.withValues(alpha: 0.1) 
+                  : Colors.grey.withValues(alpha: 0.2),
+              ),
+            ),
+          ),
+          // Actual Route
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: CustomPaint(
+                size: const Size(double.infinity, double.infinity),
+                painter: ShareRoutePainter(
+                  routePoints: points,
+                  isLandmark: isLandmark,
+                  activeColor: activeColor,
+                ),
+              ),
+            ),
+          ),
+          // Centered Pin (to maintain continuity)
+          Center(
+            child: Icon(
+              Icons.location_on,
+              color: isSelected ? Colors.white70 : (activeColor ?? const Color(0xFF2979FF)).withValues(alpha: 0.4),
+              size: 16.sp,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class ShareRoutePainter extends CustomPainter {
   final List<LatLng>? routePoints;
   final bool isLandmark;
+  final Color? activeColor;
 
   ShareRoutePainter({
     this.routePoints,
     this.isLandmark = false,
+    this.activeColor,
   });
 
   @override
@@ -44,12 +107,12 @@ class ShareRoutePainter extends CustomPainter {
 
     // Convert GPS to canvas coordinates
     Offset latLngToOffset(LatLng point) {
-      final x = padding + ((point.longitude - minLng) / lngRange) * drawWidth;
-      final y = padding + ((maxLat - point.latitude) / latRange) * drawHeight;
+      final x = padding + ((lngRange == 0 ? 0.5 : (point.longitude - minLng) / lngRange) * drawWidth);
+      final y = padding + ((latRange == 0 ? 0.5 : (maxLat - point.latitude) / latRange) * drawHeight);
       return Offset(x, y);
     }
 
-    final routeColor = isLandmark ? const Color(0xFF00E676) : Colors.red;
+    final routeColor = activeColor ?? (isLandmark ? const Color(0xFF00E676) : const Color(0xFF2979FF));
 
     // Draw route path
     final routePaint = Paint()
@@ -68,7 +131,7 @@ class ShareRoutePainter extends CustomPainter {
       path.lineTo(point.dx, point.dy);
     }
 
-    if (!isLandmark) {
+    if (!isLandmark && routePoints!.length > 2) {
       path.close();
       final fillPaint = Paint()
         ..color = routeColor.withValues(alpha: 0.12)
@@ -156,11 +219,28 @@ class ShareRoutePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    if (oldDelegate is ShareRoutePainter) {
-      return oldDelegate.routePoints != routePoints ||
-          oldDelegate.isLandmark != isLandmark;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+class GridPainter extends CustomPainter {
+  final Color color;
+  GridPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 0.5;
+
+    const spacing = 15.0;
+    for (double i = 0; i < size.width; i += spacing) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
     }
-    return false;
+    for (double i = 0; i < size.height; i += spacing) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
