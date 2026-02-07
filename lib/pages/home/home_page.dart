@@ -3,6 +3,7 @@ import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:turun/components/loading/running_loader.dart';
 import 'package:turun/data/model/running/run_session_model.dart';
 import 'package:turun/data/providers/goals/goal_provider.dart';
 import 'package:turun/data/providers/achievement/achievement_provider.dart';
@@ -173,7 +174,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           builder: (context, goalProvider, child) {
             if (goalProvider.isLoading && _isLoadingStats) {
               return const Center(
-                child: CircularProgressIndicator(),
+                child: RunningLoader(
+                  message: 'Loading your stats...',
+                ),
               );
             }
 

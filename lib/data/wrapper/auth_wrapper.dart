@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:turun/components/loading/running_loader.dart';
+import 'package:turun/components/network_error/network_error_widget.dart';
+import 'package:turun/data/services/network_service.dart';
 import 'package:turun/data/services/push_notification_service.dart';
 import 'package:turun/pages/auth/auth_page.dart';
 import 'package:turun/pages/shell/root_shell.dart';
@@ -16,17 +19,31 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   final SupabaseClient _supabase = Supabase.instance.client;
   final PushNotificationService _pushNotificationService = PushNotificationService();
+  final NetworkService _networkService = NetworkService();
   
   User? _user;
   bool _isLoading = true;
   bool _hasCompletedOnboarding = false;
+  bool _hasNetworkError = false;
+  NetworkErrorType? _networkErrorType;
 
   @override
   void initState() {
     super.initState();
     AppLogger.info(LogLabel.auth, 'AuthWrapper initialized');
+    _initNetworkService();
     _initAuth();
     _setupAuthListener();
+  }
+
+  Future<void> _initNetworkService() async {
+    await _networkService.initialize();
+    _networkService.onConnectionChanged = (isConnected) {
+      if (isConnected && _hasNetworkError) {
+        // Connection restored, retry auth
+        _retryAuth();
+      }
+    };
   }
 
   void _setupAuthListener() {
@@ -63,6 +80,20 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _initAuth() async {
+    // First check network connectivity
+    final hasInternet = await _networkService.hasInternetAccess();
+    
+    if (!hasInternet) {
+      if (mounted) {
+        setState(() {
+          _hasNetworkError = true;
+          _networkErrorType = NetworkErrorType.noConnection;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     final user = _supabase.auth.currentUser;
 
     if (user != null) {
@@ -78,8 +109,20 @@ class _AuthWrapperState extends State<AuthWrapper> {
       setState(() {
         _user = user;
         _isLoading = false;
+        _hasNetworkError = false;
       });
     }
+  }
+
+  Future<void> _retryAuth() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _hasNetworkError = false;
+        _networkErrorType = null;
+      });
+    }
+    await _initAuth();
   }
 
   void _onOnboardingComplete() {
@@ -121,6 +164,31 @@ class _AuthWrapperState extends State<AuthWrapper> {
       }
     } catch (e) {
       AppLogger.error(LogLabel.auth, 'Error checking onboarding', e);
+      
+      // Check if it's a network error
+      final hasInternet = await _networkService.hasInternetAccess();
+      if (!hasInternet) {
+        if (mounted) {
+          setState(() {
+            _hasNetworkError = true;
+            _networkErrorType = NetworkErrorType.noConnection;
+          });
+        }
+        return;
+      }
+      
+      // If we have internet but still got an error, it might be a server issue
+      if (e.toString().contains('timeout') || e.toString().contains('Timeout')) {
+        if (mounted) {
+          setState(() {
+            _hasNetworkError = true;
+            _networkErrorType = NetworkErrorType.timeout;
+          });
+        }
+        return;
+      }
+      
+      // For other errors, default to assuming not onboarded
       if (mounted) {
         setState(() {
           _hasCompletedOnboarding = false;
@@ -134,7 +202,24 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (_isLoading) {
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child: RunningLoader(
+            message: 'Getting ready...',
+          ),
+        ),
+      );
+    }
+
+    // Network error - show gamified error screen
+    if (_hasNetworkError && _networkErrorType != null) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: NetworkErrorWidget(
+              errorType: _networkErrorType!,
+              onRetry: _retryAuth,
+              showRetryButton: true,
+            ),
+          ),
         ),
       );
     }
