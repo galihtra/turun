@@ -16,112 +16,130 @@ class NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: EdgeInsets.only(bottom: 12.h),
-        decoration: BoxDecoration(
-          color: notification.isRead ? Colors.white : AppColors.blueLight,
-          borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(
-            color: notification.isRead
-                ? AppColors.grey[200]!
-                : _getTypeColor().withValues(alpha: 0.3),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: _getTypeColor().withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      decoration: BoxDecoration(
+        color: notification.isRead ? Colors.white : AppColors.blueLight,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: notification.isRead
+              ? AppColors.grey[200]!
+              : _getTypeColor().withValues(alpha: 0.3),
+          width: 1.5,
         ),
-        child: Stack(
-          children: [
-            // Accent gradient overlay
-            Positioned(
-              top: 0,
-              left: 0,
-              child: Container(
-                width: 4.w,
-                height: 100.h,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      _getTypeColor(),
-                      _getTypeColor().withValues(alpha: 0.5),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(16.r),
-                    bottomLeft: Radius.circular(16.r),
+        boxShadow: [
+          BoxShadow(
+            color: _getTypeColor().withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16.r),
+          splashColor: _getTypeColor().withValues(alpha: 0.1),
+          highlightColor: _getTypeColor().withValues(alpha: 0.05),
+          child: Stack(
+            children: [
+              // Accent gradient overlay
+              Positioned(
+                top: 0,
+                left: 0,
+                child: Container(
+                  width: 4.w,
+                  height: 100.h,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        _getTypeColor(),
+                        _getTypeColor().withValues(alpha: 0.5),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(16.r),
+                      bottomLeft: Radius.circular(16.r),
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Content
-            Padding(
-              padding: EdgeInsets.all(16.w),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Icon
-                  _buildIcon(),
-                  SizedBox(width: 12.w),
+              // Content
+              Padding(
+                padding: EdgeInsets.all(16.w),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Icon
+                    _buildIcon(),
+                    SizedBox(width: 12.w),
 
-                  // Content
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                notification.title,
-                                style: AppStyles.label1SemiBold.copyWith(
-                                  color: AppColors.black[900],
+                    // Content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  notification.title,
+                                  style: AppStyles.label1SemiBold.copyWith(
+                                    color: AppColors.black[900],
+                                  ),
                                 ),
                               ),
+                              if (!notification.isRead)
+                                Container(
+                                  width: 8.w,
+                                  height: 8.h,
+                                  decoration: BoxDecoration(
+                                    color: _getTypeColor(),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          SizedBox(height: 6.h),
+                          Text(
+                            notification.message,
+                            style: AppStyles.body3Regular.copyWith(
+                              color: AppColors.black[600],
                             ),
-                            if (!notification.isRead)
-                              Container(
-                                width: 8.w,
-                                height: 8.h,
-                                decoration: BoxDecoration(
-                                  color: _getTypeColor(),
-                                  shape: BoxShape.circle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 8.h),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _formatTime(notification.createdAt),
+                                  style: AppStyles.label3Regular.copyWith(
+                                    color: AppColors.grey[600],
+                                  ),
                                 ),
                               ),
-                          ],
-                        ),
-                        SizedBox(height: 6.h),
-                        Text(
-                          notification.message,
-                          style: AppStyles.body3Regular.copyWith(
-                            color: AppColors.black[600],
+                              // Chevron indicator for clickable
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20.sp,
+                                color: AppColors.grey[400],
+                              ),
+                            ],
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 8.h),
-                        Text(
-                          _formatTime(notification.createdAt),
-                          style: AppStyles.label3Regular.copyWith(
-                            color: AppColors.grey[600],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
