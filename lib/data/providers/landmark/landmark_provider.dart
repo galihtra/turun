@@ -105,6 +105,10 @@ class LandmarkProvider extends ChangeNotifier {
 
   /// Check if user is near any existing territory
   /// Returns the nearest territory if within proximity, null otherwise
+  /// 
+  /// FIXED: Now checks distance to the NEAREST POINT on the territory route,
+  /// not just the center. This prevents blocking landmark creation when user
+  /// is far from the actual route but close to the center of a long territory.
   Future<Territory?> checkTerritoryProximity(LatLng currentLocation) async {
     try {
       // Load territories if not already loaded
@@ -112,11 +116,10 @@ class LandmarkProvider extends ChangeNotifier {
         await loadUserTerritories();
       }
 
-      // Check each territory's center point
       for (final territory in _userTerritories) {
         if (territory.points.isEmpty) continue;
 
-        // Calculate center of territory
+        // First, quick check using center + max radius to skip far territories
         double totalLat = 0;
         double totalLng = 0;
         for (var point in territory.points) {
@@ -126,19 +129,45 @@ class LandmarkProvider extends ChangeNotifier {
         final centerLat = totalLat / territory.points.length;
         final centerLng = totalLng / territory.points.length;
 
-        // Calculate distance from current location to territory center
-        final distance = Geolocator.distanceBetween(
+        // Calculate max radius from center to any point
+        double maxRadius = 0;
+        for (var point in territory.points) {
+          final d = Geolocator.distanceBetween(
+            centerLat, centerLng, point.latitude, point.longitude);
+          if (d > maxRadius) maxRadius = d;
+        }
+
+        // Quick check: if distance to center > maxRadius + proximityMeters, skip
+        final distanceToCenter = Geolocator.distanceBetween(
           currentLocation.latitude,
           currentLocation.longitude,
           centerLat,
           centerLng,
         );
 
-        // If within proximity, return this territory
-        if (distance <= territoryProximityMeters) {
+        if (distanceToCenter > maxRadius + territoryProximityMeters) {
+          continue; // Too far, skip detailed check
+        }
+
+        // Detailed check: find distance to NEAREST point on the route
+        double minDistanceToRoute = double.infinity;
+        for (var point in territory.points) {
+          final distance = Geolocator.distanceBetween(
+            currentLocation.latitude,
+            currentLocation.longitude,
+            point.latitude,
+            point.longitude,
+          );
+          if (distance < minDistanceToRoute) {
+            minDistanceToRoute = distance;
+          }
+        }
+
+        // If within proximity of ANY point on the route, return this territory
+        if (minDistanceToRoute <= territoryProximityMeters) {
           AppLogger.info(
             LogLabel.general,
-            'User is near territory: ${territory.name} (${distance.toStringAsFixed(0)}m away)',
+            'User is near territory route: ${territory.name} (${minDistanceToRoute.toStringAsFixed(0)}m from nearest point)',
           );
           return territory;
         }

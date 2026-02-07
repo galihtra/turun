@@ -151,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const WeightTracking(),
                         AppGaps.kGap24,
                         const BestRecords(),
-                        AppGaps.kGap24,
+                        AppGaps.kGap35,
                       ],
                     ),
                   ),

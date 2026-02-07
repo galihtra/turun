@@ -10,6 +10,8 @@ import 'package:turun/pages/notification/widgets/notification_filter_chip.dart';
 import 'package:turun/resources/colors_app.dart';
 import 'package:turun/resources/styles_app.dart';
 
+import '../../resources/values_app.dart';
+
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
 
@@ -159,6 +161,7 @@ class _NotificationPageState extends State<NotificationPage> {
                               },
                             ),
                     ),
+                    AppGaps.kGap100,
                   ],
                 ),
         );
