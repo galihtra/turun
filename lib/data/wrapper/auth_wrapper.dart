@@ -4,6 +4,7 @@ import 'package:turun/components/loading/running_loader.dart';
 import 'package:turun/components/network_error/network_error_widget.dart';
 import 'package:turun/data/services/network_service.dart';
 import 'package:turun/data/services/push_notification_service.dart';
+import 'package:turun/data/services/navigation_notification_service.dart';
 import 'package:turun/pages/auth/auth_page.dart';
 import 'package:turun/pages/shell/root_shell.dart';
 import '../../pages/auth/onboarding/onboarding_page.dart';
@@ -19,6 +20,7 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   final SupabaseClient _supabase = Supabase.instance.client;
   final PushNotificationService _pushNotificationService = PushNotificationService();
+  final NavigationNotificationService _navNotificationService = NavigationNotificationService();
   final NetworkService _networkService = NetworkService();
   
   User? _user;
@@ -59,6 +61,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
         await _checkOnboardingStatus(user.id);
         // Initialize push notifications for the logged-in user
         await _pushNotificationService.initialize();
+        // Initialize navigation notification channel
+        await _navNotificationService.initialize();
       } else if (user == null && _user != null) {
         AppLogger.info(LogLabel.auth, 'User logged out');
         // Delete FCM token on logout
@@ -101,6 +105,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
       await _checkOnboardingStatus(user.id);
       // Initialize push notifications for existing user
       await _pushNotificationService.initialize();
+      // Initialize navigation notification channel
+      await _navNotificationService.initialize();
     } else {
       AppLogger.debug(LogLabel.auth, 'No current user');
     }

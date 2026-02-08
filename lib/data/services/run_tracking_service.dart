@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/app/app_logger.dart';
 import 'package:turun/data/services/notification_service.dart';
@@ -27,12 +30,22 @@ class RunTrackingService {
   // Speed tracking
   double _currentSpeed = 0;
   DateTime? _lastPositionTime;
+  
+  // ✅ NEW: Periodic sync and recovery
+  Timer? _syncTimer;
+  static const String _cacheKeySession = 'active_run_session';
+  static const String _cacheKeyPoints = 'active_run_points';
+  static const String _cacheKeyDistance = 'active_run_distance';
+  static const String _cacheKeyElapsed = 'active_run_elapsed';
+  static const int _syncIntervalSeconds = 15; // Sync every 15 seconds
 
   // Getters
   List<LatLng> get recordedPoints => List.unmodifiable(_recordedPoints);
   double get totalDistance => _totalDistance;
   int get elapsedSeconds => _elapsedSeconds;
   double get currentSpeed => _currentSpeed;
+  RunSession? get currentSession => _currentSession;
+  bool get hasActiveSession => _currentSession != null;
   
   /// Current pace in minutes per km
   double get currentPace {
@@ -41,6 +54,85 @@ class RunTrackingService {
     final durationMinutes = _elapsedSeconds / 60;
     if (distanceKm <= 0) return 0;
     return durationMinutes / distanceKm;
+  }
+
+  /// ✅ NEW: Check and recover active session on app startup
+  Future<bool> recoverActiveSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final sessionJson = prefs.getString(_cacheKeySession);
+      
+      if (sessionJson == null) {
+        return false;
+      }
+      
+      AppLogger.info(LogLabel.general, '🔄 Attempting to recover active run session...');
+      
+      // Parse cached session
+      final sessionData = jsonDecode(sessionJson) as Map<String, dynamic>;
+      final sessionId = sessionData['id'] as String;
+      
+      // Check if session is still active in database
+      final response = await _supabase
+          .from('run_sessions')
+          .select()
+          .eq('id', sessionId)
+          .eq('status', 'active')
+          .maybeSingle();
+      
+      if (response == null) {
+        AppLogger.info(LogLabel.general, '📭 No active session found in database, clearing cache');
+        await _clearLocalCache();
+        return false;
+      }
+      
+      // Recover session
+      _currentSession = RunSession.fromJson(response);
+      
+      // Recover points from local cache (more up-to-date than database)
+      final pointsJson = prefs.getString(_cacheKeyPoints);
+      if (pointsJson != null) {
+        final pointsList = jsonDecode(pointsJson) as List;
+        _recordedPoints.clear();
+        for (final point in pointsList) {
+          _recordedPoints.add(LatLng(point['lat'] as double, point['lng'] as double));
+        }
+      } else {
+        // Fallback to database route points
+        final dbPoints = _currentSession!.routePoints;
+        _recordedPoints.clear();
+        _recordedPoints.addAll(dbPoints);
+      }
+      
+      // Recover distance and elapsed time
+      _totalDistance = prefs.getDouble(_cacheKeyDistance) ?? 0;
+      _elapsedSeconds = prefs.getInt(_cacheKeyElapsed) ?? 0;
+      
+      // Calculate elapsed time since start (in case timer wasn't running)
+      final actualElapsed = DateTime.now().difference(_currentSession!.startTime).inSeconds;
+      _elapsedSeconds = actualElapsed > _elapsedSeconds ? actualElapsed : _elapsedSeconds;
+      
+      _startTime = _currentSession!.startTime;
+      _isPaused = false;
+      _lastPositionTime = DateTime.now();
+      
+      // Restart tracking
+      _startTimer();
+      _startGpsTracking();
+      _startPeriodicSync();
+      
+      AppLogger.success(
+        LogLabel.general, 
+        '✅ Recovered session ${_currentSession!.id} with ${_recordedPoints.length} points, '
+        '${(_totalDistance/1000).toStringAsFixed(2)}km, ${_elapsedSeconds}s'
+      );
+      
+      return true;
+    } catch (e, stackTrace) {
+      AppLogger.error(LogLabel.general, 'Failed to recover active session', e, stackTrace);
+      await _clearLocalCache();
+      return false;
+    }
   }
 
   /// Start a new run session
@@ -78,11 +170,17 @@ class RunTrackingService {
 
       _currentSession = RunSession.fromJson(response);
 
+      // ✅ Save to local cache immediately
+      await _saveToLocalCache();
+
       // Start timer
       _startTimer();
 
       // Start GPS tracking
       _startGpsTracking();
+      
+      // ✅ Start periodic sync
+      _startPeriodicSync();
 
       AppLogger.success(LogLabel.supabase, '✅ Run session started: ${_currentSession!.id}');
       return _currentSession;
@@ -101,6 +199,88 @@ class RunTrackingService {
       }
     });
   }
+  
+  /// ✅ NEW: Start periodic sync to database and local cache
+  void _startPeriodicSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: _syncIntervalSeconds), (timer) async {
+      if (_currentSession != null && !_isPaused) {
+        await _syncToDatabase();
+        await _saveToLocalCache();
+      }
+    });
+  }
+  
+  /// ✅ NEW: Sync current state to database
+  Future<void> _syncToDatabase() async {
+    if (_currentSession == null) return;
+    
+    try {
+      final routePointsJson = _recordedPoints
+          .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+          .toList();
+      
+      await _supabase
+          .from('run_sessions')
+          .update({
+            'route_points': routePointsJson,
+            'distance_meters': _totalDistance,
+            'duration_seconds': _elapsedSeconds,
+          })
+          .eq('id', _currentSession!.id);
+      
+      AppLogger.debug(
+        LogLabel.supabase, 
+        '🔄 Synced to DB: ${_recordedPoints.length} points, ${(_totalDistance/1000).toStringAsFixed(2)}km'
+      );
+    } catch (e) {
+      AppLogger.warning(LogLabel.supabase, 'Failed to sync to database: $e');
+    }
+  }
+  
+  /// ✅ NEW: Save to local cache for recovery
+  Future<void> _saveToLocalCache() async {
+    if (_currentSession == null) return;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Save session info
+      await prefs.setString(_cacheKeySession, jsonEncode({
+        'id': _currentSession!.id,
+        'territory_id': _currentSession!.territoryId,
+        'user_id': _currentSession!.userId,
+      }));
+      
+      // Save points
+      final pointsJson = _recordedPoints
+          .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+          .toList();
+      await prefs.setString(_cacheKeyPoints, jsonEncode(pointsJson));
+      
+      // Save metrics
+      await prefs.setDouble(_cacheKeyDistance, _totalDistance);
+      await prefs.setInt(_cacheKeyElapsed, _elapsedSeconds);
+      
+      AppLogger.debug(LogLabel.general, '💾 Saved to local cache: ${_recordedPoints.length} points');
+    } catch (e) {
+      AppLogger.warning(LogLabel.general, 'Failed to save to local cache: $e');
+    }
+  }
+  
+  /// ✅ NEW: Clear local cache
+  Future<void> _clearLocalCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_cacheKeySession);
+      await prefs.remove(_cacheKeyPoints);
+      await prefs.remove(_cacheKeyDistance);
+      await prefs.remove(_cacheKeyElapsed);
+      AppLogger.debug(LogLabel.general, '🗑️ Cleared local run cache');
+    } catch (e) {
+      AppLogger.warning(LogLabel.general, 'Failed to clear local cache: $e');
+    }
+  }
 
   /// GPS tracking subscription
   StreamSubscription<Position>? _gpsSubscription;
@@ -108,9 +288,12 @@ class RunTrackingService {
   void _startGpsTracking() {
     _gpsSubscription?.cancel();
     
-    // ✅ Use AndroidSettings with ForegroundNotificationConfig for background tracking
-    _gpsSubscription = Geolocator.getPositionStream(
-      locationSettings: AndroidSettings(
+    // ✅ Use platform-specific settings for background tracking
+    late LocationSettings locationSettings;
+    
+    if (Platform.isAndroid) {
+      // Android: Use Foreground Service for background tracking
+      locationSettings = AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 5, // Update every 5 meters
         forceLocationManager: false,
@@ -123,7 +306,27 @@ class RunTrackingService {
           setOngoing: true,
           notificationIcon: AndroidResource(name: 'launcher_icon', defType: 'mipmap'),
         ),
-      ),
+      );
+    } else if (Platform.isIOS) {
+      // iOS: Use Apple settings for background location
+      locationSettings = AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        activityType: ActivityType.fitness,
+        distanceFilter: 5,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true, // Shows blue bar in iOS
+        allowBackgroundLocationUpdates: true, // Critical for background tracking
+      );
+    } else {
+      // Fallback for other platforms
+      locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 5,
+      );
+    }
+    
+    _gpsSubscription = Geolocator.getPositionStream(
+      locationSettings: locationSettings,
     ).listen((Position position) {
       if (_isPaused || _currentSession == null) return;
 
@@ -153,10 +356,16 @@ class RunTrackingService {
             }
           }
           _lastPositionTime = now;
+          
+          // ✅ Save to local cache every 10 points for quick recovery
+          if (_recordedPoints.length % 10 == 0) {
+            _saveToLocalCache();
+          }
         }
       }
     });
   }
+
 
   /// Pause run session
   void pauseRunSession() {
@@ -189,6 +398,7 @@ class RunTrackingService {
       // Stop tracking
       _timer?.cancel();
       _gpsSubscription?.cancel();
+      _syncTimer?.cancel(); // ✅ Stop sync timer
 
       // Add final point
       if (_recordedPoints.isEmpty || _recordedPoints.last != endLocation) {
@@ -235,6 +445,9 @@ class RunTrackingService {
       // Reset state
       _currentSession = null;
       _recordedPoints.clear();
+      
+      // ✅ Clear local cache
+      await _clearLocalCache();
 
       return completedSession;
     } catch (e, stackTrace) {
@@ -244,9 +457,10 @@ class RunTrackingService {
   }
 
   /// Cancel run session
-  void cancelRunSession() {
+  Future<void> cancelRunSession() async {
     _timer?.cancel();
     _gpsSubscription?.cancel();
+    _syncTimer?.cancel(); // ✅ Stop sync timer
     
     if (_currentSession != null) {
       // Delete from database (fire and forget)
@@ -265,6 +479,9 @@ class RunTrackingService {
     _elapsedSeconds = 0;
     _isPaused = false;
     _currentSpeed = 0;
+    
+    // ✅ Clear local cache
+    await _clearLocalCache();
   }
 
   // ==================== TERRITORY CONQUEST LOGIC ====================
@@ -596,6 +813,7 @@ class RunTrackingService {
   void dispose() {
     _timer?.cancel();
     _gpsSubscription?.cancel();
+    _syncTimer?.cancel();
     _recordedPoints.clear();
   }
 }

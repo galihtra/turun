@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -6,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/app/app_logger.dart';
 import 'package:turun/data/services/notification_service.dart';
 import 'package:turun/data/services/push_notification_service.dart';
+import 'package:turun/data/services/navigation_notification_service.dart';
 
 import '../../model/territory/territory_model.dart';
 import '../../model/running/run_session_model.dart';
@@ -16,6 +18,7 @@ class LandmarkProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
   final NotificationService _notificationService = NotificationService();
   final PushNotificationService _pushNotificationService = PushNotificationService();
+  final NavigationNotificationService _navNotificationService = NavigationNotificationService();
 
   // Landmark run tracking
   final List<LatLng> _routePoints = [];
@@ -330,6 +333,13 @@ class LandmarkProvider extends ChangeNotifier {
       _startTimer();
       _startGpsTracking();
       _createStartMarker();
+      
+      // ✅ Start navigation notification
+      final routeName = hasPlannedRoute ? 'Ghost Route' : 'Free Run';
+      await _navNotificationService.startNavigation(
+        territoryName: routeName,
+        totalCheckpoints: hasPlannedRoute ? (_plannedRoutePoints.length / 10).ceil() : 1,
+      );
 
       AppLogger.success(LogLabel.general, 'Landmark run started');
       notifyListeners();
@@ -349,19 +359,91 @@ class LandmarkProvider extends ChangeNotifier {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isRecording) {
         _elapsedSeconds++;
+        
+        // ✅ Update navigation notification every second
+        _updateNavigationNotification();
+        
         notifyListeners();
       }
     });
   }
+  
+  /// Update navigation notification with current progress
+  void _updateNavigationNotification() {
+    final routeName = hasPlannedRoute ? 'Ghost Route' : 'Free Run';
+    
+    // Calculate progress if following planned route
+    int currentCheckpoint = 0;
+    int totalCheckpoints = 0;
+    String? nextDirection;
+    
+    if (hasPlannedRoute && _routePoints.isNotEmpty) {
+      totalCheckpoints = (_plannedRoutePoints.length / 10).ceil(); // Approximate checkpoints
+      currentCheckpoint = (_routePoints.length / (_plannedRoutePoints.length / totalCheckpoints)).floor();
+      currentCheckpoint = currentCheckpoint.clamp(0, totalCheckpoints);
+      
+      // Calculate distance to end
+      if (_lastPosition != null && _plannedRoutePoints.isNotEmpty) {
+        final endPoint = _plannedRoutePoints.last;
+        final distToEnd = Geolocator.distanceBetween(
+          _lastPosition!.latitude, _lastPosition!.longitude,
+          endPoint.latitude, endPoint.longitude,
+        );
+        nextDirection = 'To finish: ${distToEnd.toStringAsFixed(0)}m';
+      }
+    }
+    
+    _navNotificationService.updateProgress(
+      territoryName: routeName,
+      currentCheckpoint: currentCheckpoint,
+      totalCheckpoints: totalCheckpoints > 0 ? totalCheckpoints : 1,
+      distanceKm: _totalDistance / 1000,
+      elapsedSeconds: _elapsedSeconds,
+      paceMinPerKm: currentPace,
+      nextDirection: nextDirection,
+    );
+  }
 
-  /// Start GPS tracking
+  /// Start GPS tracking with platform-specific background support
   void _startGpsTracking() {
     _stopGpsTracking();
 
-    const locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: gpsDistanceFilter,
-    );
+    // ✅ Use platform-specific settings for background tracking
+    late LocationSettings locationSettings;
+    
+    if (Platform.isAndroid) {
+      // Android: Use Foreground Service for background tracking
+      locationSettings = AndroidSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: gpsDistanceFilter,
+        forceLocationManager: false,
+        intervalDuration: const Duration(seconds: 2),
+        // ✅ FOREGROUND SERVICE - Keeps GPS running when screen is locked
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationText: "Recording your landmark route...",
+          notificationTitle: "TURUN Landmark 🗺️",
+          enableWakeLock: true,
+          setOngoing: true,
+          notificationIcon: AndroidResource(name: 'launcher_icon', defType: 'mipmap'),
+        ),
+      );
+    } else if (Platform.isIOS) {
+      // iOS: Use Apple settings for background location
+      locationSettings = AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        activityType: ActivityType.fitness,
+        distanceFilter: gpsDistanceFilter,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
+        allowBackgroundLocationUpdates: true,
+      );
+    } else {
+      // Fallback for other platforms
+      locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: gpsDistanceFilter,
+      );
+    }
 
     _gpsStream = Geolocator.getPositionStream(
       locationSettings: locationSettings,
@@ -462,6 +544,9 @@ class LandmarkProvider extends ChangeNotifier {
       _isRecording = false;
       _stopGpsTracking();
       _timer?.cancel();
+      
+      // ✅ Stop navigation notification
+      await _navNotificationService.stopNavigation();
 
       final endTime = DateTime.now();
       final finalDistance = _totalDistance;
@@ -531,6 +616,9 @@ class LandmarkProvider extends ChangeNotifier {
           .from('run_sessions')
           .delete()
           .eq('id', _activeRunSession!.id);
+      
+      // ✅ Stop navigation notification
+      await _navNotificationService.stopNavigation();
 
       _clearData();
       _isRunning = false;

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -10,6 +11,7 @@ import '../../model/running/run_session_model.dart';
 import '../../model/running/run_mode.dart';
 import '../../services/directions_service.dart';
 import '../../services/run_tracking_service.dart';
+import '../../services/navigation_notification_service.dart';
 import '../../../utils/custom_marker_helper.dart';
 
 class RunningProvider extends ChangeNotifier {
@@ -53,6 +55,7 @@ class RunningProvider extends ChangeNotifier {
 
   // Run tracking properties
   final RunTrackingService _runTrackingService = RunTrackingService();
+  final NavigationNotificationService _navNotificationService = NavigationNotificationService();
   RunSession? _activeRunSession;
   bool _isRunning = false;
   final Set<Polyline> _runRoutePolylines = {};
@@ -170,6 +173,59 @@ class RunningProvider extends ChangeNotifier {
       getCurrentLocation(),
       loadTerritories(),
     ]);
+    
+    // ✅ Check for active run session that needs recovery
+    await _checkAndRecoverActiveSession();
+  }
+  
+  /// ✅ NEW: Check if there's an active run session that was interrupted
+  /// This happens when the phone was turned off or app was killed during a run
+  Future<void> _checkAndRecoverActiveSession() async {
+    try {
+      final recovered = await _runTrackingService.recoverActiveSession();
+      
+      if (recovered && _runTrackingService.hasActiveSession) {
+        AppLogger.info(LogLabel.general, '🔄 Found active run session, recovering...');
+        
+        _activeRunSession = _runTrackingService.currentSession;
+        _isRunning = true;
+        _runCompleted = false;
+        
+        // Find the territory for this session
+        if (_activeRunSession != null && _territories.isNotEmpty) {
+          final territory = _territories.firstWhere(
+            (t) => t.id == _activeRunSession!.territoryId,
+            orElse: () => _territories.first,
+          );
+          
+          _selectedTerritory = territory;
+          _calculateCheckpointIndices();
+          
+          // Start GPS tracking for this run
+          _startRunGpsTracking();
+          
+          // Create visual elements
+          await _createTerritoryGuidanceRoute();
+          await _createCheckpointMarkers();
+          _generatePolygons();
+          
+          AppLogger.success(
+            LogLabel.general, 
+            '✅ Recovered run session for territory: ${territory.name ?? territory.id}'
+          );
+        }
+        
+        notifyListeners();
+      }
+    } catch (e, stackTrace) {
+      AppLogger.error(LogLabel.general, 'Failed to recover active run session', e, stackTrace);
+    }
+  }
+  
+  /// ✅ NEW: Manual check for active session (can be called from UI)
+  Future<bool> hasRecoverableSession() async {
+    return _runTrackingService.hasActiveSession || 
+           await _runTrackingService.recoverActiveSession();
   }
 
   Future<void> getCurrentLocation() async {
@@ -246,16 +302,19 @@ class RunningProvider extends ChangeNotifier {
   }
 
   // ==================== GPS TRACKING FOR RUNNING ====================
-  /// ✅ NEW: Start dedicated GPS tracking for run with checkpoint detection
-  /// Uses Foreground Service to keep tracking even when screen is locked
+  /// ✅ Start dedicated GPS tracking for run with checkpoint detection
+  /// Uses platform-specific settings for background tracking
   void _startRunGpsTracking() {
-    AppLogger.info(LogLabel.general, '🏃 Starting GPS tracking for run with foreground service...');
+    AppLogger.info(LogLabel.general, '🏃 Starting GPS tracking for run with background service...');
 
     _runGpsStream?.cancel(); // Cancel any existing stream
 
-    // ✅ Use AndroidSettings with ForegroundNotificationConfig for background tracking
-    _runGpsStream = Geolocator.getPositionStream(
-      locationSettings: AndroidSettings(
+    // ✅ Use platform-specific settings for background tracking
+    late LocationSettings locationSettings;
+    
+    if (Platform.isAndroid) {
+      // Android: Use Foreground Service for background tracking
+      locationSettings = AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 3, // Update every 3 meters for accurate checkpoint detection
         forceLocationManager: false,
@@ -268,7 +327,27 @@ class RunningProvider extends ChangeNotifier {
           setOngoing: true,
           notificationIcon: AndroidResource(name: 'launcher_icon', defType: 'mipmap'),
         ),
-      ),
+      );
+    } else if (Platform.isIOS) {
+      // iOS: Use Apple settings for background location
+      locationSettings = AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        activityType: ActivityType.fitness,
+        distanceFilter: 3,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true, // Shows blue bar in iOS
+        allowBackgroundLocationUpdates: true, // Critical for background tracking
+      );
+    } else {
+      // Fallback for other platforms
+      locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 3,
+      );
+    }
+
+    _runGpsStream = Geolocator.getPositionStream(
+      locationSettings: locationSettings,
     ).listen(
       (Position position) {
         if (!_isRunning || _runCompleted) return;
@@ -887,6 +966,12 @@ class RunningProvider extends ChangeNotifier {
 
         // ✅ START DEDICATED GPS TRACKING FOR RUN
         _startRunGpsTracking();
+        
+        // ✅ START NAVIGATION NOTIFICATION (like Google Maps)
+        await _navNotificationService.startNavigation(
+          territoryName: _selectedTerritory!.name ?? 'Territory ${_selectedTerritory!.id}',
+          totalCheckpoints: totalCheckpoints,
+        );
 
         notifyListeners();
 
@@ -917,13 +1002,50 @@ class RunningProvider extends ChangeNotifier {
     AppLogger.info(LogLabel.general, '   Current markers after: ${_runMarkers.length}');
     AppLogger.success(LogLabel.general, '🚀 _startRunRouteUpdates() COMPLETE');
 
-    // Timer for UI updates only (checkpoint detection is handled by GPS stream)
+    // Timer for UI updates AND navigation notification (checkpoint detection is handled by GPS stream)
     _runRouteTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isRunning && !_runCompleted) {
         _updateRunRoutePolyline();
+        
+        // ✅ Update navigation notification with current stats
+        _updateNavigationNotification();
+        
         notifyListeners();
       }
     });
+  }
+  
+  /// Update navigation notification with current run progress
+  void _updateNavigationNotification() {
+    if (_selectedTerritory == null) return;
+    
+    final territoryName = _selectedTerritory!.name ?? 'Territory ${_selectedTerritory!.id}';
+    
+    // Get next direction hint
+    String? nextDirection;
+    if (_currentCheckpointMapIndex < _checkpointIndices.length) {
+      final nextCheckpointIdx = _checkpointIndices[_currentCheckpointMapIndex];
+      if (nextCheckpointIdx < _selectedTerritory!.points.length && _currentLatLng != null) {
+        final nextPoint = _selectedTerritory!.points[nextCheckpointIdx];
+        final distance = Geolocator.distanceBetween(
+          _currentLatLng!.latitude,
+          _currentLatLng!.longitude,
+          nextPoint.latitude,
+          nextPoint.longitude,
+        );
+        nextDirection = 'Next checkpoint: ${distance.toStringAsFixed(0)}m';
+      }
+    }
+    
+    _navNotificationService.updateProgress(
+      territoryName: territoryName,
+      currentCheckpoint: collectedCheckpoints,
+      totalCheckpoints: totalCheckpoints,
+      distanceKm: runDistance / 1000,
+      elapsedSeconds: runDuration,
+      paceMinPerKm: currentPace,
+      nextDirection: nextDirection,
+    );
   }
 
   /// Create guidance polyline showing territory route to follow
@@ -1311,6 +1433,9 @@ class RunningProvider extends ChangeNotifier {
       // Stop tracking
       _stopRunGpsTracking();
       _runRouteTimer?.cancel();
+      
+      // ✅ Stop navigation notification
+      await _navNotificationService.stopNavigation();
 
       final completedSession = await _runTrackingService.completeRunSession(
         endLocation: _currentLatLng!,
@@ -1400,9 +1525,13 @@ class RunningProvider extends ChangeNotifier {
   // Placeholder for any additional conquest-related logic
 
   /// Cancel run session
-  void cancelRunSession() {
-    _runTrackingService.cancelRunSession();
+  Future<void> cancelRunSession() async {
+    await _runTrackingService.cancelRunSession();
     _stopRunGpsTracking();
+    
+    // ✅ Stop navigation notification
+    await _navNotificationService.stopNavigation();
+    
     _activeRunSession = null;
     _isRunning = false;
     _runCompleted = false;
