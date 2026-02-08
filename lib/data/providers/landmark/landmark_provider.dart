@@ -405,9 +405,24 @@ class LandmarkProvider extends ChangeNotifier {
   }
 
   /// Start GPS tracking with platform-specific background support
+  /// ✅ Uses stream + polling backup for reliable background tracking
+  Timer? _gpsPollingTimer;
+  static const int _gpsPollingIntervalMs = 3000; // Poll every 3 seconds
+  
   void _startGpsTracking() {
     _stopGpsTracking();
 
+    // ✅ APPROACH 1: Start GPS stream (may stop in background)
+    _startGpsStream();
+    
+    // ✅ APPROACH 2: Start polling as BACKUP (more reliable in background)
+    _startGpsPolling();
+    
+    AppLogger.info(LogLabel.general, '📍 Landmark GPS tracking started with stream + polling backup');
+  }
+  
+  /// Start GPS stream for landmark tracking
+  void _startGpsStream() {
     // ✅ Use platform-specific settings for background tracking
     late LocationSettings locationSettings;
     
@@ -451,11 +466,37 @@ class LandmarkProvider extends ChangeNotifier {
       _updateRoute(position);
     });
   }
+  
+  /// ✅ Periodic GPS polling (backup for when stream stops in background)
+  void _startGpsPolling() {
+    _gpsPollingTimer = Timer.periodic(
+      const Duration(milliseconds: _gpsPollingIntervalMs),
+      (timer) async {
+        if (!_isRecording || _activeRunSession == null) return;
+        
+        try {
+          final position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.bestForNavigation,
+              timeLimit: Duration(seconds: 5),
+            ),
+          );
+          
+          _updateRoute(position);
+        } catch (e) {
+          // Silently fail - polling is a backup
+          AppLogger.debug(LogLabel.general, '📍 Landmark GPS polling failed: $e');
+        }
+      },
+    );
+  }
 
   /// Stop GPS tracking
   void _stopGpsTracking() {
     _gpsStream?.cancel();
     _gpsStream = null;
+    _gpsPollingTimer?.cancel();
+    _gpsPollingTimer = null;
   }
 
   /// Update route as user moves
@@ -493,6 +534,10 @@ class LandmarkProvider extends ChangeNotifier {
 
         // Draw route
         _drawRoute();
+        
+        // ✅ Update navigation notification on every GPS update (real-time)
+        _updateNavigationNotification();
+        
         notifyListeners();
       }
     } else {

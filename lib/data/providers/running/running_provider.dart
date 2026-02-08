@@ -302,13 +302,30 @@ class RunningProvider extends ChangeNotifier {
   }
 
   // ==================== GPS TRACKING FOR RUNNING ====================
+  
+  /// ✅ Timer for periodic GPS polling (backup for background)
+  Timer? _runGpsPollingTimer;
+  static const int _runGpsPollingIntervalMs = 3000; // Poll every 3 seconds
+  
   /// ✅ Start dedicated GPS tracking for run with checkpoint detection
   /// Uses platform-specific settings for background tracking
   void _startRunGpsTracking() {
     AppLogger.info(LogLabel.general, '🏃 Starting GPS tracking for run with background service...');
 
     _runGpsStream?.cancel(); // Cancel any existing stream
-
+    _runGpsPollingTimer?.cancel(); // Cancel any existing polling
+    
+    // ✅ APPROACH 1: Start GPS stream (may stop in background)
+    _startRunGpsStream();
+    
+    // ✅ APPROACH 2: Start polling as BACKUP (more reliable in background)
+    _startRunGpsPolling();
+    
+    AppLogger.info(LogLabel.general, '📍 Run GPS tracking started with stream + polling backup');
+  }
+  
+  /// Start GPS stream for run (works well in foreground, may stop in background)
+  void _startRunGpsStream() {
     // ✅ Use platform-specific settings for background tracking
     late LocationSettings locationSettings;
     
@@ -350,26 +367,55 @@ class RunningProvider extends ChangeNotifier {
       locationSettings: locationSettings,
     ).listen(
       (Position position) {
-        if (!_isRunning || _runCompleted) return;
-
-        // Update current location
-        _currentPosition = position;
-        _currentLatLng = LatLng(position.latitude, position.longitude);
-
-        AppLogger.debug(
-          LogLabel.general,
-          '📍 GPS Update: ${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
-        );
-
-        // ✅ Check checkpoint progress with new location
-        _checkCheckpointProgressSync();
-
-        notifyListeners();
+        _handleRunGpsPosition(position);
       },
       onError: (error) {
-        AppLogger.error(LogLabel.general, 'GPS tracking error during run', error);
+        AppLogger.error(LogLabel.general, 'GPS stream error during run', error);
       },
     );
+  }
+  
+  /// ✅ Periodic GPS polling for checkpoint detection (backup for background)
+  void _startRunGpsPolling() {
+    _runGpsPollingTimer = Timer.periodic(
+      const Duration(milliseconds: _runGpsPollingIntervalMs),
+      (timer) async {
+        if (!_isRunning || _runCompleted) return;
+        
+        try {
+          final position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.bestForNavigation,
+              timeLimit: Duration(seconds: 5),
+            ),
+          );
+          
+          _handleRunGpsPosition(position);
+        } catch (e) {
+          // Silently fail - polling is a backup
+          AppLogger.debug(LogLabel.general, '📍 Run GPS polling failed: $e');
+        }
+      },
+    );
+  }
+  
+  /// Handle GPS position update (shared by stream and polling)
+  void _handleRunGpsPosition(Position position) {
+    if (!_isRunning || _runCompleted) return;
+
+    // Update current location
+    _currentPosition = position;
+    _currentLatLng = LatLng(position.latitude, position.longitude);
+
+    AppLogger.debug(
+      LogLabel.general,
+      '📍 GPS Update: ${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
+    );
+
+    // ✅ Check checkpoint progress with new location
+    _checkCheckpointProgressSync();
+
+    notifyListeners();
   }
 
   /// ✅ NEW: Stop GPS tracking for run
@@ -377,6 +423,8 @@ class RunningProvider extends ChangeNotifier {
     AppLogger.info(LogLabel.general, '🛑 Stopping run GPS tracking');
     _runGpsStream?.cancel();
     _runGpsStream = null;
+    _runGpsPollingTimer?.cancel();
+    _runGpsPollingTimer = null;
   }
 
   // ==================== TERRITORIES ====================
@@ -1211,13 +1259,124 @@ class RunningProvider extends ChangeNotifier {
     );
   }
 
-  /// ✅ NEW: Synchronous checkpoint check called from GPS stream
+  /// ✅ Check checkpoints along interpolated path from recorded route to current position
+  /// This catches checkpoints that were passed when GPS stopped updating (screen off)
+  void _checkInterpolatedCheckpoints() {
+    if (_currentLatLng == null || _selectedTerritory == null) return;
+    if (_currentCheckpointMapIndex >= _checkpointIndices.length) return;
+    
+    final recordedPoints = _runTrackingService.recordedPoints;
+    if (recordedPoints.isEmpty) return;
+    
+    final points = _selectedTerritory!.points;
+    final lastRecordedPoint = recordedPoints.last;
+    final currentPoint = _currentLatLng!;
+    
+    // Calculate distance from last recorded point to current position
+    final distanceFromLastRecorded = Geolocator.distanceBetween(
+      lastRecordedPoint.latitude,
+      lastRecordedPoint.longitude,
+      currentPoint.latitude,
+      currentPoint.longitude,
+    );
+    
+    // If we've moved more than 50m since last recorded GPS point,
+    // there might be checkpoints along the path that we need to catch up on
+    if (distanceFromLastRecorded > 50) {
+      AppLogger.info(
+        LogLabel.general,
+        '📍 Large gap detected: ${distanceFromLastRecorded.toStringAsFixed(0)}m since last GPS update',
+      );
+      
+      // Check each uncollected checkpoint to see if it's along the path
+      // from last recorded position to current position
+      bool anyCollected = false;
+      
+      while (_currentCheckpointMapIndex >= 1 && _currentCheckpointMapIndex < _checkpointIndices.length) {
+        final checkpointMapIndex = _currentCheckpointMapIndex;
+        final pointIndex = _checkpointIndices[checkpointMapIndex];
+        final checkpointPos = points[pointIndex];
+        
+        // Check if checkpoint is "between" last recorded and current position
+        // Using perpendicular distance from point to line
+        final isOnPath = _isPointNearLine(
+          checkpointPos,
+          lastRecordedPoint,
+          currentPoint,
+          60.0, // 60m threshold for being "on path"
+        );
+        
+        if (isOnPath) {
+          AppLogger.success(
+            LogLabel.general,
+            '🪙 COIN $checkpointMapIndex COLLECTED (interpolated path)!',
+          );
+          
+          _currentCheckpointMapIndex++;
+          _currentCheckpointIndex = pointIndex;
+          anyCollected = true;
+          // Continue to check next checkpoint
+        } else {
+          break; // This checkpoint wasn't on the path, stop checking
+        }
+      }
+      
+      if (anyCollected) {
+        _refreshMarkersAsync();
+      }
+    }
+  }
+  
+  /// Check if a point is within a certain distance of a line segment
+  bool _isPointNearLine(LatLng point, LatLng lineStart, LatLng lineEnd, double maxDistance) {
+    // Convert to simple XY for approximation (works for small distances)
+    final px = point.longitude;
+    final py = point.latitude;
+    final ax = lineStart.longitude;
+    final ay = lineStart.latitude;
+    final bx = lineEnd.longitude;
+    final by = lineEnd.latitude;
+    
+    // Vector AB
+    final abx = bx - ax;
+    final aby = by - ay;
+    
+    // Vector AP
+    final apx = px - ax;
+    final apy = py - ay;
+    
+    // Project AP onto AB
+    final abLenSq = abx * abx + aby * aby;
+    if (abLenSq == 0) {
+      // A and B are the same point
+      return Geolocator.distanceBetween(py, px, ay, ax) <= maxDistance;
+    }
+    
+    final t = ((apx * abx + apy * aby) / abLenSq).clamp(0.0, 1.0);
+    
+    // Closest point on line segment
+    final closestX = ax + t * abx;
+    final closestY = ay + t * aby;
+    
+    // Distance from point to closest point on line
+    final distance = Geolocator.distanceBetween(py, px, closestY, closestX);
+    
+    return distance <= maxDistance;
+  }
+
+  /// ✅ IMPROVED: Checkpoint check with catch-up logic for background tracking
+  /// This checks ALL remaining checkpoints, not just the next one,
+  /// to handle cases where user passes multiple checkpoints while screen is locked
   void _checkCheckpointProgressSync() {
     if (_currentLatLng == null || _selectedTerritory == null) return;
     if (!_isRunning || _runCompleted) return;
 
     final points = _selectedTerritory!.points;
     if (points.isEmpty) return;
+    
+    // ✅ INTERPOLATION: Check if current position indicates we passed checkpoints
+    // This helps when GPS stops updating but we've moved significantly
+    _checkInterpolatedCheckpoints();
     
     final startPoint = points.first;
     
@@ -1235,8 +1394,22 @@ class RunningProvider extends ChangeNotifier {
       AppLogger.info(LogLabel.general, '🚀 User left START area (${distanceToStart.toStringAsFixed(0)}m away)');
     }
     
-    // STEP 2: Check for coin collection
-    if (_currentCheckpointMapIndex >= 1 && _currentCheckpointMapIndex < _checkpointIndices.length) {
+    // ✅ SAFETY: Don't collect any checkpoints until user has left the start area
+    // This prevents instant completion when user starts near checkpoints
+    if (!_hasLeftStartPoint) {
+      AppLogger.debug(
+        LogLabel.general, 
+        '⏳ Waiting for user to leave START area before collecting checkpoints...',
+      );
+      return;
+    }
+    
+    // STEP 2: ✅ IMPROVED - Check ALL remaining checkpoints for catch-up
+    // This handles the case where user passes multiple checkpoints while screen is locked
+    bool anyCheckpointCollected = false;
+    int checkpointsCollectedThisUpdate = 0;
+    
+    while (_currentCheckpointMapIndex >= 1 && _currentCheckpointMapIndex < _checkpointIndices.length) {
       final nextCoinMapIndex = _currentCheckpointMapIndex;
       final pointIndex = _checkpointIndices[nextCoinMapIndex];
       final coinPosition = points[pointIndex];
@@ -1248,11 +1421,6 @@ class RunningProvider extends ChangeNotifier {
         coinPosition.longitude,
       );
       
-      AppLogger.debug(
-        LogLabel.general,
-        '📏 Distance to coin $nextCoinMapIndex (Point $pointIndex): ${distanceToCoin.toStringAsFixed(1)}m',
-      );
-      
       // Within 25 meters = coin collected
       if (distanceToCoin <= 25) {
         AppLogger.success(
@@ -1261,25 +1429,122 @@ class RunningProvider extends ChangeNotifier {
         );
 
         _currentCheckpointMapIndex++;
-        // Also update regular index for backward compatibility or other logic
         _currentCheckpointIndex = pointIndex;
-
-        // Refresh markers asynchronously
-        _refreshMarkersAsync();
-
-        AppLogger.info(
-          LogLabel.general,
-          '📊 Progress: ${routeProgress.toStringAsFixed(0)}% (${_currentCheckpointMapIndex - 1}/${_checkpointIndices.length - 1} coins)',
-        );
+        anyCheckpointCollected = true;
+        checkpointsCollectedThisUpdate++;
+        
+        // Continue to check next checkpoint (catch-up loop)
+      } else {
+        // ✅ IMPROVED: Scan ENTIRE recorded route to catch checkpoints passed while screen was off
+        // This is critical because GPS updates stop when screen is locked
+        final recordedPoints = _runTrackingService.recordedPoints;
+        bool passedAlongRoute = false;
+        
+        // Scan ALL recorded points (not just last 20) to detect if we passed this checkpoint
+        // Use a larger threshold (40m) since GPS accuracy decreases in background
+        for (int i = 0; i < recordedPoints.length; i++) {
+          final recordedPoint = recordedPoints[i];
+          final distFromRecorded = Geolocator.distanceBetween(
+            recordedPoint.latitude,
+            recordedPoint.longitude,
+            coinPosition.latitude,
+            coinPosition.longitude,
+          );
+          
+          // 40m threshold for background tracking (GPS less accurate when screen off)
+          if (distFromRecorded <= 40) {
+            passedAlongRoute = true;
+            AppLogger.debug(
+              LogLabel.general,
+              '📍 Found route point near coin $nextCoinMapIndex at index $i (${distFromRecorded.toStringAsFixed(0)}m)',
+            );
+            break;
+          }
+        }
+        
+        if (passedAlongRoute) {
+          AppLogger.success(
+            LogLabel.general,
+            '🪙 COIN $nextCoinMapIndex COLLECTED (caught up from route history)!',
+          );
+          
+          _currentCheckpointMapIndex++;
+          _currentCheckpointIndex = pointIndex;
+          anyCheckpointCollected = true;
+          checkpointsCollectedThisUpdate++;
+          // Continue to check next checkpoint
+        } else {
+          // User hasn't reached this checkpoint yet, stop checking
+          AppLogger.debug(
+            LogLabel.general,
+            '📏 Distance to coin $nextCoinMapIndex: ${distanceToCoin.toStringAsFixed(1)}m (${recordedPoints.length} route points checked)',
+          );
+          break;
+        }
       }
     }
+    
+    // Log if multiple checkpoints were collected at once
+    if (checkpointsCollectedThisUpdate > 1) {
+      AppLogger.info(
+        LogLabel.general,
+        '⚡ Caught up on $checkpointsCollectedThisUpdate checkpoints!',
+      );
+    }
+    
+    // Refresh markers if any checkpoint was collected
+    if (anyCheckpointCollected) {
+      AppLogger.info(
+        LogLabel.general,
+        '📊 Progress: ${routeProgress.toStringAsFixed(0)}% ($collectedCheckpoints/$totalCheckpoints coins)',
+      );
+      _refreshMarkersAsync();
+    }
+    
+    // ✅ ALWAYS update navigation notification on GPS update (real-time)
+    _updateNavigationNotification();
     
     // STEP 3: Check for FINISH
     final allCoinsCollected = _currentCheckpointMapIndex >= _checkpointIndices.length;
     
+    // ✅ SAFETY CHECKS to prevent premature completion
+    final elapsedSeconds = _runTrackingService.elapsedSeconds;
+    final totalDistanceRun = _runTrackingService.totalDistance;
+    const minTimeSeconds = 30; // Minimum 30 seconds before allowing completion
+    const minDistanceMeters = 50.0; // Minimum 50 meters before allowing completion
+    
+    final hasMinimumTime = elapsedSeconds >= minTimeSeconds;
+    final hasMinimumDistance = totalDistanceRun >= minDistanceMeters;
+    final safeToComplete = hasMinimumTime && hasMinimumDistance;
+    
     if (allCoinsCollected && _hasLeftStartPoint && !_runCompleted) {
+      if (!safeToComplete) {
+        // Log why we can't complete yet (throttled)
+        final now = DateTime.now();
+        if (_lastFinishLogTime == null || now.difference(_lastFinishLogTime!) > const Duration(seconds: 3)) {
+          _lastFinishLogTime = now;
+          if (!hasMinimumTime) {
+            AppLogger.debug(
+              LogLabel.general,
+              '⏳ Waiting for minimum time: ${elapsedSeconds}s / ${minTimeSeconds}s',
+            );
+          }
+          if (!hasMinimumDistance) {
+            AppLogger.debug(
+              LogLabel.general,
+              '📏 Waiting for minimum distance: ${totalDistanceRun.toStringAsFixed(0)}m / ${minDistanceMeters.toStringAsFixed(0)}m',
+            );
+          }
+        }
+        return; // Don't allow completion yet
+      }
+      
       if (distanceToStart <= 25) {
         AppLogger.success(LogLabel.general, '🏆 FINISH! All coins collected and returned to START!');
+        AppLogger.info(
+          LogLabel.general, 
+          '📊 Final stats: ${elapsedSeconds}s, ${totalDistanceRun.toStringAsFixed(0)}m',
+        );
         
         // ✅ Set completion flag IMMEDIATELY to prevent multiple triggers
         _runCompleted = true;

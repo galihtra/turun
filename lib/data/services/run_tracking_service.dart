@@ -284,11 +284,27 @@ class RunTrackingService {
 
   /// GPS tracking subscription
   StreamSubscription<Position>? _gpsSubscription;
+  
+  /// ✅ NEW: Timer for periodic GPS polling (more reliable in background)
+  Timer? _gpsPollingTimer;
+  static const int _gpsPollingIntervalMs = 3000; // Poll every 3 seconds
 
   void _startGpsTracking() {
     _gpsSubscription?.cancel();
+    _gpsPollingTimer?.cancel();
     
-    // ✅ Use platform-specific settings for background tracking
+    // ✅ APPROACH 1: Start the GPS stream with foreground service (may stop in background)
+    _startGpsStream();
+    
+    // ✅ APPROACH 2: Also start periodic polling as BACKUP (more reliable in background)
+    _startGpsPolling();
+    
+    AppLogger.info(LogLabel.general, '📍 GPS tracking started with stream + polling backup');
+  }
+  
+  /// Start GPS stream (works well in foreground, may stop in background)
+  void _startGpsStream() {
+    // Use platform-specific settings for background tracking
     late LocationSettings locationSettings;
     
     if (Platform.isAndroid) {
@@ -328,42 +344,92 @@ class RunTrackingService {
     _gpsSubscription = Geolocator.getPositionStream(
       locationSettings: locationSettings,
     ).listen((Position position) {
-      if (_isPaused || _currentSession == null) return;
-
-      final newPoint = LatLng(position.latitude, position.longitude);
-      
-      // Calculate distance from last point
-      if (_recordedPoints.isNotEmpty) {
-        final lastPoint = _recordedPoints.last;
-        final distance = Geolocator.distanceBetween(
-          lastPoint.latitude,
-          lastPoint.longitude,
-          newPoint.latitude,
-          newPoint.longitude,
-        );
+      _handleNewPosition(position);
+    });
+  }
+  
+  /// ✅ NEW: Periodic GPS polling (backup for when stream stops in background)
+  void _startGpsPolling() {
+    _gpsPollingTimer = Timer.periodic(
+      const Duration(milliseconds: _gpsPollingIntervalMs),
+      (timer) async {
+        if (_isPaused || _currentSession == null) return;
         
-        // Only add if moved at least 3 meters (filter GPS noise)
-        if (distance >= 3) {
-          _totalDistance += distance;
-          _recordedPoints.add(newPoint);
+        try {
+          // Use getCurrentPosition which is more reliable in background
+          final position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.bestForNavigation,
+              timeLimit: Duration(seconds: 5),
+            ),
+          );
           
-          // Calculate current speed
-          final now = DateTime.now();
-          if (_lastPositionTime != null) {
-            final timeDiffSeconds = now.difference(_lastPositionTime!).inMilliseconds / 1000;
-            if (timeDiffSeconds > 0) {
-              _currentSpeed = distance / timeDiffSeconds; // m/s
-            }
-          }
-          _lastPositionTime = now;
-          
-          // ✅ Save to local cache every 10 points for quick recovery
-          if (_recordedPoints.length % 10 == 0) {
-            _saveToLocalCache();
+          _handleNewPosition(position);
+        } catch (e) {
+          // Silently fail - polling is a backup, stream might still work
+          AppLogger.debug(LogLabel.general, '📍 GPS polling failed: $e');
+        }
+      },
+    );
+  }
+  
+  /// Handle new GPS position (shared by stream and polling)
+  void _handleNewPosition(Position position) {
+    if (_isPaused || _currentSession == null) return;
+
+    final newPoint = LatLng(position.latitude, position.longitude);
+    
+    // Calculate distance from last point
+    if (_recordedPoints.isNotEmpty) {
+      final lastPoint = _recordedPoints.last;
+      final distance = Geolocator.distanceBetween(
+        lastPoint.latitude,
+        lastPoint.longitude,
+        newPoint.latitude,
+        newPoint.longitude,
+      );
+      
+      // Only add if moved at least 3 meters (filter GPS noise)
+      if (distance >= 3) {
+        _totalDistance += distance;
+        _recordedPoints.add(newPoint);
+        
+        // Calculate current speed
+        final now = DateTime.now();
+        if (_lastPositionTime != null) {
+          final timeDiffSeconds = now.difference(_lastPositionTime!).inMilliseconds / 1000;
+          if (timeDiffSeconds > 0) {
+            _currentSpeed = distance / timeDiffSeconds; // m/s
           }
         }
+        _lastPositionTime = now;
+        
+        // ✅ Save to local cache every 5 points for quick recovery (more frequent now)
+        if (_recordedPoints.length % 5 == 0) {
+          _saveToLocalCache();
+        }
+        
+        AppLogger.debug(
+          LogLabel.general,
+          '📍 GPS Point added: ${_recordedPoints.length} points, ${(_totalDistance / 1000).toStringAsFixed(2)}km',
+        );
       }
-    });
+    } else {
+      // First point
+      _recordedPoints.add(newPoint);
+      _lastPositionTime = DateTime.now();
+      _saveToLocalCache();
+      AppLogger.info(LogLabel.general, '📍 First GPS point recorded');
+    }
+  }
+  
+  /// Stop GPS tracking
+  void _stopGpsTracking() {
+    _gpsSubscription?.cancel();
+    _gpsSubscription = null;
+    _gpsPollingTimer?.cancel();
+    _gpsPollingTimer = null;
+    AppLogger.info(LogLabel.general, '📍 GPS tracking stopped');
   }
 
 
@@ -397,7 +463,7 @@ class RunTrackingService {
 
       // Stop tracking
       _timer?.cancel();
-      _gpsSubscription?.cancel();
+      _stopGpsTracking(); // ✅ Stop both stream AND polling timer
       _syncTimer?.cancel(); // ✅ Stop sync timer
 
       // Add final point
