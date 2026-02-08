@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:turun/components/loading/running_loader.dart';
 import 'package:turun/components/network_error/network_error_widget.dart';
+import 'package:turun/data/providers/broadcast/broadcast_provider.dart';
 import 'package:turun/data/services/network_service.dart';
 import 'package:turun/data/services/push_notification_service.dart';
 import 'package:turun/data/services/navigation_notification_service.dart';
@@ -63,6 +65,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
         await _pushNotificationService.initialize();
         // Initialize navigation notification channel
         await _navNotificationService.initialize();
+        // Fetch broadcasts for the user
+        if (mounted) {
+          context.read<BroadcastProvider>().fetchBroadcasts();
+        }
       } else if (user == null && _user != null) {
         AppLogger.info(LogLabel.auth, 'User logged out');
         // Delete FCM token on logout
@@ -107,6 +113,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
       await _pushNotificationService.initialize();
       // Initialize navigation notification channel
       await _navNotificationService.initialize();
+      // Fetch broadcasts for the user
+      if (mounted) {
+        context.read<BroadcastProvider>().fetchBroadcasts();
+      }
     } else {
       AppLogger.debug(LogLabel.auth, 'No current user');
     }

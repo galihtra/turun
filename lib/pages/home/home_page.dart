@@ -3,8 +3,10 @@ import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:turun/components/broadcast/broadcast_section.dart';
 import 'package:turun/components/loading/running_loader.dart';
 import 'package:turun/data/model/running/run_session_model.dart';
+import 'package:turun/data/providers/broadcast/broadcast_provider.dart';
 import 'package:turun/data/providers/goals/goal_provider.dart';
 import 'package:turun/data/providers/achievement/achievement_provider.dart';
 import 'package:turun/pages/goals/goal_setting_screen.dart';
@@ -190,6 +192,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 await Future.wait([
                   goalProvider.loadActiveGoals(),
                   context.read<AchievementProvider>().loadUserAchievements(),
+                  context.read<BroadcastProvider>().refresh(),
                   _loadLatestActivities(),
                   _loadUserStats(),
                 ]);
@@ -274,6 +277,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             .copyWith(color: Colors.grey.shade500),
                       ),
                     ),
+                    
+                    // Broadcast Section - Show announcements/surveys/promos
+                    const BroadcastSection(),
+                    
                     // Main content
                     Padding(
                       padding: const EdgeInsets.all(20.0),

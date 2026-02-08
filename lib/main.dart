@@ -9,6 +9,7 @@ import 'package:turun/data/providers/landmark/landmark_provider.dart';
 import 'package:turun/data/providers/goals/goal_provider.dart';
 import 'package:turun/data/providers/achievement/achievement_provider.dart';
 import 'package:turun/data/providers/notification/notification_provider.dart';
+import 'package:turun/data/providers/broadcast/broadcast_provider.dart';
 import 'package:turun/data/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:turun/data/wrapper/auth_wrapper.dart';
@@ -52,6 +53,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GoalProvider()),
         ChangeNotifierProvider(create: (_) => AchievementProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => BroadcastProvider()),
         ChangeNotifierProvider(create: (_) => WeightProvider()),
         ChangeNotifierProvider(create: (_) => NutritionProvider()),
       ],

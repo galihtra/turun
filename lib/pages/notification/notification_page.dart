@@ -25,7 +25,7 @@ class NotificationPage extends StatefulWidget {
 class _NotificationPageState extends State<NotificationPage> {
   NotificationType? selectedFilter;
   final List<Map<String, dynamic>> filters = [
-    {'label': 'Semua', 'type': null},
+    {'label': 'All', 'type': null},
     {'label': 'Under Attack', 'type': NotificationType.underAttack},
     {'label': 'Territory Lost', 'type': NotificationType.territoryLost},
     {'label': 'Rival Activity', 'type': NotificationType.rivalActivity},
@@ -307,7 +307,7 @@ class _NotificationPageState extends State<NotificationPage> {
           backgroundColor: AppColors.backgroundColor,
           appBar: AppBar(
             title: Text(
-              'Notifikasi',
+              'Notifications',
               style: AppStyles.title2SemiBold.copyWith(
                 color: AppColors.black[900],
               ),
@@ -320,7 +320,7 @@ class _NotificationPageState extends State<NotificationPage> {
                 TextButton(
                   onPressed: () => provider.markAllAsRead(),
                   child: Text(
-                    'Tandai Semua',
+                    'Mark all as read',
                     style: AppStyles.label3SemiBold.copyWith(
                       color: AppColors.blue[600],
                     ),
@@ -364,7 +364,7 @@ class _NotificationPageState extends State<NotificationPage> {
                             ),
                             SizedBox(width: 12.w),
                             Text(
-                              'Notifikasi belum dibaca',
+                              'Unread notifications',
                               style: AppStyles.label2Medium.copyWith(
                                 color: AppColors.black[700],
                               ),
@@ -472,15 +472,15 @@ class _NotificationPageState extends State<NotificationPage> {
     if (difference.inSeconds < 60) {
       return 'Baru saja';
     } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} menit yang lalu';
+      return '${difference.inMinutes} minutes ago';
     } else if (difference.inHours < 24) {
-      return '${difference.inHours} jam yang lalu';
+      return '${difference.inHours} hours ago';
     } else if (difference.inDays < 7) {
-      return '${difference.inDays} hari yang lalu';
+      return '${difference.inDays} days ago';
     } else if (difference.inDays < 30) {
-      return '${(difference.inDays / 7).floor()} minggu yang lalu';
+      return '${(difference.inDays / 7).floor()} weeks ago';
     } else {
-      return '${(difference.inDays / 30).floor()} bulan yang lalu';
+      return '${(difference.inDays / 30).floor()} months ago';
     }
   }
 }

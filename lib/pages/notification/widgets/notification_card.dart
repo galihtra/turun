@@ -218,17 +218,17 @@ class NotificationCard extends StatelessWidget {
     final difference = now.difference(timestamp);
 
     if (difference.inSeconds < 60) {
-      return 'Baru saja';
+      return 'Just now';
     } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} menit yang lalu';
+      return '${difference.inMinutes} minutes ago';
     } else if (difference.inHours < 24) {
-      return '${difference.inHours} jam yang lalu';
+      return '${difference.inHours} hours ago';
     } else if (difference.inDays < 7) {
-      return '${difference.inDays} hari yang lalu';
+      return '${difference.inDays} days ago';
     } else if (difference.inDays < 30) {
-      return '${(difference.inDays / 7).floor()} minggu yang lalu';
+      return '${(difference.inDays / 7).floor()} weeks ago';
     } else {
-      return '${(difference.inDays / 30).floor()} bulan yang lalu';
+      return '${(difference.inDays / 30).floor()} months ago';
     }
   }
 }
